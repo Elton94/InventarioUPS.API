@@ -1,11 +1,13 @@
 ﻿using InventarioUPS.API.Models;
 using InventarioUPS.API.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace InventarioUPS.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class AgenciasController : ControllerBase
     {
         private readonly IAgenciaService _service;

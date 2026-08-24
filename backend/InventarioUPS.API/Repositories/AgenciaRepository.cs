@@ -31,7 +31,21 @@ namespace InventarioUPS.API.Repositories
 
         public async Task ActualizarAsync(Agencia agencia)
         {
-            _context.Agencias.Update(agencia);
+            var agenciaExistente = await _context.Agencias.FindAsync(agencia.Id);
+
+            if (agenciaExistente == null)
+                throw new Exception("La agencia no existe.");
+
+            agenciaExistente.Codigo = agencia.Codigo;
+            agenciaExistente.Nombre = agencia.Nombre;
+            agenciaExistente.Departamento = agencia.Departamento;
+            agenciaExistente.Ciudad = agencia.Ciudad;
+            agenciaExistente.Direccion = agencia.Direccion;
+            agenciaExistente.TipoAgencia = agencia.TipoAgencia;
+            agenciaExistente.Activa = agencia.Activa;
+
+            agenciaExistente.FechaModificacion = DateTime.Now;
+
             await _context.SaveChangesAsync();
         }
 

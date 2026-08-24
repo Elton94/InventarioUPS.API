@@ -1,14 +1,23 @@
 import {
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow
+    Paper,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    IconButton,
+    Tooltip
 } from "@mui/material";
 
-export default function AgenciasTable() {
+import EditIcon from "@mui/icons-material/Edit";
+import BlockIcon from "@mui/icons-material/Block";
+
+export default function AgenciasTable({
+    agencias,
+    onEditar,
+    onDesactivar
+}) {
 
     return (
 
@@ -20,15 +29,29 @@ export default function AgenciasTable() {
 
                     <TableRow>
 
-                        <TableCell><strong>Código</strong></TableCell>
+                        <TableCell>
+                            <strong>Código</strong>
+                        </TableCell>
 
-                        <TableCell><strong>Nombre</strong></TableCell>
+                        <TableCell>
+                            <strong>Nombre</strong>
+                        </TableCell>
 
-                        <TableCell><strong>Departamento</strong></TableCell>
+                        <TableCell>
+                            <strong>Departamento</strong>
+                        </TableCell>
 
-                        <TableCell><strong>Ciudad</strong></TableCell>
+                        <TableCell>
+                            <strong>Ciudad</strong>
+                        </TableCell>
 
-                        <TableCell><strong>Estado</strong></TableCell>
+                        <TableCell>
+                            <strong>Estado</strong>
+                        </TableCell>
+
+                        <TableCell align="center">
+                            <strong>Acciones</strong>
+                        </TableCell>
 
                     </TableRow>
 
@@ -36,19 +59,70 @@ export default function AgenciasTable() {
 
                 <TableBody>
 
-                    <TableRow>
+                    {agencias.map((agencia) => (
 
-                        <TableCell>SPS01</TableCell>
+                        <TableRow key={agencia.id}>
 
-                        <TableCell>Agencia San Pedro Sula</TableCell>
+                            <TableCell>
+                                {agencia.codigo}
+                            </TableCell>
 
-                        <TableCell>Cortés</TableCell>
+                            <TableCell>
+                                {agencia.nombre}
+                            </TableCell>
 
-                        <TableCell>San Pedro Sula</TableCell>
+                            <TableCell>
+                                {agencia.departamento}
+                            </TableCell>
 
-                        <TableCell>Activa</TableCell>
+                            <TableCell>
+                                {agencia.ciudad}
+                            </TableCell>
 
-                    </TableRow>
+                            <TableCell>
+                                {agencia.activa
+                                    ? "Activa"
+                                    : "Inactiva"
+                                }
+                            </TableCell>
+
+                            <TableCell align="center">
+
+                                <Tooltip title="Editar agencia">
+
+                                    <IconButton
+                                        onClick={() => onEditar(agencia)}
+                                    >
+
+                                        <EditIcon />
+
+                                    </IconButton>
+
+                                </Tooltip>
+
+                                {agencia.activa && (
+
+                                    <Tooltip title="Desactivar agencia">
+
+                                        <IconButton
+                                            onClick={() =>
+                                                onDesactivar(agencia)
+                                            }
+                                        >
+
+                                            <BlockIcon />
+
+                                        </IconButton>
+
+                                    </Tooltip>
+
+                                )}
+
+                            </TableCell>
+
+                        </TableRow>
+
+                    ))}
 
                 </TableBody>
 

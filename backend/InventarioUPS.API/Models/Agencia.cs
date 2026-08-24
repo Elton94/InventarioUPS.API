@@ -1,4 +1,6 @@
-﻿namespace InventarioUPS.API.Models
+﻿using System.Text.Json.Serialization;
+
+namespace InventarioUPS.API.Models
 {
     public class Agencia : BaseEntity
     {
@@ -15,5 +17,8 @@
         public string TipoAgencia { get; set; } = string.Empty;
 
         public bool Activa { get; set; } = true;
+
+        [JsonIgnore]
+        public ICollection<UPS> UPSs { get; set; } = new List<UPS>();
     }
 }

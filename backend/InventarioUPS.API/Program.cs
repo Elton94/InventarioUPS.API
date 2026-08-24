@@ -1,22 +1,98 @@
 using InventarioUPS.API.Data;
 using InventarioUPS.API.Repositories;
 using InventarioUPS.API.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-
-
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
+var jwtKey =
+    builder.Configuration["Jwt:Key"];
+
+var jwtIssuer =
+    builder.Configuration["Jwt:Issuer"];
+
+var jwtAudience =
+    builder.Configuration["Jwt:Audience"];
+
+builder.Services
+    .AddAuthentication(
+        JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters =
+            new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+
+                IssuerSigningKey =
+                    new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(
+                            jwtKey!
+                        )
+                    ),
+
+                ValidateIssuer = true,
+
+                ValidIssuer =
+                    jwtIssuer,
+
+                ValidateAudience = true,
+
+                ValidAudience =
+                    jwtAudience,
+
+                ValidateLifetime = true,
+
+                ClockSkew =
+                    TimeSpan.Zero
+            };
+    });
+
+builder.Services.AddAuthorization();
 
 // Agregamos los servicios de la API
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler =
+            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
 
 // Registramos el DbContext para SQL Server
 builder.Services.AddDbContext<InventarioUPSDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Configuración de CORS para permitir peticiones desde React
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("React",
+        policy =>
+        {
+            policy
+                .WithOrigins("http://localhost:5173")
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
+});
+
 builder.Services.AddScoped<IAgenciaRepository, AgenciaRepository>();
 builder.Services.AddScoped<IAgenciaService, AgenciaService>();
 
+builder.Services.AddScoped<IUPSRepository, UPSRepository>();
+builder.Services.AddScoped<IUPSService, UPSService>();
+
+builder.Services.AddScoped< IMantenimientoRepository,MantenimientoRepository >();
+
+builder.Services.AddScoped<IMantenimientoService,MantenimientoService >();
+builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+builder.Services.AddScoped<IPasswordHasher<InventarioUPS.API.Models.Usuario>,PasswordHasher<InventarioUPS.API.Models.Usuario>>();
+
+builder.Services.AddScoped<IJwtService, JwtService>();  
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -31,6 +107,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("React");
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 

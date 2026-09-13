@@ -1,4 +1,7 @@
 import {
+    Box,
+    Chip,
+    IconButton,
     Paper,
     Table,
     TableBody,
@@ -6,22 +9,51 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    IconButton,
-    Tooltip
+    Tooltip,
+    Typography
 } from "@mui/material";
 
 import EditIcon from "@mui/icons-material/Edit";
-import BlockIcon from "@mui/icons-material/Block";
+import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
+
 
 export default function AgenciasTable({
     agencias,
     onEditar,
-    onDesactivar
+    onCambiarEstado,
+    puedeEditar
 }) {
+
+    if (!agencias || agencias.length === 0) {
+
+        return (
+            <Paper
+                elevation={2}
+                sx={{
+                    p: 4,
+                    textAlign: "center"
+                }}
+            >
+
+                <Typography
+                    variant="body1"
+                    color="text.secondary"
+                >
+                    No hay agencias registradas.
+                </Typography>
+
+            </Paper>
+        );
+
+    }
+
 
     return (
 
-        <TableContainer component={Paper}>
+        <TableContainer
+            component={Paper}
+            elevation={2}
+        >
 
             <Table>
 
@@ -38,11 +70,15 @@ export default function AgenciasTable({
                         </TableCell>
 
                         <TableCell>
+                            <strong>Ciudad</strong>
+                        </TableCell>
+
+                        <TableCell>
                             <strong>Departamento</strong>
                         </TableCell>
 
                         <TableCell>
-                            <strong>Ciudad</strong>
+                            <strong>Tipo</strong>
                         </TableCell>
 
                         <TableCell>
@@ -57,64 +93,118 @@ export default function AgenciasTable({
 
                 </TableHead>
 
+
                 <TableBody>
 
                     {agencias.map((agencia) => (
 
-                        <TableRow key={agencia.id}>
+                        <TableRow
+                            key={agencia.id}
+                            hover
+                        >
 
                             <TableCell>
-                                {agencia.codigo}
+                                {agencia.codigo || "-"}
                             </TableCell>
 
-                            <TableCell>
-                                {agencia.nombre}
-                            </TableCell>
 
                             <TableCell>
-                                {agencia.departamento}
+                                {agencia.nombre || "-"}
                             </TableCell>
 
-                            <TableCell>
-                                {agencia.ciudad}
-                            </TableCell>
 
                             <TableCell>
-                                {agencia.activa
-                                    ? "Activa"
-                                    : "Inactiva"
-                                }
+                                {agencia.ciudad?.nombre ||
+                                    agencia.ciudadNombre ||
+                                    "-"}
                             </TableCell>
+
+
+                            <TableCell>
+                                {agencia.ciudad?.departamento?.nombre ||
+                                    agencia.departamento?.nombre ||
+                                    agencia.departamentoNombre ||
+                                    "-"}
+                            </TableCell>
+
+
+                            <TableCell>
+                                {agencia.tipoAgencia?.nombre ||
+                                    agencia.tipoAgenciaNombre ||
+                                    "-"}
+                            </TableCell>
+
+
+                            <TableCell>
+
+                                <Chip
+                                    label={
+                                        agencia.activa
+                                            ? "Activa"
+                                            : "Inactiva"
+                                    }
+                                    color={
+                                        agencia.activa
+                                            ? "success"
+                                            : "default"
+                                    }
+                                    size="small"
+                                />
+
+                            </TableCell>
+
 
                             <TableCell align="center">
 
-                                <Tooltip title="Editar agencia">
+                                {puedeEditar && (
 
-                                    <IconButton
-                                        onClick={() => onEditar(agencia)}
-                                    >
+                                    <>
 
-                                        <EditIcon />
+                                        <Tooltip title="Editar agencia">
 
-                                    </IconButton>
+                                            <IconButton
+                                                color="primary"
+                                                onClick={() =>
+                                                    onEditar(agencia)
+                                                }
+                                            >
 
-                                </Tooltip>
+                                                <EditIcon />
 
-                                {agencia.activa && (
+                                            </IconButton>
 
-                                    <Tooltip title="Desactivar agencia">
+                                        </Tooltip>
 
-                                        <IconButton
-                                            onClick={() =>
-                                                onDesactivar(agencia)
+
+                                        <Tooltip
+                                            title={
+                                                agencia.activa
+                                                    ? "Desactivar agencia"
+                                                    : "Activar agencia"
                                             }
                                         >
 
-                                            <BlockIcon />
+                                            <IconButton
+                                                color={
+                                                    agencia.activa
+                                                        ? "error"
+                                                        : "success"
+                                                }
+                                                onClick={() =>
+                                                    onCambiarEstado(
+                                                        agencia.id,
+                                                        !agencia.activa
+                                                    )
+                                                }
+                                            >
 
-                                        </IconButton>
+                                                <PowerSettingsNewIcon />
 
-                                    </Tooltip>
+                                            </IconButton>
+
+                                        </Tooltip>
+
+                                    </>
 
                                 )}
 

@@ -33,21 +33,18 @@ namespace InventarioUPS.API.Migrations
                     b.Property<bool>("Activa")
                         .HasColumnType("bit");
 
-                    b.Property<string>("Ciudad")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("CiudadId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Codigo")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Departamento")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Direccion")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
 
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("datetime2");
@@ -57,15 +54,145 @@ namespace InventarioUPS.API.Migrations
 
                     b.Property<string>("Nombre")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
-                    b.Property<string>("TipoAgencia")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("TipoAgenciaId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CiudadId");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique();
+
+                    b.HasIndex("TipoAgenciaId");
+
                     b.ToTable("Agencias");
+                });
+
+            modelBuilder.Entity("InventarioUPS.API.Models.Ciudad", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activa")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("DepartamentoId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaModificacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DepartamentoId", "Nombre")
+                        .IsUnique();
+
+                    b.ToTable("Ciudades");
+                });
+
+            modelBuilder.Entity("InventarioUPS.API.Models.Departamento", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaModificacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.ToTable("Departamentos");
+                });
+
+            modelBuilder.Entity("InventarioUPS.API.Models.EstadoMantenimiento", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaModificacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.ToTable("EstadosMantenimiento");
+                });
+
+            modelBuilder.Entity("InventarioUPS.API.Models.EstadoUPS", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaModificacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.ToTable("EstadosUPS");
                 });
 
             modelBuilder.Entity("InventarioUPS.API.Models.Mantenimiento", b =>
@@ -81,11 +208,11 @@ namespace InventarioUPS.API.Migrations
 
                     b.Property<string>("Descripcion")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
-                    b.Property<string>("Estado")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("EstadoMantenimientoId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("datetime2");
@@ -98,20 +225,25 @@ namespace InventarioUPS.API.Migrations
 
                     b.Property<string>("Observaciones")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("TecnicoProveedor")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
-                    b.Property<string>("TipoMantenimiento")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("TipoMantenimientoId")
+                        .HasColumnType("int");
 
                     b.Property<int>("UPSId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EstadoMantenimientoId");
+
+                    b.HasIndex("TipoMantenimientoId");
 
                     b.HasIndex("UPSId");
 
@@ -131,7 +263,8 @@ namespace InventarioUPS.API.Migrations
 
                     b.Property<string>("Descripcion")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
 
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("datetime2");
@@ -141,11 +274,75 @@ namespace InventarioUPS.API.Migrations
 
                     b.Property<string>("Nombre")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
                     b.ToTable("Roles");
+                });
+
+            modelBuilder.Entity("InventarioUPS.API.Models.TipoAgencia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaModificacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.ToTable("TiposAgencia");
+                });
+
+            modelBuilder.Entity("InventarioUPS.API.Models.TipoMantenimiento", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaModificacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.ToTable("TiposMantenimiento");
                 });
 
             modelBuilder.Entity("InventarioUPS.API.Models.UPS", b =>
@@ -167,11 +364,11 @@ namespace InventarioUPS.API.Migrations
 
                     b.Property<string>("Codigo")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("Estado")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("EstadoUPSId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("datetime2");
@@ -187,19 +384,27 @@ namespace InventarioUPS.API.Migrations
 
                     b.Property<string>("Marca")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Modelo")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("NumeroSerie")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("AgenciaId");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique();
+
+                    b.HasIndex("EstadoUPSId");
 
                     b.HasIndex("NumeroSerie")
                         .IsUnique();
@@ -220,7 +425,8 @@ namespace InventarioUPS.API.Migrations
 
                     b.Property<string>("Correo")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("datetime2");
@@ -230,11 +436,13 @@ namespace InventarioUPS.API.Migrations
 
                     b.Property<string>("NombreCompleto")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<string>("NombreUsuario")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -245,18 +453,70 @@ namespace InventarioUPS.API.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Correo")
+                        .IsUnique();
+
+                    b.HasIndex("NombreUsuario")
+                        .IsUnique();
+
                     b.HasIndex("RolId");
 
                     b.ToTable("Usuarios");
                 });
 
+            modelBuilder.Entity("InventarioUPS.API.Models.Agencia", b =>
+                {
+                    b.HasOne("InventarioUPS.API.Models.Ciudad", "Ciudad")
+                        .WithMany("Agencias")
+                        .HasForeignKey("CiudadId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InventarioUPS.API.Models.TipoAgencia", "TipoAgencia")
+                        .WithMany("Agencias")
+                        .HasForeignKey("TipoAgenciaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Ciudad");
+
+                    b.Navigation("TipoAgencia");
+                });
+
+            modelBuilder.Entity("InventarioUPS.API.Models.Ciudad", b =>
+                {
+                    b.HasOne("InventarioUPS.API.Models.Departamento", "Departamento")
+                        .WithMany("Ciudades")
+                        .HasForeignKey("DepartamentoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Departamento");
+                });
+
             modelBuilder.Entity("InventarioUPS.API.Models.Mantenimiento", b =>
                 {
+                    b.HasOne("InventarioUPS.API.Models.EstadoMantenimiento", "EstadoMantenimiento")
+                        .WithMany("Mantenimientos")
+                        .HasForeignKey("EstadoMantenimientoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InventarioUPS.API.Models.TipoMantenimiento", "Tipo")
+                        .WithMany("Mantenimientos")
+                        .HasForeignKey("TipoMantenimientoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("InventarioUPS.API.Models.UPS", "UPS")
                         .WithMany("Mantenimientos")
                         .HasForeignKey("UPSId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("EstadoMantenimiento");
+
+                    b.Navigation("Tipo");
 
                     b.Navigation("UPS");
                 });
@@ -269,7 +529,15 @@ namespace InventarioUPS.API.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("InventarioUPS.API.Models.EstadoUPS", "EstadoUPS")
+                        .WithMany("UPSs")
+                        .HasForeignKey("EstadoUPSId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Agencia");
+
+                    b.Navigation("EstadoUPS");
                 });
 
             modelBuilder.Entity("InventarioUPS.API.Models.Usuario", b =>
@@ -277,7 +545,7 @@ namespace InventarioUPS.API.Migrations
                     b.HasOne("InventarioUPS.API.Models.Rol", "Rol")
                         .WithMany()
                         .HasForeignKey("RolId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Rol");
@@ -286,6 +554,36 @@ namespace InventarioUPS.API.Migrations
             modelBuilder.Entity("InventarioUPS.API.Models.Agencia", b =>
                 {
                     b.Navigation("UPSs");
+                });
+
+            modelBuilder.Entity("InventarioUPS.API.Models.Ciudad", b =>
+                {
+                    b.Navigation("Agencias");
+                });
+
+            modelBuilder.Entity("InventarioUPS.API.Models.Departamento", b =>
+                {
+                    b.Navigation("Ciudades");
+                });
+
+            modelBuilder.Entity("InventarioUPS.API.Models.EstadoMantenimiento", b =>
+                {
+                    b.Navigation("Mantenimientos");
+                });
+
+            modelBuilder.Entity("InventarioUPS.API.Models.EstadoUPS", b =>
+                {
+                    b.Navigation("UPSs");
+                });
+
+            modelBuilder.Entity("InventarioUPS.API.Models.TipoAgencia", b =>
+                {
+                    b.Navigation("Agencias");
+                });
+
+            modelBuilder.Entity("InventarioUPS.API.Models.TipoMantenimiento", b =>
+                {
+                    b.Navigation("Mantenimientos");
                 });
 
             modelBuilder.Entity("InventarioUPS.API.Models.UPS", b =>

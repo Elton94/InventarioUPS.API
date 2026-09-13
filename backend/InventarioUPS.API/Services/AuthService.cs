@@ -23,10 +23,26 @@ namespace InventarioUPS.API.Services
         public async Task<LoginResponseDTO> LoginAsync(
             LoginRequestDTO request)
         {
+            if (request == null)
+            {
+                throw new UnauthorizedAccessException(
+                    "Usuario o contraseña incorrectos.");
+            }
+
+            var nombreUsuario =
+                request.NombreUsuario?.Trim();
+
+            if (string.IsNullOrWhiteSpace(nombreUsuario) ||
+                string.IsNullOrWhiteSpace(request.Password))
+            {
+                throw new UnauthorizedAccessException(
+                    "Usuario o contraseña incorrectos.");
+            }
+
             var usuario =
                 await _usuarioRepository
                     .ObtenerPorNombreUsuarioAsync(
-                        request.NombreUsuario);
+                        nombreUsuario);
 
             if (usuario == null)
             {
@@ -38,6 +54,13 @@ namespace InventarioUPS.API.Services
             {
                 throw new UnauthorizedAccessException(
                     "El usuario se encuentra inactivo.");
+            }
+
+            if (usuario.Rol == null ||
+                !usuario.Rol.Activo)
+            {
+                throw new UnauthorizedAccessException(
+                    "El rol asignado al usuario se encuentra inactivo.");
             }
 
             var resultado =
@@ -70,7 +93,7 @@ namespace InventarioUPS.API.Services
                     usuario.NombreCompleto,
 
                 Rol =
-                    usuario.Rol?.Nombre ?? string.Empty
+                    usuario.Rol.Nombre
             };
         }
     }

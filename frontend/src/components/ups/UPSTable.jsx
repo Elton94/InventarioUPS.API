@@ -14,10 +14,12 @@ import {
 
 import EditIcon from "@mui/icons-material/Edit";
 
+
 export default function UPSTable({
     ups,
     onEditar,
-    onCambiarEstado
+    onCambiarEstado,
+    puedeEditar
 }) {
 
     const obtenerColorEstado = (estado) => {
@@ -36,6 +38,7 @@ export default function UPSTable({
 
         return "primary";
     };
+
 
     return (
 
@@ -83,6 +86,7 @@ export default function UPSTable({
 
                 </TableHead>
 
+
                 <TableBody>
 
                     {ups.map((equipo) => (
@@ -113,53 +117,67 @@ export default function UPSTable({
                                 {equipo.agencia?.nombre || "Sin agencia"}
                             </TableCell>
 
+
                             <TableCell>
 
-                                <Select
-                                    size="small"
-                                    value={equipo.estado}
-                                    onChange={(e) =>
-                                        onCambiarEstado(
-                                            equipo.id,
-                                            e.target.value
-                                        )
-                                    }
-                                    color={obtenerColorEstado(
-                                        equipo.estado
-                                    )}
-                                >
+                                {puedeEditar ? (
 
-                                    <MenuItem value="Operativo">
-                                        Operativo
-                                    </MenuItem>
+                                    <Select
+                                        size="small"
+                                        value={equipo.estado}
+                                        onChange={(e) =>
+                                            onCambiarEstado(
+                                                equipo.id,
+                                                e.target.value
+                                            )
+                                        }
+                                        color={obtenerColorEstado(
+                                            equipo.estado
+                                        )}
+                                    >
 
-                                    <MenuItem value="En mantenimiento">
-                                        En mantenimiento
-                                    </MenuItem>
+                                        <MenuItem value="Operativo">
+                                            Operativo
+                                        </MenuItem>
 
-                                    <MenuItem value="Fuera de servicio">
-                                        Fuera de servicio
-                                    </MenuItem>
+                                        <MenuItem value="En mantenimiento">
+                                            En mantenimiento
+                                        </MenuItem>
 
-                                </Select>
+                                        <MenuItem value="Fuera de servicio">
+                                            Fuera de servicio
+                                        </MenuItem>
+
+                                    </Select>
+
+                                ) : (
+
+                                    equipo.estado
+
+                                )}
 
                             </TableCell>
 
+
                             <TableCell align="center">
 
-                                <Tooltip title="Editar UPS">
+                                {puedeEditar && (
 
-                                    <IconButton
-                                        onClick={() =>
-                                            onEditar(equipo)
-                                        }
-                                    >
+                                    <Tooltip title="Editar UPS">
 
-                                        <EditIcon />
+                                        <IconButton
+                                            onClick={() =>
+                                                onEditar(equipo)
+                                            }
+                                        >
 
-                                    </IconButton>
+                                            <EditIcon />
 
-                                </Tooltip>
+                                        </IconButton>
+
+                                    </Tooltip>
+
+                                )}
 
                             </TableCell>
 

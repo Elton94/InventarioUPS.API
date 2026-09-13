@@ -7,5 +7,8 @@
         public string Descripcion { get; set; } = string.Empty;
 
         public bool Activo { get; set; } = true;
+
+        public ICollection<RolPermiso> RolPermisos { get; set; }
+            = new List<RolPermiso>();
     }
-} 
+}

@@ -1,39 +1,74 @@
-import axios from "axios";
+import api from "./api";
 
-const API_URL = "https://localhost:7295/api/Agencias";
+const API_URL = "/Agencias";
 
 export const obtenerAgencias = async () => {
-
-    const response = await axios.get(API_URL);
+    const response = await api.get(API_URL);
 
     return response.data;
+};
 
+export const obtenerAgenciaPorId = async (id) => {
+    const response = await api.get(`${API_URL}/${id}`);
+
+    return response.data;
 };
 
 export const crearAgencia = async (agencia) => {
+    const datos = {
+        codigo: agencia.codigo?.trim(),
+        nombre: agencia.nombre?.trim(),
+        ciudadId: Number(
+            agencia.ciudadId ?? agencia.ciudad
+        ),
+        direccion: agencia.direccion?.trim() || "",
+        tipoAgenciaId: Number(
+            agencia.tipoAgenciaId ?? agencia.tipoAgencia
+        ),
+        activa: true
+    };
 
-    const response = await axios.post(API_URL, agencia);
-
-    return response.data;
-
-};
-
-export const actualizarAgencia = async (id, agencia) => {
-
-    const response = await axios.put(
-        `${API_URL}/${id}`,
-        {
-            id: id,
-            codigo: agencia.codigo,
-            nombre: agencia.nombre,
-            departamento: agencia.departamento,
-            ciudad: agencia.ciudad,
-            direccion: agencia.direccion,
-            tipoAgencia: agencia.tipoAgencia,
-            activa: agencia.activa
-        }
+    const response = await api.post(
+        API_URL,
+        datos
     );
 
     return response.data;
+};
 
+export const actualizarAgencia = async (
+    id,
+    agencia
+) => {
+    const datos = {
+        id: Number(id),
+        codigo: agencia.codigo?.trim(),
+        nombre: agencia.nombre?.trim(),
+        ciudadId: Number(
+            agencia.ciudadId ?? agencia.ciudad
+        ),
+        direccion: agencia.direccion?.trim() || "",
+        tipoAgenciaId: Number(
+            agencia.tipoAgenciaId ?? agencia.tipoAgencia
+        ),
+        activa:
+            agencia.activa !== undefined
+                ? agencia.activa
+                : true
+    };
+
+    const response = await api.put(
+        `${API_URL}/${id}`,
+        datos
+    );
+
+    return response.data;
+};
+
+export const desactivarAgencia = async (id) => {
+    const response = await api.delete(
+        `${API_URL}/${id}`
+    );
+
+    return response.data;
 };

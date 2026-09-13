@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import NuevoMantenimientoModal from "../components/mantenimientos/NuevoMantenimientoModal";
+
 import {
     Autocomplete,
     Box,
@@ -19,29 +20,33 @@ import {
 import MantenimientosTable
     from "../components/mantenimientos/MantenimientosTable";
 
+import { tienePermiso } from "../services/permisos";
+
 
 export default function Mantenimientos() {
 
-    const [mantenimientos, setMantenimientos] =
-        useState([]);
+    const [mantenimientos, setMantenimientos] = useState([]);
 
-    const [tipoBusqueda, setTipoBusqueda] =
-        useState("agencia");
+    const [tipoBusqueda, setTipoBusqueda] = useState("agencia");
 
-    const [textoBusqueda, setTextoBusqueda] =
-        useState("");
+    const [textoBusqueda, setTextoBusqueda] = useState("");
 
-    const [fechaDesde, setFechaDesde] =
-        useState("");
+    const [fechaDesde, setFechaDesde] = useState("");
 
-    const [fechaHasta, setFechaHasta] =
-        useState("");
-    
-    const [modalAbierto, setModalAbierto] =
-        useState(false);
+    const [fechaHasta, setFechaHasta] = useState("");
 
-    const [mantenimientoEditar, setMantenimientoEditar] =
-        useState(null);
+    const [modalAbierto, setModalAbierto] = useState(false);
+
+    const [mantenimientoEditar, setMantenimientoEditar] = useState(null);
+
+
+    // =====================================
+    // PERMISOS
+    // =====================================
+
+    const puedeCrear = tienePermiso("CREAR_MANTENIMIENTO");
+
+    const puedeEditar = tienePermiso("EDITAR_MANTENIMIENTO");
 
 
     // =====================================
@@ -52,8 +57,7 @@ export default function Mantenimientos() {
 
         try {
 
-            const datos =
-                await obtenerMantenimientos();
+            const datos = await obtenerMantenimientos();
 
             setMantenimientos(datos);
 
@@ -88,15 +92,39 @@ export default function Mantenimientos() {
 
     };
 
+
+    // =====================================
+    // EDITAR MANTENIMIENTO
+    // =====================================
+
     const editarMantenimiento = (mantenimiento) => {
 
-    setMantenimientoEditar(
-        mantenimiento
-    );
+        if (!puedeEditar) {
+            return;
+        }
 
-    setModalAbierto(true);
+        setMantenimientoEditar(mantenimiento);
 
-};
+        setModalAbierto(true);
+
+    };
+
+
+    // =====================================
+    // NUEVO MANTENIMIENTO
+    // =====================================
+
+    const nuevoMantenimiento = () => {
+
+        if (!puedeCrear) {
+            return;
+        }
+
+        setMantenimientoEditar(null);
+
+        setModalAbierto(true);
+
+    };
 
 
     // =====================================
@@ -105,9 +133,7 @@ export default function Mantenimientos() {
 
     const cambiarTipoBusqueda = (event) => {
 
-        setTipoBusqueda(
-            event.target.value
-        );
+        setTipoBusqueda(event.target.value);
 
         limpiarBusqueda();
 
@@ -126,19 +152,15 @@ export default function Mantenimientos() {
 
             case "agencia":
 
-                valores =
-                    mantenimientos.map(
-                        m => m.agenciaNombre
-                    );
+                valores = mantenimientos.map(
+                    m => m.agenciaNombre
+                );
 
                 break;
 
 
             case "marca":
 
-                // Actualmente nuestro DTO
-                // todavía no contiene Marca.
-                // Lo dejamos preparado.
                 valores = [];
 
                 break;
@@ -146,40 +168,36 @@ export default function Mantenimientos() {
 
             case "modelo":
 
-                valores =
-                    mantenimientos.map(
-                        m => m.modeloUPS
-                    );
+                valores = mantenimientos.map(
+                    m => m.modeloUPS
+                );
 
                 break;
 
 
             case "tipo":
 
-                valores =
-                    mantenimientos.map(
-                        m => m.tipoMantenimiento
-                    );
+                valores = mantenimientos.map(
+                    m => m.tipoMantenimiento
+                );
 
                 break;
 
 
             case "tecnico":
 
-                valores =
-                    mantenimientos.map(
-                        m => m.tecnicoProveedor
-                    );
+                valores = mantenimientos.map(
+                    m => m.tecnicoProveedor
+                );
 
                 break;
 
 
             case "estado":
 
-                valores =
-                    mantenimientos.map(
-                        m => m.estado
-                    );
+                valores = mantenimientos.map(
+                    m => m.estado
+                );
 
                 break;
 
@@ -212,10 +230,7 @@ export default function Mantenimientos() {
                 // FECHA
                 // -------------------------
 
-                if (
-                    tipoBusqueda ===
-                    "fecha"
-                ) {
+                if (tipoBusqueda === "fecha") {
 
                     const fecha =
                         mantenimiento
@@ -226,18 +241,14 @@ export default function Mantenimientos() {
                         fechaDesde &&
                         fecha < fechaDesde
                     ) {
-
                         return false;
-
                     }
 
                     if (
                         fechaHasta &&
                         fecha > fechaHasta
                     ) {
-
                         return false;
-
                     }
 
                     return true;
@@ -264,9 +275,7 @@ export default function Mantenimientos() {
                 // FILTROS
                 // -------------------------
 
-                switch (
-                    tipoBusqueda
-                ) {
+                switch (tipoBusqueda) {
 
                     case "agencia":
 
@@ -363,32 +372,24 @@ export default function Mantenimientos() {
                 mb={3}
             >
 
-                            <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                mb={3}
-            >
-                    <Typography
-                        variant="h4"
-                        fontWeight="bold"
-                    >
-                        Gestión de Mantenimientos
-                    </Typography>
+                <Typography
+                    variant="h4"
+                    fontWeight="bold"
+                >
+                    Gestión de Mantenimientos
+                </Typography>
+
+
+                {puedeCrear && (
 
                     <Button
                         variant="contained"
-                        onClick={() => {
-
-                            setMantenimientoEditar(null);
-
-                            setModalAbierto(true);
-
-                        }}
+                        onClick={nuevoMantenimiento}
                     >
                         + Nuevo mantenimiento
                     </Button>
-            </Box>
+
+                )}
 
             </Box>
 
@@ -415,13 +416,9 @@ export default function Mantenimientos() {
                     </InputLabel>
 
                     <Select
-                        value={
-                            tipoBusqueda
-                        }
+                        value={tipoBusqueda}
                         label="Buscar por"
-                        onChange={
-                            cambiarTipoBusqueda
-                        }
+                        onChange={cambiarTipoBusqueda}
                     >
 
                         <MenuItem value="agencia">
@@ -476,9 +473,7 @@ export default function Mantenimientos() {
                         <TextField
                             type="date"
                             label="Desde"
-                            value={
-                                fechaDesde
-                            }
+                            value={fechaDesde}
                             onChange={(e) =>
                                 setFechaDesde(
                                     e.target.value
@@ -492,9 +487,7 @@ export default function Mantenimientos() {
                         <TextField
                             type="date"
                             label="Hasta"
-                            value={
-                                fechaHasta
-                            }
+                            value={fechaHasta}
                             onChange={(e) =>
                                 setFechaHasta(
                                     e.target.value
@@ -507,34 +500,24 @@ export default function Mantenimientos() {
 
                     </>
 
-                ) :
+                ) : (
 
+                    [
+                        "agencia",
+                        "marca",
+                        "modelo",
+                        "tipo",
+                        "tecnico",
+                        "estado"
+                    ].includes(tipoBusqueda)
 
-                /* ========================= */
-                /* AUTOCOMPLETE */
-                /* ========================= */
-
-                [
-                    "agencia",
-                    "marca",
-                    "modelo",
-                    "tipo",
-                    "tecnico",
-                    "estado"
-                ].includes(
-                    tipoBusqueda
                 ) ? (
 
                     <Autocomplete
                         fullWidth
                         freeSolo
-                        options={
-                            obtenerOpciones()
-                        }
-                        value={
-                            textoBusqueda ||
-                            null
-                        }
+                        options={obtenerOpciones()}
+                        value={textoBusqueda || null}
                         onChange={(
                             event,
                             nuevoValor
@@ -559,11 +542,7 @@ export default function Mantenimientos() {
 
                             <TextField
                                 {...params}
-                                label={
-                                    `Buscar ${
-                                        tipoBusqueda
-                                    }`
-                                }
+                                label={`Buscar ${tipoBusqueda}`}
                             />
 
                         )}
@@ -571,20 +550,10 @@ export default function Mantenimientos() {
 
                 ) : (
 
-                    /* ========================= */
-                    /* TEXTO NORMAL */
-                    /* ========================= */
-
                     <TextField
                         fullWidth
-                        label={
-                            `Buscar ${
-                                tipoBusqueda
-                            }`
-                        }
-                        value={
-                            textoBusqueda
-                        }
+                        label={`Buscar ${tipoBusqueda}`}
+                        value={textoBusqueda}
                         onChange={(e) =>
                             setTextoBusqueda(
                                 e.target.value
@@ -597,9 +566,7 @@ export default function Mantenimientos() {
 
                 <Button
                     variant="outlined"
-                    onClick={
-                        limpiarBusqueda
-                    }
+                    onClick={limpiarBusqueda}
                 >
                     Limpiar
                 </Button>
@@ -620,8 +587,7 @@ export default function Mantenimientos() {
 
                 <strong>
                     {
-                        mantenimientosFiltrados
-                            .length
+                        mantenimientosFiltrados.length
                     }
                 </strong>
 
@@ -639,7 +605,13 @@ export default function Mantenimientos() {
                 onEditar={
                     editarMantenimiento
                 }
+                puedeEditar={puedeEditar}
             />
+
+
+            {/* ========================= */}
+            {/* MODAL */}
+            {/* ========================= */}
 
             <NuevoMantenimientoModal
                 open={modalAbierto}

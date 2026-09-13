@@ -6,7 +6,9 @@
 
         public int UPSId { get; set; }
 
-        public string TipoMantenimiento { get; set; } = string.Empty;
+        public int TipoMantenimientoId { get; set; }
+
+        public int EstadoMantenimientoId { get; set; }
 
         public DateTime FechaMantenimiento { get; set; }
 
@@ -16,9 +18,23 @@
 
         public decimal Costo { get; set; }
 
-        public string Estado { get; set; } = string.Empty;
-
         public string Observaciones { get; set; } = string.Empty;
+
+
+        // ==========================================
+        // CAMBIO DE BATERÍAS
+        // ==========================================
+
+        public bool IncluyeCambioBaterias { get; set; }
+
+        public int CantidadBateriasReemplazadas { get; set; }
+
+        public decimal CostoBaterias { get; set; }
+
+
+        // ==========================================
+        // DATOS DE CONSULTA
+        // ==========================================
 
         public string? CodigoUPS { get; set; }
 
@@ -27,5 +43,9 @@
         public string? ModeloUPS { get; set; }
 
         public string? AgenciaNombre { get; set; }
+
+        public string? TipoMantenimiento { get; set; }
+
+        public string? Estado { get; set; }
     }
 }

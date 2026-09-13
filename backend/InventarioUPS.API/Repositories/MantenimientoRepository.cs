@@ -14,61 +14,109 @@ namespace InventarioUPS.API.Repositories
             _context = context;
         }
 
+        // =====================================================
+        // OBTENER TODOS
+        // =====================================================
+
         public async Task<List<Mantenimiento>> ObtenerTodosAsync()
         {
             return await _context.Mantenimientos
+                .AsNoTracking()
                 .Include(m => m.UPS)
-                .ThenInclude(u => u!.Agencia)
+                    .ThenInclude(u => u!.Agencia)
+                .Include(m => m.UPS)
+                    .ThenInclude(u => u!.Agencia!.Ciudad)
+                .Include(m => m.Tipo)
+                .Include(m => m.EstadoMantenimiento)
+                .OrderByDescending(
+                    m => m.FechaMantenimiento)
+                .ThenByDescending(
+                    m => m.Id)
                 .ToListAsync();
         }
 
-        public async Task<Mantenimiento?> ObtenerPorIdAsync(int id)
+        // =====================================================
+        // OBTENER POR ID
+        // =====================================================
+
+        public async Task<Mantenimiento?> ObtenerPorIdAsync(
+            int id)
         {
             return await _context.Mantenimientos
                 .Include(m => m.UPS)
-                .ThenInclude(u => u!.Agencia)
-                .FirstOrDefaultAsync(m => m.Id == id);
+                    .ThenInclude(u => u!.Agencia)
+                .Include(m => m.UPS)
+                    .ThenInclude(u => u!.Agencia!.Ciudad)
+                .Include(m => m.Tipo)
+                .Include(m => m.EstadoMantenimiento)
+                .FirstOrDefaultAsync(
+                    m => m.Id == id);
         }
+
+        // =====================================================
+        // OBTENER POR UPS
+        // =====================================================
 
         public async Task<List<Mantenimiento>> ObtenerPorUPSAsync(
             int upsId)
         {
             return await _context.Mantenimientos
+                .AsNoTracking()
                 .Include(m => m.UPS)
+                    .ThenInclude(u => u!.Agencia)
+                .Include(m => m.UPS)
+                    .ThenInclude(u => u!.Agencia!.Ciudad)
+                .Include(m => m.Tipo)
+                .Include(m => m.EstadoMantenimiento)
                 .Where(m => m.UPSId == upsId)
                 .OrderByDescending(
-                    m => m.FechaMantenimiento
-                )
+                    m => m.FechaMantenimiento)
+                .ThenByDescending(
+                    m => m.Id)
                 .ToListAsync();
         }
+
+        // =====================================================
+        // CREAR
+        // =====================================================
 
         public async Task CrearAsync(
             Mantenimiento mantenimiento)
         {
             _context.Mantenimientos.Add(
-                mantenimiento
-            );
+                mantenimiento);
 
             await _context.SaveChangesAsync();
         }
+
+        // =====================================================
+        // ACTUALIZAR
+        // =====================================================
 
         public async Task ActualizarAsync(
             Mantenimiento mantenimiento)
         {
             var existente =
                 await _context.Mantenimientos
-                    .FindAsync(mantenimiento.Id);
+                    .FirstOrDefaultAsync(
+                        m =>
+                            m.Id ==
+                            mantenimiento.Id);
 
             if (existente == null)
-                throw new Exception(
-                    "El mantenimiento no existe."
-                );
+            {
+                throw new InvalidOperationException(
+                    "El mantenimiento no existe.");
+            }
 
             existente.UPSId =
                 mantenimiento.UPSId;
 
-            existente.TipoMantenimiento =
-                mantenimiento.TipoMantenimiento;
+            existente.TipoMantenimientoId =
+                mantenimiento.TipoMantenimientoId;
+
+            existente.EstadoMantenimientoId =
+                mantenimiento.EstadoMantenimientoId;
 
             existente.FechaMantenimiento =
                 mantenimiento.FechaMantenimiento;
@@ -82,11 +130,21 @@ namespace InventarioUPS.API.Repositories
             existente.Costo =
                 mantenimiento.Costo;
 
-            existente.Estado =
-                mantenimiento.Estado;
-
             existente.Observaciones =
                 mantenimiento.Observaciones;
+
+            // =================================================
+            // CAMBIO DE BATERÍAS
+            // =================================================
+
+            existente.IncluyeCambioBaterias =
+                mantenimiento.IncluyeCambioBaterias;
+
+            existente.CantidadBateriasReemplazadas =
+                mantenimiento.CantidadBateriasReemplazadas;
+
+            existente.CostoBaterias =
+                mantenimiento.CostoBaterias;
 
             existente.FechaModificacion =
                 DateTime.Now;

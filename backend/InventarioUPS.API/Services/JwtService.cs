@@ -2,8 +2,10 @@
 using System.Security.Claims;
 using System.Text;
 
+using InventarioUPS.API.Data;
 using InventarioUPS.API.Models;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 namespace InventarioUPS.API.Services
@@ -11,11 +13,14 @@ namespace InventarioUPS.API.Services
     public class JwtService : IJwtService
     {
         private readonly IConfiguration _configuration;
+        private readonly InventarioUPSDbContext _context;
 
         public JwtService(
-            IConfiguration configuration)
+            IConfiguration configuration,
+            InventarioUPSDbContext context)
         {
             _configuration = configuration;
+            _context = context;
         }
 
         public string GenerarToken(
@@ -44,6 +49,28 @@ namespace InventarioUPS.API.Services
                 );
             }
 
+            /*
+             * =====================================================
+             * OBTENER PERMISOS DEL ROL DESDE SQL SERVER
+             * =====================================================
+             */
+
+            var permisos = _context.RolPermisos
+                .AsNoTracking()
+                .Where(rp =>
+                    rp.RolId == usuario.RolId &&
+                    rp.Permiso != null &&
+                    rp.Permiso.Activo)
+                .Select(rp => rp.Permiso!.Codigo)
+                .Distinct()
+                .ToList();
+
+            /*
+             * =====================================================
+             * CLAIMS DEL USUARIO
+             * =====================================================
+             */
+
             var claims = new List<Claim>
             {
                 new Claim(
@@ -66,6 +93,22 @@ namespace InventarioUPS.API.Services
                     usuario.Rol?.Nombre ?? string.Empty
                 )
             };
+
+            
+             //* =====================================================
+             //* AGREGAR PERMISOS AL JWT
+            // * =====================================================
+           
+
+            foreach (var permiso in permisos)
+            {
+                claims.Add(
+                    new Claim(
+                        "Permiso",
+                        permiso
+                    )
+                );
+            }
 
             var securityKey =
                 new SymmetricSecurityKey(

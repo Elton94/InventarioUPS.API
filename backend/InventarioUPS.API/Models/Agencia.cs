@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace InventarioUPS.API.Models
+﻿namespace InventarioUPS.API.Models
 {
     public class Agencia : BaseEntity
     {
@@ -8,17 +6,19 @@ namespace InventarioUPS.API.Models
 
         public string Nombre { get; set; } = string.Empty;
 
-        public string Departamento { get; set; } = string.Empty;
-
-        public string Ciudad { get; set; } = string.Empty;
+        public int CiudadId { get; set; }
 
         public string Direccion { get; set; } = string.Empty;
 
-        public string TipoAgencia { get; set; } = string.Empty;
+        public int TipoAgenciaId { get; set; }
 
         public bool Activa { get; set; } = true;
 
-        [JsonIgnore]
-        public ICollection<UPS> UPSs { get; set; } = new List<UPS>();
+        public Ciudad? Ciudad { get; set; }
+
+        public TipoAgencia? TipoAgencia { get; set; }
+
+        public ICollection<UPS> UPSs { get; set; }
+            = new List<UPS>();
     }
 }

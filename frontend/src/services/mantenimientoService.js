@@ -1,80 +1,253 @@
-import axios from "axios";
+import api from "./api";
 
-const API_URL =
-    "https://localhost:7295/api/Mantenimiento";
-
-
-export const obtenerMantenimientos = async () => {
-
-    const response = await axios.get(
-        API_URL
-    );
-
-    return response.data;
-
-};
+const API_URL = "/Mantenimiento";
 
 
-export const obtenerMantenimientoPorId = async (id) => {
+// =====================================================
+// OBTENER TODOS
+// =====================================================
 
-    const response = await axios.get(
-        `${API_URL}/${id}`
-    );
+export const obtenerMantenimientos =
+    async () => {
 
-    return response.data;
+        const response =
+            await api.get(
+                API_URL
+            );
 
-};
-
-
-export const obtenerMantenimientosPorUPS = async (upsId) => {
-
-    const response = await axios.get(
-        `${API_URL}/ups/${upsId}`
-    );
-
-    return response.data;
-
-};
+        return response.data;
+    };
 
 
-export const crearMantenimiento = async (
-    mantenimiento
-) => {
+// =====================================================
+// OBTENER POR ID
+// =====================================================
 
-    const response = await axios.post(
-        API_URL,
+export const obtenerMantenimientoPorId =
+    async (id) => {
+
+        const response =
+            await api.get(
+                `${API_URL}/${id}`
+            );
+
+        return response.data;
+    };
+
+
+// =====================================================
+// OBTENER POR UPS
+// =====================================================
+
+export const obtenerMantenimientosPorUPS =
+    async (upsId) => {
+
+        const response =
+            await api.get(
+                `${API_URL}/ups/${upsId}`
+            );
+
+        return response.data;
+    };
+
+
+// =====================================================
+// CREAR
+// =====================================================
+
+export const crearMantenimiento =
+    async (mantenimiento) => {
+
+        const datos = {
+
+            upsId:
+                Number(
+                    mantenimiento.upsId
+                ),
+
+            tipoMantenimientoId:
+                Number(
+                    mantenimiento
+                        .tipoMantenimientoId
+                ),
+
+            estadoMantenimientoId:
+                Number(
+                    mantenimiento
+                        .estadoMantenimientoId
+                ),
+
+            fechaMantenimiento:
+                mantenimiento
+                    .fechaMantenimiento,
+
+            descripcion:
+                mantenimiento
+                    .descripcion
+                    ?.trim() ||
+                "",
+
+            tecnicoProveedor:
+                mantenimiento
+                    .tecnicoProveedor
+                    ?.trim() ||
+                "",
+
+            costo:
+                Number(
+                    mantenimiento.costo ||
+                    0
+                ),
+
+            observaciones:
+                mantenimiento
+                    .observaciones
+                    ?.trim() ||
+                "",
+
+
+            // =================================================
+            // CAMBIO DE BATERÍAS
+            // =================================================
+
+            incluyeCambioBaterias:
+                mantenimiento
+                    .incluyeCambioBaterias ===
+                true,
+
+            cantidadBateriasReemplazadas:
+                mantenimiento
+                    .incluyeCambioBaterias
+                    ? Number(
+                        mantenimiento
+                            .cantidadBateriasReemplazadas ||
+                        0
+                    )
+                    : 0,
+
+            costoBaterias:
+                mantenimiento
+                    .incluyeCambioBaterias
+                    ? Number(
+                        mantenimiento
+                            .costoBaterias ||
+                        0
+                    )
+                    : 0
+
+        };
+
+
+        const response =
+            await api.post(
+                API_URL,
+                datos
+            );
+
+
+        return response.data;
+    };
+
+
+// =====================================================
+// ACTUALIZAR
+// =====================================================
+
+export const actualizarMantenimiento =
+    async (
+        id,
         mantenimiento
-    );
+    ) => {
 
-    return response.data;
+        const datos = {
 
-};
+            id:
+                Number(id),
+
+            upsId:
+                Number(
+                    mantenimiento.upsId
+                ),
+
+            tipoMantenimientoId:
+                Number(
+                    mantenimiento
+                        .tipoMantenimientoId
+                ),
+
+            estadoMantenimientoId:
+                Number(
+                    mantenimiento
+                        .estadoMantenimientoId
+                ),
+
+            fechaMantenimiento:
+                mantenimiento
+                    .fechaMantenimiento,
+
+            descripcion:
+                mantenimiento
+                    .descripcion
+                    ?.trim() ||
+                "",
+
+            tecnicoProveedor:
+                mantenimiento
+                    .tecnicoProveedor
+                    ?.trim() ||
+                "",
+
+            costo:
+                Number(
+                    mantenimiento.costo ||
+                    0
+                ),
+
+            observaciones:
+                mantenimiento
+                    .observaciones
+                    ?.trim() ||
+                "",
 
 
-export const actualizarMantenimiento = async (
-    id,
-    datos
-) => {
+            // =================================================
+            // CAMBIO DE BATERÍAS
+            // =================================================
 
-    const response = await fetch(
-        `https://localhost:7295/api/Mantenimiento/${id}`,
-        {
-            method: "PUT",
-            headers: {
-                "Content-Type":
-                    "application/json"
-            },
-            body: JSON.stringify(datos)
-        }
-    );
+            incluyeCambioBaterias:
+                mantenimiento
+                    .incluyeCambioBaterias ===
+                true,
 
-    if (!response.ok) {
+            cantidadBateriasReemplazadas:
+                mantenimiento
+                    .incluyeCambioBaterias
+                    ? Number(
+                        mantenimiento
+                            .cantidadBateriasReemplazadas ||
+                        0
+                    )
+                    : 0,
 
-        throw new Error(
-            "Error al actualizar mantenimiento"
-        );
+            costoBaterias:
+                mantenimiento
+                    .incluyeCambioBaterias
+                    ? Number(
+                        mantenimiento
+                            .costoBaterias ||
+                        0
+                    )
+                    : 0
 
-    }
+        };
 
-    return response;
-};
+
+        const response =
+            await api.put(
+                `${API_URL}/${id}`,
+                datos
+            );
+
+
+        return response.data;
+    };

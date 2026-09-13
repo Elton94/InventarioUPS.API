@@ -2,7 +2,12 @@ import { useEffect, useState } from "react";
 
 import NuevaUPSModal from "../components/ups/NuevoUPSModal";
 
-import { Box, Button, TextField, Typography } from "@mui/material";
+import {
+    Box,
+    Button,
+    TextField,
+    Typography
+} from "@mui/material";
 
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
@@ -15,26 +20,47 @@ import {
     cambiarEstadoUPS
 } from "../services/upsService";
 
+import {
+    tienePermiso
+} from "../services/permisos";
+
+
 export default function UPS() {
 
-    const [ups, setUps] = useState([]);
+    const [ups, setUps] =
+        useState([]);
 
-    const [busqueda, setBusqueda] = useState("");
+    const [busqueda, setBusqueda] =
+        useState("");
 
-    const [modalAbierto, setModalAbierto] = useState(false);
+    const [modalAbierto, setModalAbierto] =
+        useState(false);
 
-    const [upsSeleccionado, setUpsSeleccionado] = useState(null);
+    const [upsSeleccionado, setUpsSeleccionado] =
+        useState(null);
 
 
-    // ==============================
+    // =====================================================
+    // PERMISOS
+    // =====================================================
+
+    const puedeCrear =
+        tienePermiso("CREAR_UPS");
+
+    const puedeEditar =
+        tienePermiso("EDITAR_UPS");
+
+
+    // =====================================================
     // CARGAR UPS
-    // ==============================
+    // =====================================================
 
     const cargarUPS = async () => {
 
         try {
 
-            const datos = await obtenerUPS();
+            const datos =
+                await obtenerUPS();
 
             setUps(datos);
 
@@ -50,14 +76,18 @@ export default function UPS() {
     };
 
 
-    // ==============================
+    // =====================================================
     // CAMBIAR ESTADO
-    // ==============================
+    // =====================================================
 
     const manejarCambioEstado = async (
         id,
         estado
     ) => {
+
+        if (!puedeEditar) {
+            return;
+        }
 
         try {
 
@@ -80,24 +110,34 @@ export default function UPS() {
     };
 
 
-    // ==============================
+    // =====================================================
     // EDITAR UPS
-    // ==============================
+    // =====================================================
 
     const editarUPS = (equipo) => {
 
-        setUpsSeleccionado(equipo);
+        if (!puedeEditar) {
+            return;
+        }
+
+        setUpsSeleccionado(
+            equipo
+        );
 
         setModalAbierto(true);
 
     };
 
 
-    // ==============================
+    // =====================================================
     // NUEVO UPS
-    // ==============================
+    // =====================================================
 
     const nuevoUPS = () => {
+
+        if (!puedeCrear) {
+            return;
+        }
 
         setUpsSeleccionado(null);
 
@@ -106,9 +146,9 @@ export default function UPS() {
     };
 
 
-    // ==============================
-    // CARGAR AL ABRIR LA PÁGINA
-    // ==============================
+    // =====================================================
+    // CARGAR AL ABRIR
+    // =====================================================
 
     useEffect(() => {
 
@@ -117,63 +157,62 @@ export default function UPS() {
     }, []);
 
 
-    // ==============================
+    // =====================================================
     // BUSCAR UPS
-    // ==============================
+    // =====================================================
 
-    const upsFiltrados = ups.filter(
-        (equipo) => {
+    const upsFiltrados =
+        ups.filter(
+            (equipo) => {
 
-            const texto =
-                busqueda
-                    .toLowerCase()
-                    .trim();
+                const texto =
+                    busqueda
+                        .toLowerCase()
+                        .trim();
 
-            if (!texto) {
+                if (!texto) {
+                    return true;
+                }
 
-                return true;
+                return (
+
+                    equipo.codigo
+                        ?.toLowerCase()
+                        .includes(texto)
+
+                    ||
+
+                    equipo.marca
+                        ?.toLowerCase()
+                        .includes(texto)
+
+                    ||
+
+                    equipo.modelo
+                        ?.toLowerCase()
+                        .includes(texto)
+
+                    ||
+
+                    equipo.numeroSerie
+                        ?.toLowerCase()
+                        .includes(texto)
+
+                    ||
+
+                    equipo.agencia?.nombre
+                        ?.toLowerCase()
+                        .includes(texto)
+
+                );
 
             }
-
-            return (
-
-                equipo.codigo
-                    ?.toLowerCase()
-                    .includes(texto)
-
-                ||
-
-                equipo.marca
-                    ?.toLowerCase()
-                    .includes(texto)
-
-                ||
-
-                equipo.modelo
-                    ?.toLowerCase()
-                    .includes(texto)
-
-                ||
-
-                equipo.numeroSerie
-                    ?.toLowerCase()
-                    .includes(texto)
-
-                ||
-
-                equipo.agencia?.nombre
-                    ?.toLowerCase()
-                    .includes(texto)
-
-            );
-
-        }
-    );
+        );
 
 
-    // ==============================
+    // =====================================================
     // INTERFAZ
-    // ==============================
+    // =====================================================
 
     return (
 
@@ -194,13 +233,21 @@ export default function UPS() {
                 </Typography>
 
 
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={nuevoUPS}
-                >
-                    Nuevo UPS
-                </Button>
+                {puedeCrear && (
+
+                    <Button
+                        variant="contained"
+                        startIcon={
+                            <AddIcon />
+                        }
+                        onClick={
+                            nuevoUPS
+                        }
+                    >
+                        Nuevo UPS
+                    </Button>
+
+                )}
 
             </Box>
 
@@ -214,7 +261,9 @@ export default function UPS() {
                     placeholder="Buscar UPS por código, marca, modelo, serie o agencia..."
                     value={busqueda}
                     onChange={(e) =>
-                        setBusqueda(e.target.value)
+                        setBusqueda(
+                            e.target.value
+                        )
                     }
                     InputProps={{
 
@@ -239,10 +288,17 @@ export default function UPS() {
             {/* TABLA */}
 
             <UPSTable
-                ups={upsFiltrados}
-                onEditar={editarUPS}
+                ups={
+                    upsFiltrados
+                }
+                onEditar={
+                    editarUPS
+                }
                 onCambiarEstado={
                     manejarCambioEstado
+                }
+                puedeEditar={
+                    puedeEditar
                 }
             />
 
@@ -250,12 +306,20 @@ export default function UPS() {
             {/* MODAL */}
 
             <NuevaUPSModal
-                open={modalAbierto}
-                onClose={() =>
-                    setModalAbierto(false)
+                open={
+                    modalAbierto
                 }
-                onGuardado={cargarUPS}
-                ups={upsSeleccionado}
+                onClose={() =>
+                    setModalAbierto(
+                        false
+                    )
+                }
+                onGuardado={
+                    cargarUPS
+                }
+                ups={
+                    upsSeleccionado
+                }
             />
 
         </Box>

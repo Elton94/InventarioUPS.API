@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 
 import {
+    Alert,
     Autocomplete,
     Box,
     Button,
+    Checkbox,
     Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
-    Grid,
+    FormControlLabel,
     MenuItem,
-    TextField
+    Paper,
+    TextField,
+    Typography
 } from "@mui/material";
 
 import { obtenerUPS } from "../../services/upsService";
@@ -20,6 +24,64 @@ import {
     actualizarMantenimiento
 } from "../../services/mantenimientoService";
 
+import {
+    obtenerUsuarios
+} from "../../services/usuarioService";
+
+import {
+    obtenerTiposMantenimiento,
+    obtenerEstadosMantenimiento
+} from "../../services/catalogosService";
+
+
+const formularioInicial = {
+    upsId: "",
+    tipoMantenimientoId: "",
+    fechaMantenimiento: "",
+    descripcion: "",
+    tecnicoProveedor: "",
+    costo: "",
+    estadoMantenimientoId: "",
+    observaciones: "",
+    incluyeCambioBaterias: false,
+    costoUnitarioBateria: ""
+};
+
+
+const obtenerFechaActual = () => {
+
+    const fecha = new Date();
+
+    const anio =
+        fecha.getFullYear();
+
+    const mes =
+        String(
+            fecha.getMonth() + 1
+        ).padStart(2, "0");
+
+    const dia =
+        String(
+            fecha.getDate()
+        ).padStart(2, "0");
+
+    return `${anio}-${mes}-${dia}`;
+};
+
+
+const formatearMoneda = (valor) => {
+
+    return Number(
+        valor || 0
+    ).toLocaleString(
+        "es-HN",
+        {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }
+    );
+};
+
 
 export default function NuevoMantenimientoModal({
     open,
@@ -28,86 +90,320 @@ export default function NuevoMantenimientoModal({
     mantenimientoEditar = null
 }) {
 
-    const [ups, setUps] = useState([]);
+    const [ups, setUps] =
+        useState([]);
 
-    const [upsSeleccionado, setUpsSeleccionado] =
-        useState(null);
+    const [
+        upsSeleccionado,
+        setUpsSeleccionado
+    ] = useState(null);
 
-    const [formulario, setFormulario] = useState({
-        tipoMantenimiento: "Preventivo",
-        fechaMantenimiento: "",
-        descripcion: "",
-        tecnicoProveedor: "",
-        costo: "",
-        estado: "Completado",
-        observaciones: ""
-    });
+    const [
+        tiposMantenimiento,
+        setTiposMantenimiento
+    ] = useState([]);
 
-    const [guardando, setGuardando] =
-        useState(false);
+    const [
+        estadosMantenimiento,
+        setEstadosMantenimiento
+    ] = useState([]);
+
+    const [
+        usuariosTecnicos,
+        setUsuariosTecnicos
+    ] = useState([]);
+
+    const [
+        usuarioTecnicoSeleccionado,
+        setUsuarioTecnicoSeleccionado
+    ] = useState(null);
+
+    const [
+        formulario,
+        setFormulario
+    ] = useState(formularioInicial);
+
+    const [
+        guardando,
+        setGuardando
+    ] = useState(false);
+
+    const [
+        cargando,
+        setCargando
+    ] = useState(false);
+
+    const [
+        cargandoUsuarios,
+        setCargandoUsuarios
+    ] = useState(false);
+
+    const [
+        error,
+        setError
+    ] = useState("");
 
 
-    // =====================================
-    // CARGAR UPS
-    // =====================================
+    const rol =
+        localStorage.getItem("rol") || "";
 
-    const cargarUPS = async () => {
+    const nombreCompleto =
+        localStorage.getItem(
+            "nombreCompleto"
+        ) || "Usuario actual";
+
+    const esAdministrador =
+        rol === "Administrador" ||
+        rol === "Control Total";
+
+    const esTecnico =
+        rol === "Técnico";
+
+
+    // =====================================================
+    // ESTADO
+    // =====================================================
+
+    const estadoSeleccionado =
+        estadosMantenimiento.find(
+            estado =>
+                Number(estado.id) ===
+                Number(
+                    formulario.estadoMantenimientoId
+                )
+        );
+
+    const esProgramado =
+        estadoSeleccionado
+            ?.nombre
+            ?.trim()
+            .toLowerCase() ===
+        "programado";
+
+
+    // =====================================================
+    // CÁLCULO DE BATERÍAS
+    // =====================================================
+
+    const cantidadBateriasUPS =
+        Number(
+            upsSeleccionado
+                ?.cantidadBaterias ||
+            0
+        );
+
+    const costoUnitarioBateria =
+        Number(
+            formulario
+                .costoUnitarioBateria ||
+            0
+        );
+
+    const costoTotalBaterias =
+        cantidadBateriasUPS *
+        costoUnitarioBateria;
+
+
+    // =====================================================
+    // CARGAR DATOS
+    // =====================================================
+
+    useEffect(() => {
+
+        if (!open) {
+            return;
+        }
+
+        setError("");
+
+        cargarDatos();
+
+    }, [
+        open,
+        mantenimientoEditar
+    ]);
+
+
+    const cargarDatos = async () => {
 
         try {
 
-            const datos = await obtenerUPS();
+            setCargando(true);
 
-            setUps(datos);
+            const [
+                upsData,
+                tiposData,
+                estadosData
+            ] = await Promise.all([
+                obtenerUPS(),
+                obtenerTiposMantenimiento(),
+                obtenerEstadosMantenimiento()
+            ]);
 
-        } catch (error) {
 
-            console.error(
-                "Error al cargar UPS:",
-                error
+            setUps(
+                upsData || []
             );
 
-        }
+            setTiposMantenimiento(
+                tiposData || []
+            );
 
-    };
+            setEstadosMantenimiento(
+                estadosData || []
+            );
 
 
-    useEffect(() => {
+            // =================================================
+            // USUARIOS
+            // =================================================
 
-                if (open) {
-                    cargarUPS();
+            if (esAdministrador) {
+
+                try {
+
+                    setCargandoUsuarios(
+                        true
+                    );
+
+                    const usuarios =
+                        await obtenerUsuarios();
+
+                    const activos =
+                        (usuarios || [])
+                            .filter(
+                                usuario =>
+                                    usuario.activo !==
+                                    false
+                            );
+
+                    setUsuariosTecnicos(
+                        activos
+                    );
+
+                } catch (errorUsuarios) {
+
+                    console.error(
+                        "Error al cargar usuarios:",
+                        errorUsuarios
+                    );
+
+                    setUsuariosTecnicos([]);
+
+                } finally {
+
+                    setCargandoUsuarios(
+                        false
+                    );
                 }
 
-            }, [open]);
+            } else {
 
-    useEffect(() => {
-
-            if (!open) {
-                return;
+                setUsuariosTecnicos([]);
             }
+
+
+            // =================================================
+            // EDICIÓN
+            // =================================================
 
             if (mantenimientoEditar) {
 
                 const upsEncontrado =
-                    ups.find(
-                        u =>
-                            u.id ===
-                            mantenimientoEditar.upsId
+                    (upsData || []).find(
+                        equipo =>
+                            Number(equipo.id) ===
+                            Number(
+                                mantenimientoEditar.upsId
+                            )
                     );
+
 
                 setUpsSeleccionado(
                     upsEncontrado || null
                 );
 
+
+                const tipoId =
+                    mantenimientoEditar
+                        .tipoMantenimientoId ??
+                    mantenimientoEditar
+                        .tipoMantenimiento?.id ??
+                    "";
+
+
+                const estadoId =
+                    mantenimientoEditar
+                        .estadoMantenimientoId ??
+                    mantenimientoEditar
+                        .estadoMantenimiento?.id ??
+                    "";
+
+
+                // =============================================
+                // RECUPERAR COSTO UNITARIO
+                //
+                // En BD tenemos:
+                // CostoBaterias = COSTO TOTAL
+                //
+                // Por eso:
+                //
+                // costo unitario =
+                // costo total / cantidad reemplazada
+                // =============================================
+
+                const cantidadHistorica =
+                    Number(
+                        mantenimientoEditar
+                            .cantidadBateriasReemplazadas ||
+                        0
+                    );
+
+                const costoTotalHistorico =
+                    Number(
+                        mantenimientoEditar
+                            .costoBaterias ||
+                        0
+                    );
+
+
+                let costoUnitarioCalculado =
+                    "";
+
+
+                if (
+                    mantenimientoEditar
+                        .incluyeCambioBaterias &&
+                    cantidadHistorica > 0
+                ) {
+
+                    costoUnitarioCalculado =
+                        costoTotalHistorico /
+                        cantidadHistorica;
+                }
+
+
                 setFormulario({
 
-                    tipoMantenimiento:
-                        mantenimientoEditar
-                            .tipoMantenimiento || "",
+                    upsId:
+                        mantenimientoEditar.upsId
+                            ? String(
+                                mantenimientoEditar.upsId
+                            )
+                            : "",
+
+                    tipoMantenimientoId:
+                        tipoId
+                            ? String(tipoId)
+                            : "",
 
                     fechaMantenimiento:
                         mantenimientoEditar
                             .fechaMantenimiento
-                            ?.substring(0, 10) || "",
+                            ? mantenimientoEditar
+                                .fechaMantenimiento
+                                .substring(0, 10)
+                            : "",
 
                     descripcion:
                         mantenimientoEditar
@@ -121,537 +417,1060 @@ export default function NuevoMantenimientoModal({
                         mantenimientoEditar
                             .costo ?? "",
 
-                    estado:
-                        mantenimientoEditar
-                            .estado || "Completado",
+                    estadoMantenimientoId:
+                        estadoId
+                            ? String(estadoId)
+                            : "",
 
                     observaciones:
                         mantenimientoEditar
-                            .observaciones || ""
+                            .observaciones || "",
 
+                    incluyeCambioBaterias:
+                        mantenimientoEditar
+                            .incluyeCambioBaterias ===
+                        true,
+
+                    costoUnitarioBateria:
+                        mantenimientoEditar
+                            .incluyeCambioBaterias
+                            ? costoUnitarioCalculado
+                            : ""
                 });
 
+
+                setUsuarioTecnicoSeleccionado(
+                    null
+                );
+
+            } else {
+
+                setUpsSeleccionado(
+                    null
+                );
+
+                setUsuarioTecnicoSeleccionado(
+                    null
+                );
+
+                setFormulario({
+                    ...formularioInicial,
+
+                    tecnicoProveedor:
+                        esTecnico
+                            ? nombreCompleto
+                            : ""
+                });
             }
 
-        }, [open, mantenimientoEditar, ups]);
+        } catch (errorCarga) {
 
-        useEffect(() => {
-
-    if (!open) {
-        return;
-    }
-
-    if (mantenimientoEditar) {
-
-        const upsEncontrado =
-            ups.find(
-                u =>
-                    u.id ===
-                    mantenimientoEditar.upsId
+            console.error(
+                "Error al cargar datos de mantenimiento:",
+                errorCarga
             );
 
-        setUpsSeleccionado(
-            upsEncontrado || null
-        );
+            setError(
+                "No se pudieron cargar los datos necesarios."
+            );
 
-        setFormulario({
+        } finally {
 
-            tipoMantenimiento:
-                mantenimientoEditar
-                    .tipoMantenimiento || "",
-
-            fechaMantenimiento:
-                mantenimientoEditar
-                    .fechaMantenimiento
-                    ?.substring(0, 10) || "",
-
-            descripcion:
-                mantenimientoEditar
-                    .descripcion || "",
-
-            tecnicoProveedor:
-                mantenimientoEditar
-                    .tecnicoProveedor || "",
-
-            costo:
-                mantenimientoEditar
-                    .costo ?? "",
-
-            estado:
-                mantenimientoEditar
-                    .estado || "Completado",
-
-            observaciones:
-                mantenimientoEditar
-                    .observaciones || ""
-
-        });
-
-    }
-
-}, [open, mantenimientoEditar, ups]);
-
-    // =====================================
-    // CAMBIAR CAMPO
-    // =====================================
-
-    const cambiarCampo = (campo, valor) => {
-
-        setFormulario(prev => ({
-            ...prev,
-            [campo]: valor
-        }));
-
+            setCargando(false);
+        }
     };
 
 
-    // =====================================
+    // =====================================================
+    // TÉCNICO AL EDITAR
+    // =====================================================
+
+    useEffect(() => {
+
+        if (
+            !mantenimientoEditar ||
+            !esAdministrador ||
+            usuariosTecnicos.length === 0
+        ) {
+            return;
+        }
+
+
+        const tecnicoActual =
+            mantenimientoEditar
+                .tecnicoProveedor;
+
+
+        const usuario =
+            usuariosTecnicos.find(
+                item =>
+                    item.nombreCompleto ===
+                        tecnicoActual ||
+                    item.nombreUsuario ===
+                        tecnicoActual
+            );
+
+
+        setUsuarioTecnicoSeleccionado(
+            usuario || null
+        );
+
+    }, [
+        usuariosTecnicos,
+        mantenimientoEditar,
+        esAdministrador
+    ]);
+
+
+    // =====================================================
+    // CAMBIAR CAMPO
+    // =====================================================
+
+    const cambiarCampo = (
+        campo,
+        valor
+    ) => {
+
+        setFormulario(
+            previo => ({
+                ...previo,
+                [campo]: valor
+            })
+        );
+
+        if (error) {
+            setError("");
+        }
+    };
+
+
+    // =====================================================
+    // CAMBIO DE BATERÍAS
+    // =====================================================
+
+    const cambiarCambioBaterias =
+        marcado => {
+
+            setFormulario(
+                previo => ({
+                    ...previo,
+
+                    incluyeCambioBaterias:
+                        marcado,
+
+                    costoUnitarioBateria:
+                        marcado
+                            ? previo
+                                .costoUnitarioBateria
+                            : ""
+                })
+            );
+
+            if (error) {
+                setError("");
+            }
+        };
+
+
+    // =====================================================
     // GUARDAR
-    // =====================================
+    // =====================================================
 
     const guardar = async () => {
 
+        setError("");
+
+
         if (!upsSeleccionado) {
 
-            alert("Debe seleccionar un UPS.");
-            return;
+            setError(
+                "Debe seleccionar un UPS."
+            );
 
+            return;
         }
+
+
+        if (!formulario.tipoMantenimientoId) {
+
+            setError(
+                "Debe seleccionar el tipo de mantenimiento."
+            );
+
+            return;
+        }
+
 
         if (!formulario.fechaMantenimiento) {
 
-            alert(
+            setError(
                 "Debe seleccionar la fecha del mantenimiento."
             );
 
             return;
         }
 
-        if (!formulario.descripcion.trim()) {
 
-            alert(
+        if (!formulario.estadoMantenimientoId) {
+
+            setError(
+                "Debe seleccionar el estado del mantenimiento."
+            );
+
+            return;
+        }
+
+
+        // =================================================
+        // FECHA
+        // =================================================
+
+        const fechaActual =
+            obtenerFechaActual();
+
+        const fechaEsFutura =
+            formulario.fechaMantenimiento >
+            fechaActual;
+
+
+        if (
+            fechaEsFutura &&
+            !esProgramado
+        ) {
+
+            setError(
+                "Una fecha futura solamente puede utilizarse cuando el estado del mantenimiento es Programado."
+            );
+
+            return;
+        }
+
+
+        if (
+            !formulario
+                .descripcion
+                .trim()
+        ) {
+
+            setError(
                 "Debe ingresar una descripción."
             );
 
             return;
         }
 
-        if (
-            formulario.costo === "" ||
-            Number(formulario.costo) < 0
-        ) {
 
-            alert("Ingrese un costo válido.");
+        // =================================================
+        // TÉCNICO
+        // =================================================
+
+        let tecnicoProveedor =
+            formulario
+                .tecnicoProveedor
+                .trim();
+
+
+        if (esTecnico) {
+
+            tecnicoProveedor =
+                nombreCompleto.trim();
+        }
+
+
+        if (!tecnicoProveedor) {
+
+            setError(
+                "Debe indicar el técnico o proveedor responsable."
+            );
 
             return;
         }
 
 
+        // =================================================
+        // COSTO SERVICIO
+        // =================================================
+
+        if (
+            formulario.costo === "" ||
+            Number(formulario.costo) < 0
+        ) {
+
+            setError(
+                "Ingrese un costo válido."
+            );
+
+            return;
+        }
+
+
+        // =================================================
+        // BATERÍAS
+        // =================================================
+
+        if (
+            formulario
+                .incluyeCambioBaterias
+        ) {
+
+            if (
+                cantidadBateriasUPS <= 0
+            ) {
+
+                setError(
+                    "El UPS no tiene una cantidad válida de baterías registrada."
+                );
+
+                return;
+            }
+
+
+            if (
+                formulario
+                    .costoUnitarioBateria === "" ||
+                Number(
+                    formulario
+                        .costoUnitarioBateria
+                ) < 0
+            ) {
+
+                setError(
+                    "Ingrese un costo unitario válido para las baterías."
+                );
+
+                return;
+            }
+        }
+
+
+        // =================================================
+        // DATOS
+        // =================================================
+
         try {
 
-                    setGuardando(true);
-
-                    const datos = {
-
-                            id:
-                                mantenimientoEditar?.id ?? 0,
-
-                            upsId:
-                                upsSeleccionado.id,
-
-                            tipoMantenimiento:
-                                formulario.tipoMantenimiento,
-
-                            fechaMantenimiento:
-                                `${formulario.fechaMantenimiento}T00:00:00`,
-
-                            descripcion:
-                                formulario.descripcion,
-
-                            tecnicoProveedor:
-                                formulario.tecnicoProveedor,
-
-                            costo:
-                                Number(formulario.costo),
-
-                            estado:
-                                formulario.estado,
-
-                            observaciones:
-                                formulario.observaciones
-
-                        };
+            setGuardando(true);
 
 
-                            if (mantenimientoEditar) {
+            const datos = {
 
-                                        await actualizarMantenimiento(
-                                            mantenimientoEditar.id,
-                                            datos
-                                        );
+                id:
+                    mantenimientoEditar
+                        ?.id ?? 0,
 
-                                    } else {
+                upsId:
+                    Number(
+                        upsSeleccionado.id
+                    ),
 
-                                        await crearMantenimiento(
-                                            datos
-                                        );
+                tipoMantenimientoId:
+                    Number(
+                        formulario
+                            .tipoMantenimientoId
+                    ),
 
-                                    }
+                estadoMantenimientoId:
+                    Number(
+                        formulario
+                            .estadoMantenimientoId
+                    ),
 
+                fechaMantenimiento:
+                    `${formulario.fechaMantenimiento}T00:00:00`,
 
-                            setUpsSeleccionado(null);
+                descripcion:
+                    formulario
+                        .descripcion
+                        .trim(),
 
-                            setFormulario({
-                                tipoMantenimiento: "Preventivo",
-                                fechaMantenimiento: "",
-                                descripcion: "",
-                                tecnicoProveedor: "",
-                                costo: "",
-                                estado: "Completado",
-                                observaciones: ""
-                            });
+                tecnicoProveedor:
+                    tecnicoProveedor,
 
-                            onClose();
+                costo:
+                    Number(
+                        formulario.costo
+                    ),
 
-                            await onGuardado();
+                observaciones:
+                    formulario
+                        .observaciones
+                        .trim(),
 
-                        } catch (error) {
+                incluyeCambioBaterias:
+                    formulario
+                        .incluyeCambioBaterias,
 
-                            console.error(
-                                "Error al registrar mantenimiento:",
-                                error
-                            );
+                cantidadBateriasReemplazadas:
+                    formulario
+                        .incluyeCambioBaterias
+                        ? cantidadBateriasUPS
+                        : 0,
 
-                            alert(
-                                "No se pudo registrar el mantenimiento."
-                            );
+                // =============================================
+                // GUARDAMOS EL TOTAL
+                // =============================================
 
-                        } finally {
-
-                            setGuardando(false);
-
-                        }
-
-                    };
-
-
-                    // =====================================
-                    // CERRAR
-                    // =====================================
-
-                    const cerrar = () => {
-
-                        if (guardando) {
-                            return;
-                        }
-
-                        setUpsSeleccionado(null);
-
-                        setFormulario({
-                            tipoMantenimiento: "Preventivo",
-                            fechaMantenimiento: "",
-                            descripcion: "",
-                            tecnicoProveedor: "",
-                            costo: "",
-                            estado: "Completado",
-                            observaciones: ""
-                        });
-
-                        onClose();
-
-                    };
+                costoBaterias:
+                    formulario
+                        .incluyeCambioBaterias
+                        ? costoTotalBaterias
+                        : 0
+            };
 
 
-            return (
+            if (mantenimientoEditar) {
 
-                <Dialog
-                    open={open}
-                    onClose={cerrar}
-                    fullWidth
-                    maxWidth="md"
-                >
+                await actualizarMantenimiento(
+                    mantenimientoEditar.id,
+                    datos
+                );
 
-                    <DialogTitle
+            } else {
+
+                await crearMantenimiento(
+                    datos
+                );
+            }
+
+
+            await onGuardado();
+
+            cerrar();
+
+        } catch (errorGuardar) {
+
+            console.error(
+                "Error al guardar mantenimiento:",
+                errorGuardar
+            );
+
+
+            const mensaje =
+                errorGuardar
+                    .response
+                    ?.data
+                    ?.mensaje ||
+                errorGuardar
+                    .response
+                    ?.data
+                    ?.message ||
+                "No se pudo guardar el mantenimiento.";
+
+
+            setError(
+                mensaje
+            );
+
+        } finally {
+
+            setGuardando(false);
+        }
+    };
+
+
+    // =====================================================
+    // CERRAR
+    // =====================================================
+
+    const cerrar = () => {
+
+        if (guardando) {
+            return;
+        }
+
+        setUpsSeleccionado(
+            null
+        );
+
+        setUsuarioTecnicoSeleccionado(
+            null
+        );
+
+        setFormulario({
+            ...formularioInicial
+        });
+
+        setError("");
+
+        onClose();
+    };
+
+
+    // =====================================================
+    // INTERFAZ
+    // =====================================================
+
+    return (
+
+        <Dialog
+            open={open}
+            onClose={
+                guardando
+                    ? undefined
+                    : cerrar
+            }
+            fullWidth
+            maxWidth="md"
+        >
+
+            <DialogTitle
+                sx={{
+                    fontWeight: "bold"
+                }}
+            >
+                {mantenimientoEditar
+                    ? "Editar mantenimiento"
+                    : "Nuevo mantenimiento"}
+            </DialogTitle>
+
+
+            <DialogContent>
+
+                {error && (
+
+                    <Alert
+                        severity="error"
                         sx={{
-                            fontWeight: "bold",
-                            pb: 1
+                            mt: 1,
+                            mb: 2
                         }}
                     >
-                        {mantenimientoEditar
-                            ? "Editar mantenimiento"
-                            : "Nuevo mantenimiento"}
-                    </DialogTitle>
+                        {error}
+                    </Alert>
 
+                )}
 
-                    <DialogContent>
 
                 <Box
                     sx={{
-                        pt: 1
+                        display: "grid",
+
+                        gridTemplateColumns:
+                            "repeat(2, minmax(0, 1fr))",
+
+                        gap: 2,
+
+                        mt: 1
                     }}
                 >
 
-                    <Grid
-                        container
-                        spacing={2.5}
+                    {/* UPS */}
+
+                    <Box
+                        sx={{
+                            gridColumn: "1 / -1"
+                        }}
                     >
 
-                        {/* ========================= */}
-                        {/* UPS */}
-                        {/* ========================= */}
+                        <Autocomplete
+                            fullWidth
+                            options={ups}
+                            value={upsSeleccionado}
+                            loading={cargando}
+                            disabled={
+                                cargando ||
+                                guardando
+                            }
+                            onChange={(
+                                event,
+                                nuevoValor
+                            ) => {
 
-                        <Grid item xs={12}>
+                                setUpsSeleccionado(
+                                    nuevoValor
+                                );
+
+                                cambiarCampo(
+                                    "upsId",
+                                    nuevoValor
+                                        ? nuevoValor.id
+                                        : ""
+                                );
+                            }}
+                            getOptionLabel={
+                                option =>
+                                    `${option.codigo || ""} - ${option.numeroSerie || ""} - ${option.marca || ""} ${option.modelo || ""}`
+                            }
+                            isOptionEqualToValue={
+                                (
+                                    option,
+                                    value
+                                ) =>
+                                    Number(option.id) ===
+                                    Number(value.id)
+                            }
+                            renderInput={
+                                params => (
+
+                                    <TextField
+                                        {...params}
+                                        label="UPS"
+                                        placeholder="Buscar por código, serie o equipo..."
+                                        required
+                                    />
+
+                                )
+                            }
+                        />
+
+                    </Box>
+
+
+                    {/* TIPO */}
+
+                    <TextField
+                        select
+                        fullWidth
+                        required
+                        label="Tipo de mantenimiento"
+                        value={
+                            formulario
+                                .tipoMantenimientoId
+                        }
+                        onChange={e =>
+                            cambiarCampo(
+                                "tipoMantenimientoId",
+                                e.target.value
+                            )
+                        }
+                        disabled={
+                            cargando ||
+                            guardando
+                        }
+                    >
+
+                        <MenuItem value="">
+                            Seleccione...
+                        </MenuItem>
+
+                        {tiposMantenimiento.map(
+                            tipo => (
+
+                                <MenuItem
+                                    key={tipo.id}
+                                    value={tipo.id}
+                                >
+                                    {tipo.nombre}
+                                </MenuItem>
+
+                            )
+                        )}
+
+                    </TextField>
+
+
+                    {/* FECHA */}
+
+                    <Box>
+
+                        <Box
+                            component="label"
+                            sx={{
+                                display: "block",
+                                fontSize: "0.9rem",
+                                color: "text.secondary",
+                                mb: 0.5
+                            }}
+                        >
+                            Fecha de mantenimiento *
+                        </Box>
+
+                        <TextField
+                            fullWidth
+                            required
+                            type="date"
+                            value={
+                                formulario
+                                    .fechaMantenimiento
+                            }
+                            onChange={e =>
+                                cambiarCampo(
+                                    "fechaMantenimiento",
+                                    e.target.value
+                                )
+                            }
+                            disabled={guardando}
+                            inputProps={
+                                esProgramado
+                                    ? {}
+                                    : {
+                                        max:
+                                            obtenerFechaActual()
+                                    }
+                            }
+                        />
+
+                    </Box>
+
+
+                    {/* DESCRIPCIÓN */}
+
+                    <Box
+                        sx={{
+                            gridColumn: "1 / -1"
+                        }}
+                    >
+
+                        <TextField
+                            fullWidth
+                            required
+                            multiline
+                            rows={4}
+                            label="Descripción"
+                            value={
+                                formulario
+                                    .descripcion
+                            }
+                            onChange={e =>
+                                cambiarCampo(
+                                    "descripcion",
+                                    e.target.value
+                                )
+                            }
+                            disabled={guardando}
+                        />
+
+                    </Box>
+
+
+                    {/* TÉCNICO */}
+
+                    <Box>
+
+                        {esAdministrador ? (
 
                             <Autocomplete
-                                options={ups}
-                                value={upsSeleccionado}
+                                fullWidth
+                                options={
+                                    usuariosTecnicos
+                                }
+                                value={
+                                    usuarioTecnicoSeleccionado
+                                }
+                                loading={
+                                    cargandoUsuarios
+                                }
+                                disabled={
+                                    guardando ||
+                                    cargandoUsuarios
+                                }
                                 onChange={(
                                     event,
                                     nuevoValor
                                 ) => {
 
-                                    setUpsSeleccionado(
+                                    setUsuarioTecnicoSeleccionado(
                                         nuevoValor
                                     );
 
-                                }}
-                                getOptionLabel={(option) =>
-                                    `${option.codigo || ""} - ${option.numeroSerie || ""}`
-                                }
-                                isOptionEqualToValue={(
-                                    option,
-                                    value
-                                ) =>
-                                    option.id === value.id
-                                }
-                                renderInput={(params) => (
-
-                                    <TextField
-                                        {...params}
-                                        label="Buscar UPS"
-                                        placeholder="Código o número de serie"
-                                        fullWidth
-                                    />
-
-                                )}
-                            />
-
-                        </Grid>
-
-
-                        {/* ========================= */}
-                        {/* TIPO */}
-                        {/* ========================= */}
-
-                        <Grid item xs={12} md={6}>
-
-                            <TextField
-                                select
-                                fullWidth
-                                label="Tipo de mantenimiento"
-                                value={
-                                    formulario
-                                        .tipoMantenimiento
-                                }
-                                onChange={(e) =>
-                                    cambiarCampo(
-                                        "tipoMantenimiento",
-                                        e.target.value
-                                    )
-                                }
-                            >
-
-                                <MenuItem value="Preventivo">
-                                    Preventivo
-                                </MenuItem>
-
-                                <MenuItem value="Correctivo">
-                                    Correctivo
-                                </MenuItem>
-
-                                <MenuItem value="Emergencia">
-                                    Emergencia
-                                </MenuItem>
-
-                            </TextField>
-
-                        </Grid>
-
-
-                        {/* ========================= */}
-                        {/* FECHA */}
-                        {/* ========================= */}
-
-                        <Grid item xs={12} md={6}>
-
-                            <TextField
-                                fullWidth
-                                type="date"
-                                label="Fecha de mantenimiento"
-                                value={
-                                    formulario
-                                        .fechaMantenimiento
-                                }
-                                onChange={(e) =>
-                                    cambiarCampo(
-                                        "fechaMantenimiento",
-                                        e.target.value
-                                    )
-                                }
-                                InputLabelProps={{
-                                    shrink: true
-                                }}
-                            />
-
-                        </Grid>
-
-
-                        {/* ========================= */}
-                        {/* DESCRIPCIÓN */}
-                        {/* ========================= */}
-
-                        <Grid item xs={12}>
-
-                            <TextField
-                                fullWidth
-                                label="Descripción"
-                                multiline
-                                rows={3}
-                                value={
-                                    formulario
-                                        .descripcion
-                                }
-                                onChange={(e) =>
-                                    cambiarCampo(
-                                        "descripcion",
-                                        e.target.value
-                                    )
-                                }
-                            />
-
-                        </Grid>
-
-
-                        {/* ========================= */}
-                        {/* TÉCNICO */}
-                        {/* ========================= */}
-
-                        <Grid item xs={12} md={6}>
-
-                            <TextField
-                                fullWidth
-                                label="Técnico / proveedor"
-                                value={
-                                    formulario
-                                        .tecnicoProveedor
-                                }
-                                onChange={(e) =>
                                     cambiarCampo(
                                         "tecnicoProveedor",
-                                        e.target.value
-                                    )
-                                }
-                            />
-
-                        </Grid>
-
-
-                        {/* ========================= */}
-                        {/* COSTO */}
-                        {/* ========================= */}
-
-                        <Grid item xs={12} md={3}>
-
-                            <TextField
-                                fullWidth
-                                label="Costo"
-                                type="number"
-                                value={
-                                    formulario.costo
-                                }
-                                onChange={(e) =>
-                                    cambiarCampo(
-                                        "costo",
-                                        e.target.value
-                                    )
-                                }
-                                inputProps={{
-                                    min: 0,
-                                    step: "0.01"
+                                        nuevoValor
+                                            ? (
+                                                nuevoValor
+                                                    .nombreCompleto ||
+                                                nuevoValor
+                                                    .nombreUsuario ||
+                                                ""
+                                            )
+                                            : ""
+                                    );
                                 }}
-                            />
-
-                        </Grid>
-
-
-                        {/* ========================= */}
-                        {/* ESTADO */}
-                        {/* ========================= */}
-
-                        <Grid item xs={12} md={3}>
-
-                            <TextField
-                                select
-                                fullWidth
-                                label="Estado"
-                                value={
-                                    formulario.estado
+                                getOptionLabel={
+                                    usuario =>
+                                        `${usuario.nombreCompleto || ""} (${usuario.nombreUsuario || ""})`
                                 }
-                                onChange={(e) =>
-                                    cambiarCampo(
-                                        "estado",
-                                        e.target.value
+                                isOptionEqualToValue={
+                                    (
+                                        option,
+                                        value
+                                    ) =>
+                                        Number(option.id) ===
+                                        Number(value.id)
+                                }
+                                renderInput={
+                                    params => (
+
+                                        <TextField
+                                            {...params}
+                                            label="Técnico / proveedor"
+                                            required
+                                        />
+
                                     )
                                 }
+                            />
+
+                        ) : (
+
+                            <TextField
+                                fullWidth
+                                required
+                                label="Técnico / proveedor"
+                                value={
+                                    nombreCompleto
+                                }
+                                disabled
+                            />
+
+                        )}
+
+                    </Box>
+
+
+                    {/* COSTO SERVICIO */}
+
+                    <TextField
+                        fullWidth
+                        label="Costo del mantenimiento"
+                        type="number"
+                        value={
+                            formulario.costo
+                        }
+                        onChange={e =>
+                            cambiarCampo(
+                                "costo",
+                                e.target.value
+                            )
+                        }
+                        disabled={guardando}
+                        inputProps={{
+                            min: 0,
+                            step: "0.01"
+                        }}
+                    />
+
+
+                    {/* ESTADO */}
+
+                    <TextField
+                        select
+                        fullWidth
+                        required
+                        label="Estado"
+                        value={
+                            formulario
+                                .estadoMantenimientoId
+                        }
+                        onChange={e =>
+                            cambiarCampo(
+                                "estadoMantenimientoId",
+                                e.target.value
+                            )
+                        }
+                        disabled={
+                            cargando ||
+                            guardando
+                        }
+                    >
+
+                        <MenuItem value="">
+                            Seleccione...
+                        </MenuItem>
+
+                        {estadosMantenimiento.map(
+                            estado => (
+
+                                <MenuItem
+                                    key={estado.id}
+                                    value={estado.id}
+                                >
+                                    {estado.nombre}
+                                </MenuItem>
+
+                            )
+                        )}
+
+                    </TextField>
+
+
+                    {/* CAMBIO DE BATERÍAS */}
+
+                    <Paper
+                        variant="outlined"
+                        sx={{
+                            gridColumn: "1 / -1",
+                            p: 2.5,
+                            mt: 0.5
+                        }}
+                    >
+
+                        <Typography
+                            variant="subtitle1"
+                            fontWeight="bold"
+                        >
+                            Cambio de baterías
+                        </Typography>
+
+
+                        <FormControlLabel
+                            sx={{ mt: 1 }}
+                            control={
+
+                                <Checkbox
+                                    checked={
+                                        formulario
+                                            .incluyeCambioBaterias
+                                    }
+                                    onChange={e =>
+                                        cambiarCambioBaterias(
+                                            e.target.checked
+                                        )
+                                    }
+                                    disabled={guardando}
+                                />
+
+                            }
+                            label={
+                                esProgramado
+                                    ? "Este mantenimiento contempla cambio de baterías"
+                                    : "Se realizó cambio de baterías"
+                            }
+                        />
+
+
+                        {formulario
+                            .incluyeCambioBaterias && (
+
+                            <Box
+                                sx={{
+                                    mt: 2,
+
+                                    display: "grid",
+
+                                    gridTemplateColumns:
+                                        "repeat(2, minmax(0, 1fr))",
+
+                                    gap: 2
+                                }}
                             >
 
-                                <MenuItem value="Completado">
-                                    Completado
-                                </MenuItem>
+                                {/* CANTIDAD */}
 
-                                <MenuItem value="En proceso">
-                                    En proceso
-                                </MenuItem>
-
-                                <MenuItem value="Programado">
-                                    Programado
-                                </MenuItem>
-
-                                <MenuItem value="Cancelado">
-                                    Cancelado
-                                </MenuItem>
-
-                            </TextField>
-
-                        </Grid>
+                                <TextField
+                                    fullWidth
+                                    label={
+                                        esProgramado
+                                            ? "Baterías a reemplazar"
+                                            : "Baterías reemplazadas"
+                                    }
+                                    value={
+                                        cantidadBateriasUPS ||
+                                        ""
+                                    }
+                                    disabled
+                                    helperText="Se reemplaza el banco completo registrado en el UPS."
+                                />
 
 
-                        {/* ========================= */}
-                        {/* OBSERVACIONES */}
-                        {/* ========================= */}
+                                {/* COSTO UNITARIO */}
 
-                        <Grid item xs={12}>
+                                <TextField
+                                    fullWidth
+                                    required
+                                    type="number"
+                                    label="Costo unitario por batería"
+                                    value={
+                                        formulario
+                                            .costoUnitarioBateria
+                                    }
+                                    onChange={e =>
+                                        cambiarCampo(
+                                            "costoUnitarioBateria",
+                                            e.target.value
+                                        )
+                                    }
+                                    disabled={guardando}
+                                    inputProps={{
+                                        min: 0,
+                                        step: "0.01"
+                                    }}
+                                />
 
-                            <TextField
-                                fullWidth
-                                label="Observaciones"
-                                multiline
-                                rows={3}
-                                value={
-                                    formulario
-                                        .observaciones
-                                }
-                                onChange={(e) =>
-                                    cambiarCampo(
-                                        "observaciones",
-                                        e.target.value
-                                    )
-                                }
-                            />
 
-                        </Grid>
+                                {/* RESUMEN */}
 
-                    </Grid>
+                                <Paper
+                                    variant="outlined"
+                                    sx={{
+                                        gridColumn:
+                                            "1 / -1",
+
+                                        p: 2
+                                    }}
+                                >
+
+                                    <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                    >
+                                        Cálculo del cambio
+                                    </Typography>
+
+
+                                    <Typography
+                                        sx={{
+                                            mt: 0.5
+                                        }}
+                                    >
+                                        {cantidadBateriasUPS} baterías
+                                        {" × "}
+                                        L{" "}
+                                        {formatearMoneda(
+                                            costoUnitarioBateria
+                                        )}
+                                    </Typography>
+
+
+                                    <Typography
+                                        variant="h6"
+                                        fontWeight="bold"
+                                        sx={{
+                                            mt: 1
+                                        }}
+                                    >
+                                        Total: L{" "}
+                                        {formatearMoneda(
+                                            costoTotalBaterias
+                                        )}
+                                    </Typography>
+
+                                </Paper>
+
+                            </Box>
+
+                        )}
+
+                    </Paper>
+
+
+                    {/* OBSERVACIONES */}
+
+                    <Box
+                        sx={{
+                            gridColumn: "1 / -1"
+                        }}
+                    >
+
+                        <TextField
+                            fullWidth
+                            label="Observaciones"
+                            multiline
+                            rows={3}
+                            value={
+                                formulario
+                                    .observaciones
+                            }
+                            onChange={e =>
+                                cambiarCampo(
+                                    "observaciones",
+                                    e.target.value
+                                )
+                            }
+                            disabled={guardando}
+                        />
+
+                    </Box>
 
                 </Box>
 
@@ -661,8 +1480,7 @@ export default function NuevoMantenimientoModal({
             <DialogActions
                 sx={{
                     px: 3,
-                    pb: 2,
-                    gap: 1
+                    pb: 2
                 }}
             >
 
@@ -676,7 +1494,10 @@ export default function NuevoMantenimientoModal({
                 <Button
                     variant="contained"
                     onClick={guardar}
-                    disabled={guardando}
+                    disabled={
+                        guardando ||
+                        cargando
+                    }
                 >
                     {guardando
                         ? "Guardando..."
@@ -690,5 +1511,4 @@ export default function NuevoMantenimientoModal({
         </Dialog>
 
     );
-
 }

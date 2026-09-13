@@ -1,94 +1,181 @@
 import { useEffect, useState } from "react";
+
 import {
     Box,
     Button,
+    InputAdornment,
     TextField,
-    Typography,
-    InputAdornment
+    Typography
 } from "@mui/material";
 
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
 
-import NuevaAgenciaModal from "../components/agencias/NuevaAgenciaModal";
-import AgenciasTable from "../components/agencias/AgenciasTable";
+import NuevaAgenciaModal
+    from "../components/agencias/NuevaAgenciaModal";
+
+import AgenciasTable
+    from "../components/agencias/AgenciasTable";
 
 import {
     obtenerAgencias,
     actualizarAgencia
 } from "../services/agenciaService";
 
+import {
+    tienePermiso
+} from "../services/permisos";
+
+
 export default function Agencias() {
 
-    const [agencias, setAgencias] = useState([]);
+    // =====================================================
+    // ESTADO
+    // =====================================================
 
-    const [modalAbierto, setModalAbierto] = useState(false);
+    const [
+        agencias,
+        setAgencias
+    ] = useState([]);
 
-    const [agenciaSeleccionada, setAgenciaSeleccionada] = useState(null);
+    const [
+        modalAbierto,
+        setModalAbierto
+    ] = useState(false);
 
-    const [busqueda, setBusqueda] = useState("");
+    const [
+        agenciaSeleccionada,
+        setAgenciaSeleccionada
+    ] = useState(null);
 
-    const cargarAgencias = async () => {
+    const [
+        busqueda,
+        setBusqueda
+    ] = useState("");
 
-        try {
 
-            const datos = await obtenerAgencias();
+    // =====================================================
+    // PERMISOS
+    // =====================================================
 
-            setAgencias(datos);
-
-        } catch (error) {
-
-            console.error(
-                "Error al cargar agencias:",
-                error
-            );
-
-        }
-
-    };
-
-    const editarAgencia = (agencia) => {
-
-        setAgenciaSeleccionada(agencia);
-
-        setModalAbierto(true);
-
-    };
-
-    const desactivarAgencia = async (agencia) => {
-
-        const confirmar = window.confirm(
-            `¿Está seguro de que desea desactivar la agencia ${agencia.nombre}?`
+    const puedeCrear =
+        tienePermiso(
+            "CREAR_AGENCIAS"
         );
 
-        if (!confirmar) {
+    const puedeEditar =
+        tienePermiso(
+            "EDITAR_AGENCIAS"
+        );
 
-            return;
 
-        }
+    // =====================================================
+    // CARGAR AGENCIAS
+    // =====================================================
 
-        try {
+    const cargarAgencias =
+        async () => {
 
-            await actualizarAgencia(
-                agencia.id,
-                {
-                    ...agencia,
-                    activa: false
-                }
+            try {
+
+                const datos =
+                    await obtenerAgencias();
+
+
+                setAgencias(
+                    Array.isArray(datos)
+                        ? datos
+                        : []
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Error al cargar agencias:",
+                    error
+                );
+
+                setAgencias([]);
+
+            }
+
+        };
+
+
+    // =====================================================
+    // EDITAR
+    // =====================================================
+
+    const editarAgencia =
+        (agencia) => {
+
+            if (!puedeEditar) {
+                return;
+            }
+
+
+            setAgenciaSeleccionada(
+                agencia
             );
 
-            await cargarAgencias();
-
-        } catch (error) {
-
-            console.error(
-                "Error al desactivar agencia:",
-                error
+            setModalAbierto(
+                true
             );
 
-        }
+        };
 
-    };
+
+    // =====================================================
+    // DESACTIVAR
+    // =====================================================
+
+    const desactivarAgencia =
+        async (agencia) => {
+
+            if (!puedeEditar) {
+                return;
+            }
+
+
+            const confirmar =
+                window.confirm(
+                    `¿Está seguro de que desea desactivar la agencia ${agencia.nombre}?`
+                );
+
+
+            if (!confirmar) {
+                return;
+            }
+
+
+            try {
+
+                await actualizarAgencia(
+                    agencia.id,
+                    {
+                        ...agencia,
+                        activa: false
+                    }
+                );
+
+
+                await cargarAgencias();
+
+            } catch (error) {
+
+                console.error(
+                    "Error al desactivar agencia:",
+                    error
+                );
+
+            }
+
+        };
+
+
+    // =====================================================
+    // CARGA INICIAL
+    // =====================================================
 
     useEffect(() => {
 
@@ -96,39 +183,121 @@ export default function Agencias() {
 
     }, []);
 
-    const agenciasFiltradas = agencias.filter((agencia) => {
 
-        const texto = busqueda.toLowerCase().trim();
+    // =====================================================
+    // NORMALIZAR TEXTO PARA BÚSQUEDA
+    // =====================================================
 
-        if (!texto) {
+    const normalizar =
+        (valor) => {
 
-            return true;
+            return String(
+                valor ?? ""
+            )
+                .toLowerCase()
+                .trim();
 
-        }
+        };
 
-        return (
 
-            agencia.codigo?.toLowerCase().includes(texto) ||
+    // =====================================================
+    // FILTRAR AGENCIAS
+    // =====================================================
 
-            agencia.nombre?.toLowerCase().includes(texto) ||
-
-            agencia.departamento?.toLowerCase().includes(texto) ||
-
-            agencia.ciudad?.toLowerCase().includes(texto)
-
+    const textoBusqueda =
+        normalizar(
+            busqueda
         );
 
-    });
+
+    const agenciasFiltradas =
+        agencias.filter(
+            agencia => {
+
+                if (!textoBusqueda) {
+                    return true;
+                }
+
+
+                const codigo =
+                    normalizar(
+                        agencia?.codigo
+                    );
+
+                const nombre =
+                    normalizar(
+                        agencia?.nombre
+                    );
+
+                const departamento =
+                    normalizar(
+                        agencia?.departamento
+                    );
+
+                const ciudad =
+                    normalizar(
+                        agencia?.ciudad
+                    );
+
+                const tipo =
+                    normalizar(
+                        agencia?.tipoAgencia ??
+                        agencia?.tipo
+                    );
+
+
+                return (
+                    codigo.includes(
+                        textoBusqueda
+                    ) ||
+
+                    nombre.includes(
+                        textoBusqueda
+                    ) ||
+
+                    departamento.includes(
+                        textoBusqueda
+                    ) ||
+
+                    ciudad.includes(
+                        textoBusqueda
+                    ) ||
+
+                    tipo.includes(
+                        textoBusqueda
+                    )
+                );
+
+            }
+        );
+
+
+    // =====================================================
+    // INTERFAZ
+    // =====================================================
 
     return (
 
         <Box>
 
+            {/* ================================================= */}
+            {/* ENCABEZADO */}
+            {/* ================================================= */}
+
             <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                mb={3}
+                sx={{
+                    display:
+                        "flex",
+
+                    justifyContent:
+                        "space-between",
+
+                    alignItems:
+                        "center",
+
+                    mb:
+                        3
+                }}
             >
 
                 <Typography
@@ -138,57 +307,123 @@ export default function Agencias() {
                     Gestión de Agencias
                 </Typography>
 
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => {
 
-                        setAgenciaSeleccionada(null);
+                {puedeCrear && (
 
-                        setModalAbierto(true);
+                    <Button
+                        variant="contained"
+                        startIcon={
+                            <AddIcon />
+                        }
+                        onClick={() => {
 
-                    }}
-                >
-                    Nueva Agencia
-                </Button>
+                            setAgenciaSeleccionada(
+                                null
+                            );
+
+                            setModalAbierto(
+                                true
+                            );
+
+                        }}
+                    >
+                        Nueva Agencia
+                    </Button>
+
+                )}
 
             </Box>
 
-            <Box mb={3}>
+
+            {/* ================================================= */}
+            {/* BUSCADOR */}
+            {/* ================================================= */}
+
+            <Box
+                sx={{
+                    mb:
+                        3
+                }}
+            >
 
                 <TextField
                     fullWidth
-                    placeholder="Buscar agencia por código, nombre, departamento o ciudad..."
-                    value={busqueda}
-                    onChange={(e) =>
-                        setBusqueda(e.target.value)
+                    placeholder="Buscar agencia por código, nombre, departamento, ciudad o tipo..."
+                    value={
+                        busqueda
                     }
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon />
-                            </InputAdornment>
-                        )
+                    onChange={
+                        (e) =>
+                            setBusqueda(
+                                e.target.value
+                            )
+                    }
+                    slotProps={{
+                        input: {
+                            startAdornment: (
+
+                                <InputAdornment
+                                    position="start"
+                                >
+                                    <SearchIcon />
+                                </InputAdornment>
+
+                            )
+                        }
                     }}
                 />
 
             </Box>
 
+
+            {/* ================================================= */}
+            {/* TABLA */}
+            {/* ================================================= */}
+
             <AgenciasTable
-                agencias={agenciasFiltradas}
-                onEditar={editarAgencia}
-                onDesactivar={desactivarAgencia}
+                agencias={
+                    agenciasFiltradas
+                }
+                onEditar={
+                    editarAgencia
+                }
+                onCambiarEstado={
+                    desactivarAgencia
+                }
+                puedeEditar={
+                    puedeEditar
+                }
             />
 
+
+            {/* ================================================= */}
+            {/* MODAL */}
+            {/* ================================================= */}
+
             <NuevaAgenciaModal
-                open={modalAbierto}
-                onClose={() => setModalAbierto(false)}
-                onGuardado={cargarAgencias}
-                agencia={agenciaSeleccionada}
+                open={
+                    modalAbierto
+                }
+                onClose={() => {
+
+                    setModalAbierto(
+                        false
+                    );
+
+                    setAgenciaSeleccionada(
+                        null
+                    );
+
+                }}
+                onGuardado={
+                    cargarAgencias
+                }
+                agencia={
+                    agenciaSeleccionada
+                }
             />
 
         </Box>
 
     );
-
 }

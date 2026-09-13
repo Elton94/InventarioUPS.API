@@ -14,16 +14,19 @@
 
         public int AgenciaId { get; set; }
 
+        public int EstadoUPSId { get; set; }
+
         public DateTime FechaInstalacion { get; set; }
 
-        public string Estado { get; set; } = "Operativo";
-
-        public int CantidadBaterias { get; set; } = 0;
+        public int CantidadBaterias { get; set; }
 
         public DateTime? FechaUltimoCambioBaterias { get; set; }
 
         public Agencia? Agencia { get; set; }
 
-        public ICollection<Mantenimiento> Mantenimientos { get; set; } = new List<Mantenimiento>();
+        public EstadoUPS? EstadoUPS { get; set; }
+
+        public ICollection<Mantenimiento> Mantenimientos { get; set; }
+            = new List<Mantenimiento>();
     }
 }

@@ -46,3 +46,34 @@ FROM Mantenimientos M
 INNER JOIN UPSs U ON U.Id = M.UPSId
 INNER JOIN Agencias A ON A.Id = U.AgenciaId;
 GO
+
+
+/* ============================================================
+   NORMALIZAR BASE HISTÓRICA DE BATERÍAS
+   Si la fecha actual coincide con un mantenimiento Completado
+   que cambió baterías, esa fecha pertenece al historial y no a
+   la base manual original.
+   ============================================================ */
+;WITH UltimoCambio AS
+(
+    SELECT
+        M.UPSId,
+        MAX(M.FechaMantenimiento) AS FechaUltimoCompletado
+    FROM Mantenimientos M
+    INNER JOIN EstadosMantenimiento E
+        ON E.Id = M.EstadoMantenimientoId
+    WHERE
+        M.IncluyeCambioBaterias = 1
+        AND E.Nombre = 'Completado'
+    GROUP BY M.UPSId
+)
+UPDATE U
+SET U.FechaUltimoCambioBateriasBase = NULL
+FROM UPSs U
+INNER JOIN UltimoCambio C
+    ON C.UPSId = U.Id
+WHERE
+    U.FechaUltimoCambioBaterias IS NOT NULL
+    AND CAST(U.FechaUltimoCambioBaterias AS date) =
+        CAST(C.FechaUltimoCompletado AS date);
+GO

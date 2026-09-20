@@ -1,6 +1,7 @@
 using InventarioUPS.API.Authorization;
 using InventarioUPS.API.Data;
 using InventarioUPS.API.DTOs.Presupuesto;
+using InventarioUPS.API.Models;
 using InventarioUPS.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -378,8 +379,8 @@ namespace InventarioUPS.API.Controllers
         }
 
         private static PresupuestoUpsDetalleDto CrearDetalle(
-            Models.UPS equipo,
-            Models.Agencia agencia,
+            UPS equipo,
+            Agencia agencia,
             string tipoAgencia,
             int mesesCiclo,
             decimal costoUnitario)
@@ -404,7 +405,7 @@ namespace InventarioUPS.API.Controllers
             };
         }
 
-        private static string ObtenerTipoAgencia(Models.UPS equipo)
+        private static string ObtenerTipoAgencia(UPS equipo)
         {
             var registrado = equipo.Agencia?.TipoAgencia?.Nombre;
 

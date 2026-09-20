@@ -1,23 +1,29 @@
-import { useEffect, useState } from "react";
+import {
+    useEffect,
+    useState
+} from "react";
 
 import {
+    Alert,
     Box,
     Button,
     InputAdornment,
+    Snackbar,
     TextField,
     Typography
 } from "@mui/material";
 
-import AddIcon from "@mui/icons-material/Add";
-import SearchIcon from "@mui/icons-material/Search";
-import SecurityIcon from "@mui/icons-material/Security";
+import AddIcon
+    from "@mui/icons-material/Add";
+import SearchIcon
+    from "@mui/icons-material/Search";
+import SecurityIcon
+    from "@mui/icons-material/Security";
 
 import UsuariosTable
     from "../components/usuarios/UsuariosTable";
-
 import NuevoUsuarioModal
     from "../components/usuarios/NuevoUsuarioModal";
-
 import GestionarRolesModal
     from "../components/usuarios/GestionarRolesModal";
 
@@ -30,106 +36,79 @@ import {
     tienePermiso
 } from "../services/permisos";
 
-
 export default function Usuarios() {
-
     const [usuarios, setUsuarios] =
         useState([]);
-
     const [busqueda, setBusqueda] =
         useState("");
-
     const [modalAbierto, setModalAbierto] =
         useState(false);
-
-    const [rolesModalAbierto, setRolesModalAbierto] =
+    const [rolesAbierto, setRolesAbierto] =
         useState(false);
-
-    const [usuarioSeleccionado, setUsuarioSeleccionado] =
+    const [seleccionado, setSeleccionado] =
         useState(null);
+    const [mensaje, setMensaje] =
+        useState("");
+    const [error, setError] =
+        useState("");
 
-
-    // =====================================================
-    // PERMISOS
-    // =====================================================
-
-    const puedeGestionarUsuarios =
+    const puedeUsuarios =
         tienePermiso(
             "GESTIONAR_USUARIOS"
         );
-
-    const puedeGestionarRoles =
+    const puedeRoles =
         tienePermiso(
             "GESTIONAR_ROLES_PERMISOS"
         );
 
+    const usuarioActualId =
+        Number(
+            localStorage.getItem(
+                "usuarioId"
+            ) ||
+            0
+        );
 
-    // =====================================================
-    // CARGAR USUARIOS
-    // =====================================================
-
-    const cargarUsuarios = async () => {
+    const cargar = async () => {
+        if (!puedeUsuarios) {
+            setUsuarios([]);
+            return;
+        }
 
         try {
-
             const datos =
                 await obtenerUsuarios();
 
             setUsuarios(
-                datos
+                Array.isArray(datos)
+                    ? datos
+                    : []
             );
-
-        } catch (error) {
-
-            console.error(
-                "Error al cargar usuarios:",
-                error
+        } catch (e) {
+            setError(
+                e.response?.data?.mensaje ||
+                "No fue posible cargar los usuarios."
             );
-
         }
-
     };
-
 
     useEffect(() => {
-
-        cargarUsuarios();
-
+        cargar();
     }, []);
-
-
-    // =====================================================
-    // EDITAR USUARIO
-    // =====================================================
-
-    const editarUsuario = (
-        usuario
-    ) => {
-
-        if (!puedeGestionarUsuarios) {
-            return;
-        }
-
-        setUsuarioSeleccionado(
-            usuario
-        );
-
-        setModalAbierto(
-            true
-        );
-
-    };
-
-
-    // =====================================================
-    // CAMBIAR ESTADO
-    // =====================================================
 
     const cambiarEstado = async (
         usuario
     ) => {
+        if (!puedeUsuarios) return;
 
-        if (!puedeGestionarUsuarios) {
+        if (
+            Number(usuario.id) ===
+            usuarioActualId &&
+            usuario.activo
+        ) {
+            setError(
+                "No puede desactivar su propio usuario."
+            );
             return;
         }
 
@@ -138,260 +117,235 @@ export default function Usuarios() {
                 ? "desactivar"
                 : "activar";
 
-        const confirmar =
-            window.confirm(
-                `¿Está seguro de que desea ${accion} al usuario ${usuario.nombreUsuario}?`
-            );
-
-        if (!confirmar) {
+        if (
+            !window.confirm(
+                `¿Desea ${accion} al usuario "${usuario.nombreUsuario}"?`
+            )
+        ) {
             return;
         }
 
         try {
-
-            await cambiarEstadoUsuario(
-                usuario.id,
-                !usuario.activo
-            );
-
-            await cargarUsuarios();
-
-        } catch (error) {
-
-            console.error(
-                "Error al cambiar estado:",
-                error
-            );
-
-        }
-
-    };
-
-
-    // =====================================================
-    // BUSCAR
-    // =====================================================
-
-    const usuariosFiltrados =
-        usuarios.filter(
-            (usuario) => {
-
-                const texto =
-                    busqueda
-                        .toLowerCase()
-                        .trim();
-
-                if (!texto) {
-                    return true;
-                }
-
-                return (
-
-                    usuario.nombreUsuario
-                        ?.toLowerCase()
-                        .includes(texto)
-
-                    ||
-
-                    usuario.nombreCompleto
-                        ?.toLowerCase()
-                        .includes(texto)
-
-                    ||
-
-                    usuario.correo
-                        ?.toLowerCase()
-                        .includes(texto)
-
-                    ||
-
-                    usuario.rolNombre
-                        ?.toLowerCase()
-                        .includes(texto)
-
+            const respuesta =
+                await cambiarEstadoUsuario(
+                    usuario.id,
+                    !usuario.activo
                 );
 
-            }
+            setMensaje(
+                respuesta?.mensaje ||
+                "Estado actualizado correctamente."
+            );
+
+            await cargar();
+        } catch (e) {
+            setError(
+                e.response?.data?.mensaje ||
+                e.response?.data ||
+                "No fue posible cambiar el estado."
+            );
+        }
+    };
+
+    const texto =
+        busqueda
+            .toLowerCase()
+            .trim();
+
+    const filtrados =
+        usuarios.filter(
+            (u) =>
+                !texto ||
+                [
+                    u.nombreUsuario,
+                    u.nombreCompleto,
+                    u.correo,
+                    u.rolNombre
+                ].some((valor) =>
+                    String(valor || "")
+                        .toLowerCase()
+                        .includes(texto)
+                )
         );
 
-
-    // =====================================================
-    // INTERFAZ
-    // =====================================================
-
     return (
-
         <Box>
-
-            {/* =================================================
-                ENCABEZADO
-            ================================================= */}
-
             <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                mb={3}
+                sx={{
+                    display: "flex",
+                    justifyContent:
+                        "space-between",
+                    alignItems: "center",
+                    gap: 2,
+                    mb: 3,
+                    flexWrap: "wrap"
+                }}
             >
-
                 <Typography
                     variant="h4"
                     fontWeight="bold"
                 >
-                    Gestión de Usuarios
+                    Gestión de Usuarios y Roles
                 </Typography>
 
-
                 <Box
-                    display="flex"
-                    gap={2}
+                    sx={{
+                        display: "flex",
+                        gap: 1
+                    }}
                 >
-
-                    {/* GESTIONAR ROLES */}
-
-                    {puedeGestionarRoles && (
-
+                    {puedeRoles && (
                         <Button
                             variant="outlined"
                             startIcon={
                                 <SecurityIcon />
                             }
                             onClick={() =>
-                                setRolesModalAbierto(
+                                setRolesAbierto(
                                     true
                                 )
                             }
                         >
                             Gestionar Roles
                         </Button>
-
                     )}
 
-
-                    {/* NUEVO USUARIO */}
-
-                    {puedeGestionarUsuarios && (
-
+                    {puedeUsuarios && (
                         <Button
                             variant="contained"
                             startIcon={
                                 <AddIcon />
                             }
                             onClick={() => {
-
-                                setUsuarioSeleccionado(
+                                setSeleccionado(
                                     null
                                 );
-
                                 setModalAbierto(
                                     true
                                 );
-
                             }}
                         >
                             Nuevo Usuario
                         </Button>
-
                     )}
-
                 </Box>
-
             </Box>
 
+            {puedeUsuarios ? (
+                <>
+                    <TextField
+                        fullWidth
+                        sx={{ mb: 3 }}
+                        placeholder="Buscar por usuario, nombre, correo o rol..."
+                        value={busqueda}
+                        onChange={(e) =>
+                            setBusqueda(
+                                e.target.value
+                            )
+                        }
+                        slotProps={{
+                            input: {
+                                startAdornment: (
+                                    <InputAdornment
+                                        position="start"
+                                    >
+                                        <SearchIcon />
+                                    </InputAdornment>
+                                )
+                            }
+                        }}
+                    />
 
-            {/* =================================================
-                BUSCADOR
-            ================================================= */}
+                    <UsuariosTable
+                        usuarios={filtrados}
+                        onEditar={(u) => {
+                            setSeleccionado(u);
+                            setModalAbierto(
+                                true
+                            );
+                        }}
+                        onCambiarEstado={
+                            cambiarEstado
+                        }
+                        puedeGestionarUsuarios
+                        usuarioActualId={
+                            usuarioActualId
+                        }
+                    />
+                </>
+            ) : (
+                <Alert severity="info">
+                    Su rol puede gestionar roles y permisos, pero no administrar usuarios.
+                </Alert>
+            )}
 
-            <Box mb={3}>
-
-                <TextField
-                    fullWidth
-                    placeholder="Buscar por usuario, nombre, correo o rol..."
-                    value={
-                        busqueda
-                    }
-                    onChange={(e) =>
-                        setBusqueda(
-                            e.target.value
-                        )
-                    }
-                    InputProps={{
-                        startAdornment: (
-
-                            <InputAdornment
-                                position="start"
-                            >
-
-                                <SearchIcon />
-
-                            </InputAdornment>
-
-                        )
-                    }}
-                />
-
-            </Box>
-
-
-            {/* =================================================
-                TABLA
-            ================================================= */}
-
-            <UsuariosTable
-                usuarios={usuariosFiltrados}
-                onEditar={editarUsuario}
-                onCambiarEstado={cambiarEstado}
-                puedeGestionarUsuarios={puedeGestionarUsuarios}
-            />
-
-
-            {/* =================================================
-                NUEVO / EDITAR USUARIO
-            ================================================= */}
-
-            {puedeGestionarUsuarios && (
-
+            {puedeUsuarios && (
                 <NuevoUsuarioModal
-                    open={
-                        modalAbierto
-                    }
-                    onClose={() =>
+                    open={modalAbierto}
+                    usuario={seleccionado}
+                    onClose={() => {
                         setModalAbierto(
                             false
-                        )
-                    }
-                    onGuardado={
-                        cargarUsuarios
-                    }
-                    usuario={
-                        usuarioSeleccionado
-                    }
+                        );
+                        setSeleccionado(
+                            null
+                        );
+                    }}
+                    onGuardado={async () => {
+                        await cargar();
+                        setMensaje(
+                            seleccionado
+                                ? "Usuario actualizado correctamente."
+                                : "Usuario creado correctamente."
+                        );
+                    }}
                 />
-
             )}
 
-
-            {/* =================================================
-                GESTIONAR ROLES
-            ================================================= */}
-
-            {puedeGestionarRoles && (
-
+            {puedeRoles && (
                 <GestionarRolesModal
-                    open={
-                        rolesModalAbierto
-                    }
+                    open={rolesAbierto}
                     onClose={() =>
-                        setRolesModalAbierto(
+                        setRolesAbierto(
                             false
                         )
                     }
                 />
-
             )}
 
-        </Box>
+            <Snackbar
+                open={Boolean(mensaje)}
+                autoHideDuration={4000}
+                onClose={() =>
+                    setMensaje("")
+                }
+            >
+                <Alert
+                    severity="success"
+                    onClose={() =>
+                        setMensaje("")
+                    }
+                >
+                    {mensaje}
+                </Alert>
+            </Snackbar>
 
+            <Snackbar
+                open={Boolean(error)}
+                autoHideDuration={6000}
+                onClose={() =>
+                    setError("")
+                }
+            >
+                <Alert
+                    severity="error"
+                    onClose={() =>
+                        setError("")
+                    }
+                >
+                    {String(error)}
+                </Alert>
+            </Snackbar>
+        </Box>
     );
 }

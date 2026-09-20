@@ -1,6 +1,10 @@
-import { useEffect, useState } from "react";
+import {
+    useEffect,
+    useState
+} from "react";
 
 import {
+    Alert,
     Button,
     Dialog,
     DialogActions,
@@ -10,8 +14,7 @@ import {
     InputLabel,
     MenuItem,
     Select,
-    TextField,
-    Typography
+    TextField
 } from "@mui/material";
 
 import {
@@ -20,120 +23,158 @@ import {
     obtenerRoles
 } from "../../services/usuarioService";
 
+import {
+    tienePermiso
+} from "../../services/permisos";
+
+const inicial = {
+    nombreUsuario: "",
+    nombreCompleto: "",
+    correo: "",
+    password: "",
+    nuevaPassword: "",
+    rolId: "",
+    activo: true
+};
+
 export default function NuevoUsuarioModal({
     open,
     onClose,
     onGuardado,
     usuario
 }) {
-    const [roles, setRoles] = useState([]);
-    const [cargandoRoles, setCargandoRoles] =
+    const [roles, setRoles] =
+        useState([]);
+    const [formulario, setFormulario] =
+        useState(inicial);
+    const [cargando, setCargando] =
         useState(false);
     const [guardando, setGuardando] =
         useState(false);
+    const [error, setError] =
+        useState("");
 
-    const [formulario, setFormulario] = useState({
-        nombreUsuario: "",
-        nombreCompleto: "",
-        correo: "",
-        password: "",
-        rolId: "",
-        activo: true
-    });
+    const puedeRoles =
+        tienePermiso(
+            "GESTIONAR_ROLES_PERMISOS"
+        );
 
-    const [error, setError] = useState("");
+    const usuarioActualId =
+        Number(
+            localStorage.getItem(
+                "usuarioId"
+            ) ||
+            0
+        );
+
+    const esMismoUsuario =
+        usuario &&
+        Number(usuario.id) ===
+            usuarioActualId;
 
     useEffect(() => {
-        if (!open) {
-            return;
-        }
+        if (!open) return;
 
-        setError("");
-        cargarRoles();
+        const cargar = async () => {
+            try {
+                setCargando(true);
+                setError("");
 
-        if (usuario) {
-            setFormulario({
-                nombreUsuario:
-                    usuario.nombreUsuario || "",
-                nombreCompleto:
-                    usuario.nombreCompleto || "",
-                correo:
-                    usuario.correo || "",
-                password: "",
-                rolId:
-                    usuario.rolId
-                        ? Number(usuario.rolId)
-                        : "",
-                activo:
-                    usuario.activo ?? true
-            });
-        } else {
-            setFormulario({
-                nombreUsuario: "",
-                nombreCompleto: "",
-                correo: "",
-                password: "",
-                rolId: "",
-                activo: true
-            });
-        }
-    }, [open, usuario]);
+                const datos =
+                    await obtenerRoles();
 
-    const cargarRoles = async () => {
-        setCargandoRoles(true);
-        setError("");
+                const disponibles =
+                    (datos || [])
+                        .filter(
+                            (rol) =>
+                                rol.activo
+                        )
+                        .filter(
+                            (rol) =>
+                                puedeRoles ||
+                                String(
+                                    rol.nombre ||
+                                    ""
+                                )
+                                    .toLowerCase() !==
+                                "control total"
+                        );
 
-        try {
-            const datos = await obtenerRoles();
+                setRoles(disponibles);
 
-            console.log("Roles recibidos:", datos);
-
-            setRoles(Array.isArray(datos) ? datos : []);
-
-        } catch (error) {
-            console.error(
-                "Error al cargar roles:",
-                error
-            );
-
-            if (error.response?.status === 401) {
+                if (usuario) {
+                    setFormulario({
+                        nombreUsuario:
+                            usuario.nombreUsuario ||
+                            "",
+                        nombreCompleto:
+                            usuario.nombreCompleto ||
+                            "",
+                        correo:
+                            usuario.correo ||
+                            "",
+                        password: "",
+                        nuevaPassword: "",
+                        rolId:
+                            usuario.rolId ||
+                            "",
+                        activo:
+                            usuario.activo !==
+                            false
+                    });
+                } else {
+                    setFormulario({
+                        ...inicial
+                    });
+                }
+            } catch (e) {
                 setError(
-                    "La sesión no es válida. Vuelva a iniciar sesión."
-                );
-            } else if (error.response?.status === 403) {
-                setError(
-                    "No tiene permisos para consultar los roles."
-                );
-            } else {
-                setError(
+                    e.response?.data?.mensaje ||
                     "No fue posible cargar los roles."
                 );
+            } finally {
+                setCargando(false);
             }
+        };
 
-            setRoles([]);
-        } finally {
-            setCargandoRoles(false);
-        }
-    };
+        cargar();
+    }, [
+        open,
+        usuario,
+        puedeRoles
+    ]);
 
-    const cambiarCampo = (campo, valor) => {
-        setFormulario((actual) => ({
-            ...actual,
-            [campo]: valor
-        }));
-    };
+    const cambiar = (
+        campo,
+        valor
+    ) =>
+        setFormulario(
+            (actual) => ({
+                ...actual,
+                [campo]: valor
+            })
+        );
 
     const guardar = async () => {
         setError("");
 
-        if (!formulario.nombreUsuario.trim() && !usuario) {
+        if (
+            !usuario &&
+            !formulario
+                .nombreUsuario
+                .trim()
+        ) {
             setError(
                 "El nombre de usuario es obligatorio."
             );
             return;
         }
 
-        if (!formulario.nombreCompleto.trim()) {
+        if (
+            !formulario
+                .nombreCompleto
+                .trim()
+        ) {
             setError(
                 "El nombre completo es obligatorio."
             );
@@ -142,21 +183,21 @@ export default function NuevoUsuarioModal({
 
         if (!formulario.correo.trim()) {
             setError(
-                "El correo electrónico es obligatorio."
+                "El correo es obligatorio."
             );
             return;
         }
 
         if (!formulario.rolId) {
             setError(
-                "Debe seleccionar un rol."
+                "Seleccione un rol."
             );
             return;
         }
 
         if (
             !usuario &&
-            !formulario.password.trim()
+            !formulario.password
         ) {
             setError(
                 "La contraseña es obligatoria."
@@ -164,64 +205,70 @@ export default function NuevoUsuarioModal({
             return;
         }
 
-        setGuardando(true);
-
         try {
-            if (!usuario) {
-                await crearUsuario({
-                    nombreUsuario:
-                        formulario.nombreUsuario.trim(),
+            setGuardando(true);
 
-                    nombreCompleto:
-                        formulario.nombreCompleto.trim(),
-
-                    correo:
-                        formulario.correo.trim(),
-
-                    password:
-                        formulario.password,
-
-                    rolId:
-                        Number(formulario.rolId)
-                });
-            } else {
+            if (usuario) {
                 await actualizarUsuario(
                     usuario.id,
                     {
                         nombreCompleto:
-                            formulario.nombreCompleto.trim(),
-
+                            formulario
+                                .nombreCompleto
+                                .trim(),
                         correo:
-                            formulario.correo.trim(),
-
+                            formulario
+                                .correo
+                                .trim(),
                         rolId:
-                            Number(formulario.rolId),
-
+                            Number(
+                                formulario
+                                    .rolId
+                            ),
                         activo:
-                            formulario.activo
+                            formulario.activo,
+                        nuevaPassword:
+                            formulario
+                                .nuevaPassword ||
+                            null
                     }
                 );
+            } else {
+                await crearUsuario({
+                    nombreUsuario:
+                        formulario
+                            .nombreUsuario
+                            .trim(),
+                    nombreCompleto:
+                        formulario
+                            .nombreCompleto
+                            .trim(),
+                    correo:
+                        formulario
+                            .correo
+                            .trim(),
+                    password:
+                        formulario
+                            .password,
+                    rolId:
+                        Number(
+                            formulario
+                                .rolId
+                        )
+                });
             }
 
             await onGuardado();
-
             onClose();
-
-        } catch (error) {
-            console.error(
-                "Error al guardar usuario:",
-                error
-            );
-
-            const mensaje =
-                error.response?.data?.mensaje ||
-                error.response?.data ||
-                "No fue posible guardar el usuario.";
+        } catch (e) {
+            const data =
+                e.response?.data;
 
             setError(
-                typeof mensaje === "string"
-                    ? mensaje
-                    : "No fue posible guardar el usuario."
+                typeof data === "string"
+                    ? data
+                    : data?.mensaje ||
+                      "No fue posible guardar el usuario."
             );
         } finally {
             setGuardando(false);
@@ -231,7 +278,11 @@ export default function NuevoUsuarioModal({
     return (
         <Dialog
             open={open}
-            onClose={guardando ? undefined : onClose}
+            onClose={
+                guardando
+                    ? undefined
+                    : onClose
+            }
             fullWidth
             maxWidth="sm"
         >
@@ -242,36 +293,32 @@ export default function NuevoUsuarioModal({
             </DialogTitle>
 
             <DialogContent>
-
-                {!usuario && (
-                    <TextField
-                        fullWidth
-                        required
-                        margin="normal"
-                        label="Nombre de usuario"
-                        value={
-                            formulario.nombreUsuario
-                        }
-                        onChange={(e) =>
-                            cambiarCampo(
-                                "nombreUsuario",
-                                e.target.value
-                            )
-                        }
-                    />
+                {error && (
+                    <Alert
+                        severity="error"
+                        sx={{ mt: 1 }}
+                    >
+                        {error}
+                    </Alert>
                 )}
 
-                {usuario && (
-                    <TextField
-                        fullWidth
-                        margin="normal"
-                        label="Nombre de usuario"
-                        value={
-                            formulario.nombreUsuario
-                        }
-                        disabled
-                    />
-                )}
+                <TextField
+                    fullWidth
+                    required
+                    margin="normal"
+                    label="Nombre de usuario"
+                    value={
+                        formulario
+                            .nombreUsuario
+                    }
+                    disabled={Boolean(usuario)}
+                    onChange={(e) =>
+                        cambiar(
+                            "nombreUsuario",
+                            e.target.value
+                        )
+                    }
+                />
 
                 <TextField
                     fullWidth
@@ -279,10 +326,11 @@ export default function NuevoUsuarioModal({
                     margin="normal"
                     label="Nombre completo"
                     value={
-                        formulario.nombreCompleto
+                        formulario
+                            .nombreCompleto
                     }
                     onChange={(e) =>
-                        cambiarCampo(
+                        cambiar(
                             "nombreCompleto",
                             e.target.value
                         )
@@ -293,35 +341,52 @@ export default function NuevoUsuarioModal({
                     fullWidth
                     required
                     margin="normal"
-                    label="Correo electrónico"
                     type="email"
-                    value={
-                        formulario.correo
-                    }
+                    label="Correo electrónico"
+                    value={formulario.correo}
                     onChange={(e) =>
-                        cambiarCampo(
+                        cambiar(
                             "correo",
                             e.target.value
                         )
                     }
                 />
 
-                {!usuario && (
+                {!usuario ? (
                     <TextField
                         fullWidth
                         required
                         margin="normal"
-                        label="Contraseña"
                         type="password"
+                        label="Contraseña"
                         value={
                             formulario.password
                         }
                         onChange={(e) =>
-                            cambiarCampo(
+                            cambiar(
                                 "password",
                                 e.target.value
                             )
                         }
+                        helperText="Mínimo 8 caracteres, mayúscula, minúscula, número y carácter especial."
+                    />
+                ) : (
+                    <TextField
+                        fullWidth
+                        margin="normal"
+                        type="password"
+                        label="Nueva contraseña"
+                        value={
+                            formulario
+                                .nuevaPassword
+                        }
+                        onChange={(e) =>
+                            cambiar(
+                                "nuevaPassword",
+                                e.target.value
+                            )
+                        }
+                        helperText="Déjela vacía si no desea cambiarla."
                     />
                 )}
 
@@ -330,66 +395,55 @@ export default function NuevoUsuarioModal({
                     required
                     margin="normal"
                 >
-                    <InputLabel id="rol-label">
+                    <InputLabel>
                         Rol
                     </InputLabel>
-
                     <Select
-                        labelId="rol-label"
-                        value={formulario.rolId}
+                        value={
+                            formulario.rolId
+                        }
                         label="Rol"
-                        disabled={cargandoRoles}
+                        disabled={cargando}
                         onChange={(e) =>
-                            cambiarCampo(
+                            cambiar(
                                 "rolId",
-                                Number(e.target.value)
+                                Number(
+                                    e.target.value
+                                )
                             )
                         }
                     >
-                        <MenuItem value="">
-                            <em>
-                                Seleccione un rol
-                            </em>
-                        </MenuItem>
-
-                        {roles.map((rol) => (
-                            <MenuItem
-                                key={rol.id}
-                                value={Number(rol.id)}
-                            >
-                                {rol.nombre}
-                            </MenuItem>
-                        ))}
+                        {roles.map(
+                            (rol) => (
+                                <MenuItem
+                                    key={rol.id}
+                                    value={rol.id}
+                                >
+                                    {rol.nombre}
+                                </MenuItem>
+                            )
+                        )}
                     </Select>
                 </FormControl>
-
-                {cargandoRoles && (
-                    <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ mt: 1 }}
-                    >
-                        Cargando roles...
-                    </Typography>
-                )}
 
                 {usuario && (
                     <FormControl
                         fullWidth
                         margin="normal"
                     >
-                        <InputLabel id="estado-label">
+                        <InputLabel>
                             Estado
                         </InputLabel>
-
                         <Select
-                            labelId="estado-label"
                             value={
                                 formulario.activo
                             }
                             label="Estado"
+                            disabled={
+                                esMismoUsuario
+                            }
                             onChange={(e) =>
-                                cambiarCampo(
+                                cambiar(
                                     "activo",
                                     e.target.value
                                 )
@@ -398,49 +452,33 @@ export default function NuevoUsuarioModal({
                             <MenuItem value={true}>
                                 Activo
                             </MenuItem>
-
                             <MenuItem value={false}>
                                 Inactivo
                             </MenuItem>
                         </Select>
                     </FormControl>
                 )}
-
-                {error && (
-                    <Typography
-                        color="error"
-                        sx={{
-                            mt: 2
-                        }}
-                    >
-                        {error}
-                    </Typography>
-                )}
-
             </DialogContent>
 
             <DialogActions>
-
                 <Button
                     onClick={onClose}
                     disabled={guardando}
                 >
                     Cancelar
                 </Button>
-
                 <Button
                     variant="contained"
                     onClick={guardar}
                     disabled={
-                        guardando ||
-                        cargandoRoles
+                        cargando ||
+                        guardando
                     }
                 >
                     {guardando
                         ? "Guardando..."
                         : "Guardar"}
                 </Button>
-
             </DialogActions>
         </Dialog>
     );

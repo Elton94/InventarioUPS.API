@@ -721,7 +721,7 @@ namespace InventarioUPS.API.Data
             // Si luego el usuario los renombra, elimina permisos o
             // crea roles propios desde el frontend, el Seeder NO
             // deshace esa configuración al reiniciar la API.
-            if (sistemaSinRoles)
+            if (sistemaSinRoles || sistemaSinAsignaciones)
             {
                 await ObtenerOCrearRol(
                     context,

@@ -1,7 +1,7 @@
-﻿using InventarioUPS.API.Authorization;
+using InventarioUPS.API.Authorization;
+using InventarioUPS.API.DTOs;
 using InventarioUPS.API.Models;
 using InventarioUPS.API.Services;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,192 +19,109 @@ namespace InventarioUPS.API.Controllers
             _service = service;
         }
 
-        // =====================================================
-        // CONSULTAR TODOS
-        // =====================================================
-
         [HttpGet]
         [PermisoAuthorize("VER_UPS")]
-        public async Task<ActionResult<List<UPS>>> ObtenerTodas()
+        public async Task<ActionResult<List<UPSDTO>>> ObtenerTodas()
         {
-            var ups = await _service.ObtenerTodasAsync();
-
-            return Ok(ups);
+            var equipos = await _service.ObtenerTodasAsync();
+            return Ok(equipos.Select(MapearDTO).ToList());
         }
-
-        // =====================================================
-        // CONSULTAR POR ID
-        // =====================================================
 
         [HttpGet("{id:int}")]
         [PermisoAuthorize("VER_UPS")]
-        public async Task<ActionResult<UPS>> ObtenerPorId(int id)
+        public async Task<ActionResult<UPSDTO>> ObtenerPorId(int id)
         {
             if (id <= 0)
-            {
-                return BadRequest(new
-                {
-                    mensaje = "El identificador del UPS no es válido."
-                });
-            }
+                return BadRequest(new { mensaje = "El identificador del UPS no es válido." });
 
             var ups = await _service.ObtenerPorIdAsync(id);
 
             if (ups == null)
-            {
-                return NotFound(new
-                {
-                    mensaje = "El UPS no existe."
-                });
-            }
+                return NotFound(new { mensaje = "El UPS no existe." });
 
-            return Ok(ups);
+            return Ok(MapearDTO(ups));
         }
-
-        // =====================================================
-        // CREAR
-        // =====================================================
 
         [HttpPost]
         [PermisoAuthorize("CREAR_UPS")]
-        public async Task<ActionResult> Crear(UPS ups)
+        public async Task<ActionResult> Crear([FromBody] UPS ups)
         {
-            if (ups == null)
-            {
-                return BadRequest(new
-                {
-                    mensaje = "La información del UPS es obligatoria."
-                });
-            }
-
             try
             {
                 await _service.CrearAsync(ups);
-
-                return Ok(new
-                {
-                    mensaje = "UPS creado correctamente."
-                });
+                return Ok(new { mensaje = "UPS creado correctamente.", upsId = ups.Id });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new
-                {
-                    mensaje = ex.Message
-                });
+                return BadRequest(new { mensaje = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return Conflict(new
-                {
-                    mensaje = ex.Message
-                });
+                return Conflict(new { mensaje = ex.Message });
             }
         }
 
-        // =====================================================
-        // ACTUALIZAR
-        // =====================================================
-
         [HttpPut("{id:int}")]
         [PermisoAuthorize("EDITAR_UPS")]
-        public async Task<ActionResult> Actualizar(
-            int id,
-            UPS ups)
+        public async Task<ActionResult> Actualizar(int id, [FromBody] UPS ups)
         {
-            if (ups == null)
-            {
-                return BadRequest(new
-                {
-                    mensaje = "La información del UPS es obligatoria."
-                });
-            }
-
-            if (id <= 0 || id != ups.Id)
-            {
-                return BadRequest(new
-                {
-                    mensaje = "El identificador del UPS no es válido."
-                });
-            }
+            if (ups == null || id <= 0 || id != ups.Id)
+                return BadRequest(new { mensaje = "El identificador del UPS no es válido." });
 
             try
             {
                 await _service.ActualizarAsync(ups);
-
-                return Ok(new
-                {
-                    mensaje = "UPS actualizado correctamente."
-                });
+                return Ok(new { mensaje = "UPS actualizado correctamente." });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new
-                {
-                    mensaje = ex.Message
-                });
+                return BadRequest(new { mensaje = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return Conflict(new
-                {
-                    mensaje = ex.Message
-                });
+                return Conflict(new { mensaje = ex.Message });
             }
         }
-
-        // =====================================================
-        // CAMBIAR ESTADO
-        // =====================================================
 
         [HttpPatch("{id:int}/estado")]
         [PermisoAuthorize("EDITAR_UPS")]
-        public async Task<ActionResult> CambiarEstado(
-            int id,
-            [FromQuery] string estado)
+        public async Task<ActionResult> CambiarEstado(int id, [FromQuery] string estado)
         {
-            if (id <= 0)
-            {
-                return BadRequest(new
-                {
-                    mensaje = "El identificador del UPS no es válido."
-                });
-            }
-
-            if (string.IsNullOrWhiteSpace(estado))
-            {
-                return BadRequest(new
-                {
-                    mensaje = "El estado es obligatorio."
-                });
-            }
-
             try
             {
-                await _service.CambiarEstadoAsync(
-                    id,
-                    estado);
-
-                return Ok(new
-                {
-                    mensaje =
-                        "Estado del UPS actualizado correctamente."
-                });
+                await _service.CambiarEstadoAsync(id, estado);
+                return Ok(new { mensaje = "Estado del UPS actualizado correctamente." });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new
-                {
-                    mensaje = ex.Message
-                });
+                return BadRequest(new { mensaje = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                return Conflict(new
-                {
-                    mensaje = ex.Message
-                });
+                return Conflict(new { mensaje = ex.Message });
             }
         }
+
+        private static UPSDTO MapearDTO(UPS equipo) => new()
+        {
+            Id = equipo.Id,
+            Codigo = equipo.Codigo,
+            Marca = equipo.Marca,
+            Modelo = equipo.Modelo,
+            NumeroSerie = equipo.NumeroSerie,
+            CapacidadVA = equipo.CapacidadVA,
+            AgenciaId = equipo.AgenciaId,
+            AgenciaCodigo = equipo.Agencia?.Codigo ?? string.Empty,
+            AgenciaNombre = equipo.Agencia?.Nombre ?? string.Empty,
+            CiudadNombre = equipo.Agencia?.Ciudad?.Nombre ?? string.Empty,
+            DepartamentoNombre = equipo.Agencia?.Ciudad?.Departamento?.Nombre ?? string.Empty,
+            EstadoUPSId = equipo.EstadoUPSId,
+            Estado = equipo.EstadoUPS?.Nombre ?? string.Empty,
+            FechaInstalacion = equipo.FechaInstalacion,
+            CantidadBaterias = equipo.CantidadBaterias,
+            FechaUltimoCambioBaterias = equipo.FechaUltimoCambioBaterias,
+            FechaCreacion = equipo.FechaCreacion,
+            FechaModificacion = equipo.FechaModificacion
+        };
     }
 }

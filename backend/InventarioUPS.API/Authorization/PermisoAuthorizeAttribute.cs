@@ -1,49 +1,79 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using InventarioUPS.API.Data;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.EntityFrameworkCore;
 
 namespace InventarioUPS.API.Authorization
 {
     [AttributeUsage(
         AttributeTargets.Class | AttributeTargets.Method,
-        AllowMultiple = true)]
+        AllowMultiple = false)]
     public class PermisoAuthorizeAttribute : Attribute, IAsyncAuthorizationFilter
     {
-        private readonly string _permiso;
+        private readonly string[] _permisos;
 
-        public PermisoAuthorizeAttribute(string permiso)
+        public PermisoAuthorizeAttribute(params string[] permisos)
         {
-            _permiso = permiso;
+            _permisos = permisos ?? Array.Empty<string>();
         }
 
-        public Task OnAuthorizationAsync(
-            AuthorizationFilterContext context)
+        public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
         {
-            var usuario = context.HttpContext.User;
+            var principal = context.HttpContext.User;
 
-            /*
-             * Control Total tiene acceso completo al sistema.
-             */
-            if (usuario.IsInRole("Control Total"))
+            if (principal.Identity?.IsAuthenticated != true)
             {
-                return Task.CompletedTask;
+                context.Result = new UnauthorizedResult();
+                return;
             }
 
-            /*
-             * Verificar si el JWT contiene el permiso solicitado.
-             */
-            var tienePermiso = usuario.Claims.Any(
-                claim =>
-                    claim.Type == "Permiso" &&
-                    claim.Value.Equals(
-                        _permiso,
-                        StringComparison.OrdinalIgnoreCase));
-
-            if (!tienePermiso)
+            if (!int.TryParse(
+                    principal.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+                    out var usuarioId))
             {
+                context.Result = new UnauthorizedResult();
+                return;
+            }
+
+            var db = context.HttpContext.RequestServices
+                .GetRequiredService<InventarioUPSDbContext>();
+
+            var usuario = await db.Usuarios
+                .AsNoTracking()
+                .Include(u => u.Rol)
+                .FirstOrDefaultAsync(u => u.Id == usuarioId);
+
+            if (usuario == null || !usuario.Activo ||
+                usuario.Rol == null || !usuario.Rol.Activo)
+            {
+                context.Result = new UnauthorizedResult();
+                return;
+            }
+
+            if (usuario.Rol.Nombre.Equals(
+                    "Control Total",
+                    StringComparison.OrdinalIgnoreCase))
+                return;
+
+            if (_permisos.Length == 0)
+                return;
+
+            var requeridos = _permisos
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Select(p => p.Trim().ToUpper())
+                .ToList();
+
+            var autorizado = await db.RolPermisos
+                .AsNoTracking()
+                .AnyAsync(rp =>
+                    rp.RolId == usuario.RolId &&
+                    rp.Permiso != null &&
+                    rp.Permiso.Activo &&
+                    requeridos.Contains(rp.Permiso.Codigo.ToUpper()));
+
+            if (!autorizado)
                 context.Result = new ForbidResult();
-            }
-
-            return Task.CompletedTask;
         }
     }
 }

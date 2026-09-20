@@ -1,4 +1,4 @@
-﻿using InventarioUPS.API.Data;
+using InventarioUPS.API.Data;
 using InventarioUPS.API.Models;
 using InventarioUPS.API.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -10,307 +10,183 @@ namespace InventarioUPS.API.Services
         private readonly IAgenciaRepository _repository;
         private readonly InventarioUPSDbContext _context;
 
-        public AgenciaService(
-            IAgenciaRepository repository,
-            InventarioUPSDbContext context)
+        public AgenciaService(IAgenciaRepository repository, InventarioUPSDbContext context)
         {
             _repository = repository;
             _context = context;
         }
 
-        // =====================================================
-        // OBTENER TODAS
-        // =====================================================
-
-        public async Task<List<Agencia>> ObtenerTodasAsync()
-        {
-            return await _repository
-                .ObtenerTodasAsync();
-        }
-
-        // =====================================================
-        // OBTENER POR ID
-        // =====================================================
-
-        public async Task<Agencia?> ObtenerPorIdAsync(int id)
-        {
-            return await _repository
-                .ObtenerPorIdAsync(id);
-        }
-
-        // =====================================================
-        // CREAR
-        // =====================================================
+        public Task<List<Agencia>> ObtenerTodasAsync() => _repository.ObtenerTodasAsync();
+        public Task<Agencia?> ObtenerPorIdAsync(int id) => _repository.ObtenerPorIdAsync(id);
 
         public async Task CrearAsync(Agencia agencia)
         {
             if (agencia == null)
-            {
-                throw new ArgumentException(
-                    "La información de la agencia es obligatoria.");
-            }
+                throw new ArgumentException("La información de la agencia es obligatoria.");
 
             LimpiarDatos(agencia);
-
             ValidarDatosBasicos(agencia);
 
-            // -------------------------------------------------
-            // VALIDAR CIUDAD
-            // -------------------------------------------------
+            var ciudad = await ObtenerCiudadActivaAsync(agencia.CiudadId);
+            agencia.TipoAgenciaId = await ObtenerTipoAgenciaSegunCiudadAsync(ciudad);
 
-            var ciudad = await _context.Ciudades
-                .AsNoTracking()
-                .FirstOrDefaultAsync(c =>
-                    c.Id == agencia.CiudadId);
+            var codigo = agencia.Codigo.ToUpper();
 
-            if (ciudad == null)
-            {
-                throw new ArgumentException(
-                    "La ciudad seleccionada no existe.");
-            }
-
-            if (!ciudad.Activa)
-            {
-                throw new InvalidOperationException(
-                    "La ciudad seleccionada está inactiva.");
-            }
-
-            // -------------------------------------------------
-            // VALIDAR TIPO DE AGENCIA
-            // -------------------------------------------------
-
-            var tipoAgencia = await _context.TiposAgencia
-                .AsNoTracking()
-                .FirstOrDefaultAsync(t =>
-                    t.Id == agencia.TipoAgenciaId);
-
-            if (tipoAgencia == null)
-            {
-                throw new ArgumentException(
-                    "El tipo de agencia seleccionado no existe.");
-            }
-
-            if (!tipoAgencia.Activo)
-            {
-                throw new InvalidOperationException(
-                    "El tipo de agencia seleccionado está inactivo.");
-            }
-
-            // -------------------------------------------------
-            // VALIDAR CÓDIGO ÚNICO
-            // -------------------------------------------------
-
-            var codigoNormalizado =
-                agencia.Codigo.ToUpper();
-
-            var codigoExiste =
-                await _context.Agencias
-                    .AsNoTracking()
-                    .AnyAsync(a =>
-                        a.Codigo.ToUpper() ==
-                        codigoNormalizado);
-
-            if (codigoExiste)
-            {
-                throw new InvalidOperationException(
-                    "Ya existe una agencia con ese código.");
-            }
-
-            // -------------------------------------------------
-            // NUEVA AGENCIA SIEMPRE ACTIVA
-            // -------------------------------------------------
+            if (await _context.Agencias.AsNoTracking()
+                .AnyAsync(a => a.Codigo.ToUpper() == codigo))
+                throw new InvalidOperationException("Ya existe una agencia con ese código.");
 
             agencia.Activa = true;
-
             await _repository.CrearAsync(agencia);
         }
 
-        // =====================================================
-        // ACTUALIZAR
-        // =====================================================
-
         public async Task ActualizarAsync(Agencia agencia)
         {
-            if (agencia == null)
-            {
-                throw new ArgumentException(
-                    "La información de la agencia es obligatoria.");
-            }
-
-            if (agencia.Id <= 0)
-            {
-                throw new ArgumentException(
-                    "El identificador de la agencia no es válido.");
-            }
+            if (agencia == null || agencia.Id <= 0)
+                throw new ArgumentException("El identificador de la agencia no es válido.");
 
             LimpiarDatos(agencia);
-
             ValidarDatosBasicos(agencia);
 
-            // -------------------------------------------------
-            // VALIDAR QUE LA AGENCIA EXISTA
-            // -------------------------------------------------
+            var existente = await _repository.ObtenerPorIdAsync(agencia.Id);
 
-            var agenciaExistente =
-                await _repository.ObtenerPorIdAsync(
-                    agencia.Id);
+            if (existente == null)
+                throw new InvalidOperationException("La agencia no existe.");
 
-            if (agenciaExistente == null)
-            {
-                throw new InvalidOperationException(
-                    "La agencia no existe.");
-            }
+            var ciudad = await ObtenerCiudadActivaAsync(agencia.CiudadId);
+            agencia.TipoAgenciaId = await ObtenerTipoAgenciaSegunCiudadAsync(ciudad);
 
-            // -------------------------------------------------
-            // VALIDAR CIUDAD
-            // -------------------------------------------------
+            var codigo = agencia.Codigo.ToUpper();
 
-            var ciudad = await _context.Ciudades
-                .AsNoTracking()
-                .FirstOrDefaultAsync(c =>
-                    c.Id == agencia.CiudadId);
+            if (await _context.Agencias.AsNoTracking()
+                .AnyAsync(a => a.Id != agencia.Id && a.Codigo.ToUpper() == codigo))
+                throw new InvalidOperationException("Ya existe otra agencia con ese código.");
 
-            if (ciudad == null)
-            {
-                throw new ArgumentException(
-                    "La ciudad seleccionada no existe.");
-            }
+            if (existente.Activa && !agencia.Activa)
+                await PrepararDesactivacionAgenciaAsync(agencia.Id);
 
-            if (!ciudad.Activa)
-            {
-                throw new InvalidOperationException(
-                    "La ciudad seleccionada está inactiva.");
-            }
-
-            // -------------------------------------------------
-            // VALIDAR TIPO DE AGENCIA
-            // -------------------------------------------------
-
-            var tipoAgencia = await _context.TiposAgencia
-                .AsNoTracking()
-                .FirstOrDefaultAsync(t =>
-                    t.Id == agencia.TipoAgenciaId);
-
-            if (tipoAgencia == null)
-            {
-                throw new ArgumentException(
-                    "El tipo de agencia seleccionado no existe.");
-            }
-
-            if (!tipoAgencia.Activo)
-            {
-                throw new InvalidOperationException(
-                    "El tipo de agencia seleccionado está inactivo.");
-            }
-
-            // -------------------------------------------------
-            // VALIDAR CÓDIGO ÚNICO
-            // -------------------------------------------------
-
-            var codigoNormalizado =
-                agencia.Codigo.ToUpper();
-
-            var codigoExiste =
-                await _context.Agencias
-                    .AsNoTracking()
-                    .AnyAsync(a =>
-                        a.Id != agencia.Id &&
-                        a.Codigo.ToUpper() ==
-                        codigoNormalizado);
-
-            if (codigoExiste)
-            {
-                throw new InvalidOperationException(
-                    "Ya existe otra agencia con ese código.");
-            }
-
-            await _repository.ActualizarAsync(
-                agencia);
+            await _repository.ActualizarAsync(agencia);
         }
 
-        // =====================================================
-        // DESACTIVAR
-        // =====================================================
+        public Task EliminarAsync(int id) => CambiarEstadoAsync(id, false);
 
-        public async Task EliminarAsync(int id)
+        public async Task CambiarEstadoAsync(int id, bool activa)
         {
             if (id <= 0)
-            {
-                throw new ArgumentException(
-                    "El identificador de la agencia no es válido.");
-            }
+                throw new ArgumentException("El identificador de la agencia no es válido.");
 
-            var agencia =
-                await _repository.ObtenerPorIdAsync(id);
+            var agencia = await _context.Agencias.FirstOrDefaultAsync(a => a.Id == id);
 
             if (agencia == null)
-            {
-                throw new InvalidOperationException(
-                    "La agencia no existe.");
-            }
+                throw new InvalidOperationException("La agencia no existe.");
 
-            if (!agencia.Activa)
-            {
+            if (agencia.Activa == activa)
                 throw new InvalidOperationException(
-                    "La agencia ya está desactivada.");
-            }
+                    activa ? "La agencia ya está activa." : "La agencia ya está desactivada.");
 
-            await _repository.EliminarAsync(
-                agencia);
+            if (!activa)
+                await PrepararDesactivacionAgenciaAsync(id);
+
+            agencia.Activa = activa;
+            agencia.FechaModificacion = DateTime.Now;
+            await _context.SaveChangesAsync();
         }
 
-        // =====================================================
-        // VALIDACIONES BÁSICAS
-        // =====================================================
-
-        private static void ValidarDatosBasicos(
-            Agencia agencia)
+        private async Task<Ciudad> ObtenerCiudadActivaAsync(int ciudadId)
         {
-            if (string.IsNullOrWhiteSpace(
-                agencia.Codigo))
-            {
-                throw new ArgumentException(
-                    "El código de la agencia es obligatorio.");
-            }
+            var ciudad = await _context.Ciudades.AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == ciudadId);
 
-            if (string.IsNullOrWhiteSpace(
-                agencia.Nombre))
-            {
-                throw new ArgumentException(
-                    "El nombre de la agencia es obligatorio.");
-            }
+            if (ciudad == null)
+                throw new ArgumentException("La ciudad seleccionada no existe.");
 
+            if (!ciudad.Activa)
+                throw new InvalidOperationException("La ciudad seleccionada está inactiva.");
+
+            return ciudad;
+        }
+
+        private async Task<int> ObtenerTipoAgenciaSegunCiudadAsync(Ciudad ciudad)
+        {
+            var nombre = ciudad.Nombre.Trim();
+            var esLocal =
+                nombre.Equals("San Pedro Sula", StringComparison.OrdinalIgnoreCase) ||
+                nombre.Equals("La Ceiba", StringComparison.OrdinalIgnoreCase) ||
+                nombre.Equals("Distrito Central", StringComparison.OrdinalIgnoreCase);
+
+            var tipos = await _context.TiposAgencia.AsNoTracking()
+                .Where(t => t.Activo)
+                .ToListAsync();
+
+            var tipo = tipos.FirstOrDefault(t =>
+                esLocal
+                    ? t.Nombre.Equals("Local", StringComparison.OrdinalIgnoreCase)
+                    : t.Nombre.Equals("Foránea", StringComparison.OrdinalIgnoreCase) ||
+                      t.Nombre.Equals("Foranea", StringComparison.OrdinalIgnoreCase));
+
+            if (tipo == null)
+                throw new InvalidOperationException(
+                    esLocal
+                        ? "No existe un tipo de agencia Local activo."
+                        : "No existe un tipo de agencia Foránea activo.");
+
+            return tipo.Id;
+        }
+
+        private async Task PrepararDesactivacionAgenciaAsync(int agenciaId)
+        {
+            var mantenimientoEnProceso = await _context.Mantenimientos
+                .AsNoTracking()
+                .AnyAsync(m =>
+                    m.UPS != null &&
+                    m.UPS.AgenciaId == agenciaId &&
+                    m.EstadoMantenimiento != null &&
+                    m.EstadoMantenimiento.Nombre == "En proceso");
+
+            if (mantenimientoEnProceso)
+                throw new InvalidOperationException(
+                    "No se puede desactivar la agencia mientras tenga mantenimientos En proceso.");
+
+            var estadoResguardo = await _context.EstadosUPS
+                .FirstOrDefaultAsync(e => e.Activo && e.Nombre == "En resguardo");
+
+            if (estadoResguardo == null)
+                throw new InvalidOperationException(
+                    "No existe el estado de UPS 'En resguardo'. Reinicie la API para cargar los catálogos.");
+
+            var equipos = await _context.UPSs
+                .Include(u => u.EstadoUPS)
+                .Where(u => u.AgenciaId == agenciaId)
+                .ToListAsync();
+
+            foreach (var equipo in equipos)
+            {
+                if (equipo.EstadoUPS?.Nombre.Equals(
+                        "De baja", StringComparison.OrdinalIgnoreCase) == true)
+                    continue;
+
+                equipo.EstadoUPSId = estadoResguardo.Id;
+                equipo.FechaModificacion = DateTime.Now;
+            }
+        }
+
+        private static void ValidarDatosBasicos(Agencia agencia)
+        {
+            if (string.IsNullOrWhiteSpace(agencia.Codigo))
+                throw new ArgumentException("El código de la agencia es obligatorio.");
+            if (string.IsNullOrWhiteSpace(agencia.Nombre))
+                throw new ArgumentException("El nombre de la agencia es obligatorio.");
             if (agencia.CiudadId <= 0)
-            {
-                throw new ArgumentException(
-                    "Debe seleccionar una ciudad.");
-            }
-
-            if (agencia.TipoAgenciaId <= 0)
-            {
-                throw new ArgumentException(
-                    "Debe seleccionar el tipo de agencia.");
-            }
+                throw new ArgumentException("Debe seleccionar una ciudad.");
+            if (string.IsNullOrWhiteSpace(agencia.Direccion))
+                throw new ArgumentException("La dirección de la agencia es obligatoria.");
         }
 
-        // =====================================================
-        // LIMPIAR DATOS
-        // =====================================================
-
-        private static void LimpiarDatos(
-            Agencia agencia)
+        private static void LimpiarDatos(Agencia agencia)
         {
-            agencia.Codigo =
-                agencia.Codigo?.Trim()
-                ?? string.Empty;
-
-            agencia.Nombre =
-                agencia.Nombre?.Trim()
-                ?? string.Empty;
-
-            agencia.Direccion =
-                agencia.Direccion?.Trim()
-                ?? string.Empty;
+            agencia.Codigo = agencia.Codigo?.Trim() ?? string.Empty;
+            agencia.Nombre = agencia.Nombre?.Trim() ?? string.Empty;
+            agencia.Direccion = agencia.Direccion?.Trim() ?? string.Empty;
         }
     }
 }

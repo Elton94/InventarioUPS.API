@@ -279,6 +279,33 @@ export default function NuevoUPSModal({
             return;
         }
 
+        if (ups) {
+            const nuevoEstado =
+                estados.find(
+                    (e) =>
+                        Number(e.id) ===
+                        Number(
+                            formulario.estadoUPSId
+                        )
+                )?.nombre || "";
+
+            const cambioImportante =
+                nuevoEstado !== ups.estado &&
+                [
+                    "Fuera de servicio",
+                    "De baja"
+                ].includes(nuevoEstado);
+
+            if (
+                cambioImportante &&
+                !window.confirm(
+                    `El UPS cambiará de "${ups.estado}" a "${nuevoEstado}". Este cambio de estado es importante. ¿Desea continuar?`
+                )
+            ) {
+                return;
+            }
+        }
+
         try {
             setGuardando(true);
 

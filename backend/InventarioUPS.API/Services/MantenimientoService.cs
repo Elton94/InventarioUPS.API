@@ -173,8 +173,7 @@ namespace InventarioUPS.API.Services
             {
                 // Si el registro estaba En proceso y se devuelve a Programado,
                 // el UPS debe recuperar el estado que tenía antes.
-                if (EsEstado(ups.EstadoUPS?.Nombre, "En mantenimiento") &&
-                    mantenimiento.EstadoUPSAnteriorId.HasValue)
+                if (mantenimiento.EstadoUPSAnteriorId.HasValue)
                 {
                     var anterior = await _context.EstadosUPS
                         .FirstOrDefaultAsync(e =>

@@ -62,6 +62,12 @@ namespace InventarioUPS.API.Services
                 throw new InvalidOperationException(
                     "Un UPS dado De baja no puede volver a un estado operativo.");
 
+            if (EsEstado(estadoDestino.Nombre, "De baja") &&
+                !EsEstado(existente.EstadoUPS?.Nombre, "De baja"))
+            {
+                await ValidarSinMantenimientoPendienteAsync(ups.Id);
+            }
+
             if (await _repository.ExisteCodigoExceptoIdAsync(ups.Codigo, ups.Id))
                 throw new InvalidOperationException("Ya existe otro UPS con ese código.");
 
@@ -132,19 +138,25 @@ namespace InventarioUPS.API.Services
 
             if (EsEstado(destino.Nombre, "De baja"))
             {
-                var pendiente = await _context.Mantenimientos.AsNoTracking()
-                    .AnyAsync(m =>
-                        m.UPSId == id &&
-                        m.EstadoMantenimiento != null &&
-                        (m.EstadoMantenimiento.Nombre == "Programado" ||
-                         m.EstadoMantenimiento.Nombre == "En proceso"));
-
-                if (pendiente)
-                    throw new InvalidOperationException(
-                        "No se puede dar de baja el UPS mientras tenga mantenimientos Programados o En proceso.");
+                await ValidarSinMantenimientoPendienteAsync(id);
             }
 
             await _repository.CambiarEstadoAsync(id, destino.Nombre);
+        }
+
+        private async Task ValidarSinMantenimientoPendienteAsync(int upsId)
+        {
+            var pendiente = await _context.Mantenimientos
+                .AsNoTracking()
+                .AnyAsync(m =>
+                    m.UPSId == upsId &&
+                    m.EstadoMantenimiento != null &&
+                    (m.EstadoMantenimiento.Nombre == "Programado" ||
+                     m.EstadoMantenimiento.Nombre == "En proceso"));
+
+            if (pendiente)
+                throw new InvalidOperationException(
+                    "No se puede dar de baja el UPS mientras tenga mantenimientos Programados o En proceso.");
         }
 
         private static void ValidarYLimpia(UPS ups)

@@ -483,11 +483,59 @@ namespace InventarioUPS.API.Data
             }
 
             await context.SaveChangesAsync();
+
+            // Mantener consistente la regla Local / Foránea también
+            // para agencias creadas antes de esta versión.
+            await NormalizarTiposAgenciaAsync(
+                context,
+                tipoLocal.Id,
+                tipoForanea.Id);
         }
 
         // =====================================================
         // MÉTODOS AUXILIARES
         // =====================================================
+
+        private static async Task NormalizarTiposAgenciaAsync(
+            InventarioUPSDbContext context,
+            int tipoLocalId,
+            int tipoForaneaId)
+        {
+            var agencias = await context.Agencias
+                .Include(a => a.Ciudad)
+                .ToListAsync();
+
+            foreach (var agencia in agencias)
+            {
+                var ciudad =
+                    agencia.Ciudad?.Nombre?.Trim()
+                    ?? string.Empty;
+
+                var esLocal =
+                    ciudad.Equals(
+                        "San Pedro Sula",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    ciudad.Equals(
+                        "La Ceiba",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    ciudad.Equals(
+                        "Distrito Central",
+                        StringComparison.OrdinalIgnoreCase);
+
+                var tipoCorrecto =
+                    esLocal
+                        ? tipoLocalId
+                        : tipoForaneaId;
+
+                if (agencia.TipoAgenciaId != tipoCorrecto)
+                {
+                    agencia.TipoAgenciaId = tipoCorrecto;
+                    agencia.FechaModificacion = DateTime.Now;
+                }
+            }
+
+            await context.SaveChangesAsync();
+        }
 
         private static async Task<TipoAgencia> ObtenerOCrearTipoAgencia(
             InventarioUPSDbContext context,

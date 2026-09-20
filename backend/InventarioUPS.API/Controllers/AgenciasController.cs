@@ -102,7 +102,7 @@ namespace InventarioUPS.API.Controllers
                 return Ok(new
                 {
                     mensaje = activa
-                        ? "Agencia activada correctamente."
+                        ? "Agencia activada correctamente. Los UPS asociados permanecen En resguardo hasta que se revise y actualice su estado."
                         : "Agencia desactivada correctamente. Sus UPS disponibles quedaron En resguardo."
                 });
             }

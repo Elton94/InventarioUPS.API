@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace InventarioUPS.API.Controllers
 {
@@ -106,7 +107,7 @@ namespace InventarioUPS.API.Controllers
         // =====================================================
 
         [HttpGet("roles")]
-        [PermisoAuthorize("GESTIONAR_USUARIOS")]
+        [PermisoAuthorize("GESTIONAR_USUARIOS", "GESTIONAR_ROLES_PERMISOS")]
         public async Task<ActionResult<List<Rol>>>
             ObtenerRoles()
         {
@@ -114,6 +115,49 @@ namespace InventarioUPS.API.Controllers
                 await _repository.ObtenerRolesAsync();
 
             return Ok(roles);
+        }
+
+        // =====================================================
+        // RESPONSABLES DE MANTENIMIENTO
+        // Usuarios activos cuyo rol puede crear o editar mantenimiento.
+        // Control Total también se incluye.
+        // =====================================================
+
+        [HttpGet("responsables-mantenimiento")]
+        [PermisoAuthorize("CREAR_MANTENIMIENTO", "EDITAR_MANTENIMIENTO")]
+        public async Task<ActionResult> ObtenerResponsablesMantenimiento()
+        {
+            var rolesConPermiso = await _context.RolPermisos
+                .AsNoTracking()
+                .Where(rp =>
+                    rp.Permiso != null &&
+                    rp.Permiso.Activo &&
+                    (rp.Permiso.Codigo == "CREAR_MANTENIMIENTO" ||
+                     rp.Permiso.Codigo == "EDITAR_MANTENIMIENTO"))
+                .Select(rp => rp.RolId)
+                .Distinct()
+                .ToListAsync();
+
+            var usuarios = await _context.Usuarios
+                .AsNoTracking()
+                .Include(u => u.Rol)
+                .Where(u =>
+                    u.Activo &&
+                    u.Rol != null &&
+                    u.Rol.Activo &&
+                    (u.Rol.Nombre == RolControlTotal ||
+                     rolesConPermiso.Contains(u.RolId)))
+                .OrderBy(u => u.NombreCompleto)
+                .Select(u => new
+                {
+                    id = u.Id,
+                    nombreUsuario = u.NombreUsuario,
+                    nombreCompleto = u.NombreCompleto,
+                    rolNombre = u.Rol!.Nombre
+                })
+                .ToListAsync();
+
+            return Ok(usuarios);
         }
 
         // =====================================================
@@ -253,7 +297,7 @@ namespace InventarioUPS.API.Controllers
             // -------------------------------------------------
 
             if (EsControlTotal(rol.Nombre) &&
-                !TienePermisoGestionarRoles())
+                !await TienePermisoGestionarRolesAsync())
             {
                 return Forbid();
             }
@@ -314,6 +358,16 @@ namespace InventarioUPS.API.Controllers
             {
                 return NotFound(
                     "El usuario no existe.");
+            }
+
+            var usuarioActualId = ObtenerUsuarioActualId();
+
+            if (!request.Activo &&
+                usuarioActualId.HasValue &&
+                usuarioActualId.Value == id)
+            {
+                return BadRequest(
+                    "No puede desactivar su propio usuario desde la sesión actual.");
             }
 
             var nombreCompleto =
@@ -389,7 +443,7 @@ namespace InventarioUPS.API.Controllers
 
             if (nuevoEsControlTotal &&
                 !esActualmenteControlTotal &&
-                !TienePermisoGestionarRoles())
+                !await TienePermisoGestionarRolesAsync())
             {
                 return Forbid();
             }
@@ -427,6 +481,20 @@ namespace InventarioUPS.API.Controllers
             usuario.Activo =
                 request.Activo;
 
+            if (!string.IsNullOrWhiteSpace(request.NuevaPassword))
+            {
+                if (!CumplePoliticaPassword(request.NuevaPassword))
+                {
+                    return BadRequest(
+                        "La nueva contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.");
+                }
+
+                usuario.PasswordHash =
+                    _passwordHasher.HashPassword(
+                        usuario,
+                        request.NuevaPassword);
+            }
+
             usuario.FechaModificacion =
                 DateTime.Now;
 
@@ -460,6 +528,16 @@ namespace InventarioUPS.API.Controllers
             {
                 return NotFound(
                     "El usuario no existe.");
+            }
+
+            var usuarioActualId = ObtenerUsuarioActualId();
+
+            if (!activo &&
+                usuarioActualId.HasValue &&
+                usuarioActualId.Value == id)
+            {
+                return BadRequest(
+                    "No puede desactivar su propio usuario desde la sesión actual.");
             }
 
             var rolNombre =
@@ -958,22 +1036,45 @@ namespace InventarioUPS.API.Controllers
                 StringComparison.OrdinalIgnoreCase);
         }
 
-        private bool TienePermisoGestionarRoles()
+        private async Task<bool> TienePermisoGestionarRolesAsync()
         {
-            var usuario =
-                HttpContext.User;
+            var usuarioId = ObtenerUsuarioActualId();
 
-            if (usuario.IsInRole(RolControlTotal))
-            {
+            if (!usuarioId.HasValue)
+                return false;
+
+            var usuario = await _context.Usuarios
+                .AsNoTracking()
+                .Include(u => u.Rol)
+                .FirstOrDefaultAsync(u =>
+                    u.Id == usuarioId.Value &&
+                    u.Activo);
+
+            if (usuario?.Rol == null || !usuario.Rol.Activo)
+                return false;
+
+            if (EsControlTotal(usuario.Rol.Nombre))
                 return true;
-            }
 
-            return usuario.Claims.Any(
-                claim =>
-                    claim.Type == "Permiso" &&
-                    claim.Value.Equals(
-                        PermisoGestionarRoles,
-                        StringComparison.OrdinalIgnoreCase));
+            return await _context.RolPermisos
+                .AsNoTracking()
+                .AnyAsync(rp =>
+                    rp.RolId == usuario.RolId &&
+                    rp.Permiso != null &&
+                    rp.Permiso.Activo &&
+                    rp.Permiso.Codigo == PermisoGestionarRoles);
+        }
+
+        private int? ObtenerUsuarioActualId()
+        {
+            var valor =
+                HttpContext.User
+                    .FindFirst(ClaimTypes.NameIdentifier)
+                    ?.Value;
+
+            return int.TryParse(valor, out var id)
+                ? id
+                : null;
         }
 
         private static bool EsCorreoValido(

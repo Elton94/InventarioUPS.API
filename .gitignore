@@ -27,3 +27,8 @@ backend/**/obj/
 # ===========================
 .DS_Store
 Thumbs.db
+# Respaldos locales de migraciones antiguas
+backend/Migrations_Backup/
+
+# Auditoría local generada por la API
+backend/**/App_Data/

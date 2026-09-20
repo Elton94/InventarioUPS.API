@@ -3,33 +3,38 @@ GO
 
 /* Ejecutar una sola vez desde SQL Server Management Studio. */
 
-IF COL_LENGTH('UPSs', 'FechaUltimoCambioBateriasBase') IS NULL
+IF COL_LENGTH('dbo.UPSs', 'FechaUltimoCambioBateriasBase') IS NULL
 BEGIN
-    ALTER TABLE UPSs ADD FechaUltimoCambioBateriasBase datetime2 NULL;
-
-    UPDATE UPSs
-    SET FechaUltimoCambioBateriasBase = FechaUltimoCambioBaterias
-    WHERE FechaUltimoCambioBaterias IS NOT NULL;
+    ALTER TABLE dbo.UPSs
+    ADD FechaUltimoCambioBateriasBase datetime2 NULL;
 END;
 GO
 
-IF COL_LENGTH('Mantenimientos', 'AgenciaIdRegistro') IS NULL
+UPDATE dbo.UPSs
+SET FechaUltimoCambioBateriasBase = FechaUltimoCambioBaterias
+WHERE FechaUltimoCambioBaterias IS NOT NULL
+  AND FechaUltimoCambioBateriasBase IS NULL;
+GO
+
+IF COL_LENGTH('dbo.Mantenimientos', 'AgenciaIdRegistro') IS NULL
 BEGIN
-    ALTER TABLE Mantenimientos ADD AgenciaIdRegistro int NULL;
+    ALTER TABLE dbo.Mantenimientos
+    ADD AgenciaIdRegistro int NULL;
 END;
 GO
 
-IF COL_LENGTH('Mantenimientos', 'AgenciaNombreRegistro') IS NULL
+IF COL_LENGTH('dbo.Mantenimientos', 'AgenciaNombreRegistro') IS NULL
 BEGIN
-    ALTER TABLE Mantenimientos
+    ALTER TABLE dbo.Mantenimientos
     ADD AgenciaNombreRegistro nvarchar(150) NOT NULL
         CONSTRAINT DF_Mantenimientos_AgenciaNombreRegistro DEFAULT('');
 END;
 GO
 
-IF COL_LENGTH('Mantenimientos', 'EstadoUPSAnteriorId') IS NULL
+IF COL_LENGTH('dbo.Mantenimientos', 'EstadoUPSAnteriorId') IS NULL
 BEGIN
-    ALTER TABLE Mantenimientos ADD EstadoUPSAnteriorId int NULL;
+    ALTER TABLE dbo.Mantenimientos
+    ADD EstadoUPSAnteriorId int NULL;
 END;
 GO
 
@@ -42,25 +47,27 @@ SET
                 THEN A.Nombre
             ELSE M.AgenciaNombreRegistro
         END
-FROM Mantenimientos M
-INNER JOIN UPSs U ON U.Id = M.UPSId
-INNER JOIN Agencias A ON A.Id = U.AgenciaId;
+FROM dbo.Mantenimientos M
+INNER JOIN dbo.UPSs U
+    ON U.Id = M.UPSId
+INNER JOIN dbo.Agencias A
+    ON A.Id = U.AgenciaId;
 GO
 
-
 /* ============================================================
-   NORMALIZAR BASE HISTÓRICA DE BATERÍAS
+   NORMALIZAR BASE HISTORICA DE BATERIAS
    Si la fecha actual coincide con un mantenimiento Completado
-   que cambió baterías, esa fecha pertenece al historial y no a
+   que cambio baterias, esa fecha pertenece al historial y no a
    la base manual original.
    ============================================================ */
+
 ;WITH UltimoCambio AS
 (
     SELECT
         M.UPSId,
         MAX(M.FechaMantenimiento) AS FechaUltimoCompletado
-    FROM Mantenimientos M
-    INNER JOIN EstadosMantenimiento E
+    FROM dbo.Mantenimientos M
+    INNER JOIN dbo.EstadosMantenimiento E
         ON E.Id = M.EstadoMantenimientoId
     WHERE
         M.IncluyeCambioBaterias = 1
@@ -69,7 +76,7 @@ GO
 )
 UPDATE U
 SET U.FechaUltimoCambioBateriasBase = NULL
-FROM UPSs U
+FROM dbo.UPSs U
 INNER JOIN UltimoCambio C
     ON C.UPSId = U.Id
 WHERE

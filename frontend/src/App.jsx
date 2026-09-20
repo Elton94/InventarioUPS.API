@@ -5,62 +5,71 @@ import {
     Navigate
 } from "react-router-dom";
 
-import MainLayout from "./layouts/MainLayout";
+import MainLayout
+    from "./layouts/MainLayout";
 
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Agencias from "./pages/Agencias";
 import UPS from "./pages/UPS";
-import Baterias from "./pages/Baterias";
-import Mantenimientos from "./pages/Mantenimientos";
-import Presupuesto from "./pages/Presupuesto";
+import Mantenimientos
+    from "./pages/Mantenimientos";
+import Presupuesto
+    from "./pages/Presupuesto";
 import Usuarios from "./pages/Usuarios";
 
-import ProtectedRoute from "./components/auth/ProtectedRoute";
+import ProtectedRoute
+    from "./components/auth/ProtectedRoute";
 
+import {
+    obtenerRutaInicial
+} from "./services/permisos";
 
-function App() {
-
+function RutaInicial() {
     return (
+        <Navigate
+            to={obtenerRutaInicial()}
+            replace
+        />
+    );
+}
 
+function SinPermisos() {
+    return (
+        <div
+            style={{
+                padding: 32,
+                textAlign: "center"
+            }}
+        >
+            <h2>Sin permisos asignados</h2>
+            <p>
+                Su usuario está activo, pero no tiene
+                permisos para utilizar módulos del sistema.
+                Contacte al administrador.
+            </p>
+        </div>
+    );
+}
+
+export default function App() {
+    return (
         <BrowserRouter>
-
             <Routes>
-
-                {/* =====================================================
-                    LOGIN
-                ===================================================== */}
-
                 <Route
                     path="/login"
                     element={<Login />}
                 />
 
-
-                {/* =====================================================
-                    ZONA PROTEGIDA
-                ===================================================== */}
-
                 <Route
                     element={<ProtectedRoute />}
                 >
-
                     <Route
                         element={<MainLayout />}
                     >
-
-                        {/* -------------------------------------------------
-                            INICIO
-                        ------------------------------------------------- */}
-
                         <Route
                             path="/"
-                            element={
-                                <Navigate
-                                    to="/inicio"
-                                    replace
-                                />
-                            }
+                            element={<RutaInicial />}
                         />
 
                         <Route
@@ -70,18 +79,11 @@ function App() {
                                 />
                             }
                         >
-
                             <Route
                                 path="/inicio"
                                 element={<Home />}
                             />
-
                         </Route>
-
-
-                        {/* -------------------------------------------------
-                            AGENCIAS
-                        ------------------------------------------------- */}
 
                         <Route
                             element={
@@ -90,18 +92,11 @@ function App() {
                                 />
                             }
                         >
-
                             <Route
                                 path="/agencias"
                                 element={<Agencias />}
                             />
-
                         </Route>
-
-
-                        {/* -------------------------------------------------
-                            UPS
-                        ------------------------------------------------- */}
 
                         <Route
                             element={
@@ -110,25 +105,11 @@ function App() {
                                 />
                             }
                         >
-
                             <Route
                                 path="/ups"
                                 element={<UPS />}
                             />
-
-                            {/* Baterías pertenece al módulo UPS */}
-
-                            <Route
-                                path="/baterias"
-                                element={<Baterias />}
-                            />
-
                         </Route>
-
-
-                        {/* -------------------------------------------------
-                            MANTENIMIENTO
-                        ------------------------------------------------- */}
 
                         <Route
                             element={
@@ -137,20 +118,13 @@ function App() {
                                 />
                             }
                         >
-
                             <Route
                                 path="/mantenimientos"
                                 element={
                                     <Mantenimientos />
                                 }
                             />
-
                         </Route>
-
-
-                        {/* -------------------------------------------------
-                            PRESUPUESTO
-                        ------------------------------------------------- */}
 
                         <Route
                             element={
@@ -159,61 +133,42 @@ function App() {
                                 />
                             }
                         >
-
                             <Route
                                 path="/presupuesto"
                                 element={
                                     <Presupuesto />
                                 }
                             />
-
                         </Route>
-
-
-                        {/* -------------------------------------------------
-                            USUARIOS
-                        ------------------------------------------------- */}
 
                         <Route
                             element={
                                 <ProtectedRoute
-                                    permiso="GESTIONAR_USUARIOS"
+                                    permisos={[
+                                        "GESTIONAR_USUARIOS",
+                                        "GESTIONAR_ROLES_PERMISOS"
+                                    ]}
                                 />
                             }
                         >
-
                             <Route
                                 path="/usuarios"
                                 element={<Usuarios />}
                             />
-
                         </Route>
 
+                        <Route
+                            path="/sin-permisos"
+                            element={<SinPermisos />}
+                        />
                     </Route>
-
                 </Route>
-
-
-                {/* =====================================================
-                    RUTA DESCONOCIDA
-                ===================================================== */}
 
                 <Route
                     path="*"
-                    element={
-                        <Navigate
-                            to="/inicio"
-                            replace
-                        />
-                    }
+                    element={<RutaInicial />}
                 />
-
             </Routes>
-
         </BrowserRouter>
-
     );
 }
-
-
-export default App;

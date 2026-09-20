@@ -2,87 +2,66 @@ import api from "./api";
 
 const API_URL = "/UPS";
 
-export const obtenerUPS = async () => {
-    const response = await api.get(API_URL);
+export const obtenerUPS = async () =>
+    (await api.get(API_URL)).data;
 
-    return response.data;
-};
+export const obtenerUPSPorId =
+    async (id) =>
+        (
+            await api.get(
+                `${API_URL}/${id}`
+            )
+        ).data;
 
-export const obtenerUPSPorId = async (id) => {
-    const response = await api.get(
-        `${API_URL}/${id}`
-    );
+const mapear = (ups, id = 0) => ({
+    id: Number(id || ups.id || 0),
+    codigo: ups.codigo?.trim(),
+    marca: ups.marca?.trim(),
+    modelo: ups.modelo?.trim(),
+    numeroSerie:
+        ups.numeroSerie?.trim(),
+    capacidadVA:
+        Number(ups.capacidadVA),
+    agenciaId:
+        Number(ups.agenciaId),
+    estadoUPSId:
+        Number(ups.estadoUPSId),
+    fechaInstalacion:
+        ups.fechaInstalacion,
+    cantidadBaterias:
+        Number(ups.cantidadBaterias),
+    fechaUltimoCambioBaterias:
+        ups.fechaUltimoCambioBaterias ||
+        null
+});
 
-    return response.data;
-};
+export const crearUPS = async (ups) =>
+    (
+        await api.post(
+            API_URL,
+            mapear(ups)
+        )
+    ).data;
 
-export const crearUPS = async (ups) => {
-    const datos = {
-        codigo: ups.codigo?.trim(),
-        marca: ups.marca?.trim(),
-        modelo: ups.modelo?.trim(),
-        numeroSerie: ups.numeroSerie?.trim(),
-        capacidadVA: Number(ups.capacidadVA),
-        agenciaId: Number(ups.agenciaId),
-        estadoUPSId: Number(ups.estadoUPSId),
-        fechaInstalacion: ups.fechaInstalacion,
-        cantidadBaterias: Number(
-            ups.cantidadBaterias || 0
-        ),
-        fechaUltimoCambioBaterias:
-            ups.fechaUltimoCambioBaterias || null
-    };
+export const actualizarUPS =
+    async (id, ups) =>
+        (
+            await api.put(
+                `${API_URL}/${id}`,
+                mapear(ups, id)
+            )
+        ).data;
 
-    const response = await api.post(
-        API_URL,
-        datos
-    );
-
-    return response.data;
-};
-
-export const actualizarUPS = async (
-    id,
-    ups
-) => {
-    const datos = {
-        id: Number(id),
-        codigo: ups.codigo?.trim(),
-        marca: ups.marca?.trim(),
-        modelo: ups.modelo?.trim(),
-        numeroSerie: ups.numeroSerie?.trim(),
-        capacidadVA: Number(ups.capacidadVA),
-        agenciaId: Number(ups.agenciaId),
-        estadoUPSId: Number(ups.estadoUPSId),
-        fechaInstalacion: ups.fechaInstalacion,
-        cantidadBaterias: Number(
-            ups.cantidadBaterias || 0
-        ),
-        fechaUltimoCambioBaterias:
-            ups.fechaUltimoCambioBaterias || null
-    };
-
-    const response = await api.put(
-        `${API_URL}/${id}`,
-        datos
-    );
-
-    return response.data;
-};
-
-export const cambiarEstadoUPS = async (
-    id,
-    estado
-) => {
-    const response = await api.patch(
-        `${API_URL}/${id}/estado`,
-        null,
-        {
-            params: {
-                estado
-            }
-        }
-    );
-
-    return response.data;
-};
+export const cambiarEstadoUPS =
+    async (id, estado) =>
+        (
+            await api.patch(
+                `${API_URL}/${id}/estado`,
+                null,
+                {
+                    params: {
+                        estado
+                    }
+                }
+            )
+        ).data;

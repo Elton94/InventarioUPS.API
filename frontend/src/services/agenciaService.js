@@ -2,73 +2,84 @@ import api from "./api";
 
 const API_URL = "/Agencias";
 
-export const obtenerAgencias = async () => {
-    const response = await api.get(API_URL);
+export const obtenerAgencias = async () =>
+    (await api.get(API_URL)).data;
 
-    return response.data;
-};
+export const obtenerAgenciaPorId = async (
+    id
+) =>
+    (
+        await api.get(
+            `${API_URL}/${id}`
+        )
+    ).data;
 
-export const obtenerAgenciaPorId = async (id) => {
-    const response = await api.get(`${API_URL}/${id}`);
-
-    return response.data;
-};
-
-export const crearAgencia = async (agencia) => {
-    const datos = {
-        codigo: agencia.codigo?.trim(),
-        nombre: agencia.nombre?.trim(),
-        ciudadId: Number(
-            agencia.ciudadId ?? agencia.ciudad
-        ),
-        direccion: agencia.direccion?.trim() || "",
-        tipoAgenciaId: Number(
-            agencia.tipoAgenciaId ?? agencia.tipoAgencia
-        ),
-        activa: true
-    };
-
-    const response = await api.post(
-        API_URL,
-        datos
-    );
-
-    return response.data;
-};
+export const crearAgencia = async (
+    agencia
+) =>
+    (
+        await api.post(
+            API_URL,
+            {
+                codigo:
+                    agencia.codigo?.trim(),
+                nombre:
+                    agencia.nombre?.trim(),
+                ciudadId:
+                    Number(
+                        agencia.ciudadId
+                    ),
+                direccion:
+                    agencia.direccion?.trim(),
+                tipoAgenciaId:
+                    Number(
+                        agencia
+                            .tipoAgenciaId ||
+                        0
+                    ),
+                activa: true
+            }
+        )
+    ).data;
 
 export const actualizarAgencia = async (
     id,
     agencia
-) => {
-    const datos = {
-        id: Number(id),
-        codigo: agencia.codigo?.trim(),
-        nombre: agencia.nombre?.trim(),
-        ciudadId: Number(
-            agencia.ciudadId ?? agencia.ciudad
-        ),
-        direccion: agencia.direccion?.trim() || "",
-        tipoAgenciaId: Number(
-            agencia.tipoAgenciaId ?? agencia.tipoAgencia
-        ),
-        activa:
-            agencia.activa !== undefined
-                ? agencia.activa
-                : true
-    };
+) =>
+    (
+        await api.put(
+            `${API_URL}/${id}`,
+            {
+                id: Number(id),
+                codigo:
+                    agencia.codigo?.trim(),
+                nombre:
+                    agencia.nombre?.trim(),
+                ciudadId:
+                    Number(
+                        agencia.ciudadId
+                    ),
+                direccion:
+                    agencia.direccion?.trim(),
+                tipoAgenciaId:
+                    Number(
+                        agencia
+                            .tipoAgenciaId ||
+                        0
+                    ),
+                activa:
+                    agencia.activa !==
+                    false
+            }
+        )
+    ).data;
 
-    const response = await api.put(
-        `${API_URL}/${id}`,
-        datos
-    );
-
-    return response.data;
-};
-
-export const desactivarAgencia = async (id) => {
-    const response = await api.delete(
-        `${API_URL}/${id}`
-    );
-
-    return response.data;
-};
+export const cambiarEstadoAgencia =
+    async (id, activa) =>
+        (
+            await api.patch(
+                `${API_URL}/${id}/estado`,
+                null,
+                { params: { activa } }
+            )
+        ).data;

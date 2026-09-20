@@ -1,66 +1,77 @@
 import api from "./api";
 
-export const obtenerCatalogos = async () => {
-    const response = await api.get(
-        "/Catalogos/todos"
-    );
+export const obtenerCatalogos = async () =>
+    (await api.get("/Catalogos/todos"))
+        .data;
 
-    return response.data;
-};
-
-export const obtenerDepartamentos = async () => {
-    const response = await api.get(
-        "/Catalogos/departamentos"
-    );
-
-    return response.data;
-};
+export const obtenerDepartamentos = async () =>
+    (
+        await api.get(
+            "/Catalogos/departamentos"
+        )
+    ).data;
 
 export const obtenerCiudades = async (
     departamentoId
-) => {
-    const response = await api.get(
-        "/Catalogos/ciudades",
-        {
-            params: {
-                departamentoId
+) =>
+    (
+        await api.get(
+            "/Catalogos/ciudades",
+            {
+                params: {
+                    departamentoId
+                }
             }
-        }
-    );
+        )
+    ).data;
 
-    return response.data;
-};
+export const obtenerTiposAgencia =
+    async () =>
+        (
+            await api.get(
+                "/Catalogos/tipos-agencia"
+            )
+        ).data;
 
-export const obtenerTiposAgencia = async () => {
-    const response = await api.get(
-        "/Catalogos/tipos-agencia"
-    );
-
-    return response.data;
-};
-
-export const obtenerEstadosUPS = async () => {
-    const response = await api.get(
-        "/Catalogos/estados-ups"
-    );
-
-    return response.data;
-};
+export const obtenerEstadosUPS =
+    async () =>
+        (
+            await api.get(
+                "/Catalogos/estados-ups"
+            )
+        ).data;
 
 export const obtenerTiposMantenimiento =
-    async () => {
-        const response = await api.get(
-            "/Catalogos/tipos-mantenimiento"
-        );
-
-        return response.data;
-    };
+    async () =>
+        (
+            await api.get(
+                "/Catalogos/tipos-mantenimiento"
+            )
+        ).data;
 
 export const obtenerEstadosMantenimiento =
-    async () => {
-        const response = await api.get(
-            "/Catalogos/estados-mantenimiento"
-        );
+    async () =>
+        (
+            await api.get(
+                "/Catalogos/estados-mantenimiento"
+            )
+        ).data;
 
-        return response.data;
-    };
+export const obtenerMarcasUPS =
+    async () =>
+        (
+            await api.get(
+                "/Catalogos/marcas-ups"
+            )
+        ).data;
+
+export const obtenerModelosUPS =
+    async (marca = "") =>
+        (
+            await api.get(
+                "/Catalogos/modelos-ups",
+                {
+                    params: { marca }
+                }
+            )
+        ).data;

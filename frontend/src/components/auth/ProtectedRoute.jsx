@@ -5,66 +5,60 @@ import {
 } from "react-router-dom";
 
 import {
-    tienePermiso
+    tienePermiso,
+    tieneAlgunPermiso,
+    tieneTodosLosPermisos,
+    obtenerRutaInicial
 } from "../../services/permisos";
 
-
 export default function ProtectedRoute({
-    permiso
+    permiso,
+    permisos,
+    modo = "alguno"
 }) {
-
-    const location =
-        useLocation();
-
+    const location = useLocation();
     const token =
         localStorage.getItem("token");
 
-
-    // =====================================================
-    // SIN SESIÓN
-    // =====================================================
-
     if (!token) {
-
         return (
             <Navigate
                 to="/login"
                 replace
-                state={{
-                    from: location
-                }}
+                state={{ from: location }}
             />
         );
-
     }
 
+    let autorizado = true;
 
-    // =====================================================
-    // RUTA SIN PERMISO ESPECÍFICO
-    // =====================================================
-
-    if (!permiso) {
-
-        return <Outlet />;
-
+    if (permiso) {
+        autorizado =
+            tienePermiso(permiso);
     }
 
+    if (
+        Array.isArray(permisos) &&
+        permisos.length > 0
+    ) {
+        autorizado =
+            modo === "todos"
+                ? tieneTodosLosPermisos(
+                    permisos
+                )
+                : tieneAlgunPermiso(
+                    permisos
+                );
+    }
 
-    // =====================================================
-    // VALIDAR PERMISO
-    // =====================================================
-
-    if (!tienePermiso(permiso)) {
-
+    if (!autorizado) {
         return (
             <Navigate
-                to="/inicio"
+                to={obtenerRutaInicial()}
                 replace
             />
         );
-
     }
-
 
     return <Outlet />;
 }

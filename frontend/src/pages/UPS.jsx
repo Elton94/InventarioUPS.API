@@ -1,230 +1,180 @@
-import { useEffect, useState } from "react";
-
-import NuevaUPSModal from "../components/ups/NuevoUPSModal";
+import {
+    useEffect,
+    useState
+} from "react";
 
 import {
+    Alert,
     Box,
     Button,
+    InputAdornment,
+    Snackbar,
     TextField,
     Typography
 } from "@mui/material";
 
-import AddIcon from "@mui/icons-material/Add";
-import SearchIcon from "@mui/icons-material/Search";
-import InputAdornment from "@mui/material/InputAdornment";
+import AddIcon
+    from "@mui/icons-material/Add";
+import SearchIcon
+    from "@mui/icons-material/Search";
 
-import UPSTable from "../components/ups/UPSTable";
+import NuevaUPSModal
+    from "../components/ups/NuevoUPSModal";
+import UPSTable
+    from "../components/ups/UPSTable";
 
 import {
     obtenerUPS,
     cambiarEstadoUPS
 } from "../services/upsService";
-
+import {
+    obtenerEstadosUPS
+} from "../services/catalogosService";
 import {
     tienePermiso
 } from "../services/permisos";
 
+const mensajeError = (
+    error,
+    predeterminado
+) =>
+    error.response?.data?.mensaje ||
+    error.response?.data?.message ||
+    predeterminado;
 
 export default function UPS() {
-
     const [ups, setUps] =
         useState([]);
-
+    const [estados, setEstados] =
+        useState([]);
     const [busqueda, setBusqueda] =
         useState("");
-
     const [modalAbierto, setModalAbierto] =
         useState(false);
-
-    const [upsSeleccionado, setUpsSeleccionado] =
+    const [seleccionado, setSeleccionado] =
         useState(null);
-
-
-    // =====================================================
-    // PERMISOS
-    // =====================================================
+    const [mensaje, setMensaje] =
+        useState("");
+    const [error, setError] =
+        useState("");
 
     const puedeCrear =
         tienePermiso("CREAR_UPS");
-
     const puedeEditar =
         tienePermiso("EDITAR_UPS");
 
-
-    // =====================================================
-    // CARGAR UPS
-    // =====================================================
-
-    const cargarUPS = async () => {
-
+    const cargar = async () => {
         try {
+            const [
+                equipos,
+                estadosData
+            ] = await Promise.all([
+                obtenerUPS(),
+                obtenerEstadosUPS()
+            ]);
 
-            const datos =
-                await obtenerUPS();
-
-            setUps(datos);
-
-        } catch (error) {
-
-            console.error(
-                "Error al cargar UPS:",
-                error
+            setUps(
+                Array.isArray(equipos)
+                    ? equipos
+                    : []
             );
-
-        }
-
-    };
-
-
-    // =====================================================
-    // CAMBIAR ESTADO
-    // =====================================================
-
-    const manejarCambioEstado = async (
-        id,
-        estado
-    ) => {
-
-        if (!puedeEditar) {
-            return;
-        }
-
-        try {
-
-            await cambiarEstadoUPS(
-                id,
-                estado
+            setEstados(
+                Array.isArray(estadosData)
+                    ? estadosData
+                    : []
             );
-
-            await cargarUPS();
-
-        } catch (error) {
-
-            console.error(
-                "Error al cambiar estado del UPS:",
-                error
+        } catch (e) {
+            setError(
+                mensajeError(
+                    e,
+                    "No fue posible cargar el inventario de UPS."
+                )
             );
-
         }
-
     };
-
-
-    // =====================================================
-    // EDITAR UPS
-    // =====================================================
-
-    const editarUPS = (equipo) => {
-
-        if (!puedeEditar) {
-            return;
-        }
-
-        setUpsSeleccionado(
-            equipo
-        );
-
-        setModalAbierto(true);
-
-    };
-
-
-    // =====================================================
-    // NUEVO UPS
-    // =====================================================
-
-    const nuevoUPS = () => {
-
-        if (!puedeCrear) {
-            return;
-        }
-
-        setUpsSeleccionado(null);
-
-        setModalAbierto(true);
-
-    };
-
-
-    // =====================================================
-    // CARGAR AL ABRIR
-    // =====================================================
 
     useEffect(() => {
-
-        cargarUPS();
-
+        cargar();
     }, []);
 
+    const cambiarEstado = async (
+        equipo,
+        estado
+    ) => {
+        if (!puedeEditar) return;
 
-    // =====================================================
-    // BUSCAR UPS
-    // =====================================================
+        if (
+            [
+                "Fuera de servicio",
+                "De baja"
+            ].includes(estado)
+        ) {
+            if (
+                !window.confirm(
+                    `¿Desea cambiar el UPS "${equipo.codigo}" a "${estado}"?`
+                )
+            ) {
+                return;
+            }
+        }
 
-    const upsFiltrados =
-        ups.filter(
-            (equipo) => {
-
-                const texto =
-                    busqueda
-                        .toLowerCase()
-                        .trim();
-
-                if (!texto) {
-                    return true;
-                }
-
-                return (
-
-                    equipo.codigo
-                        ?.toLowerCase()
-                        .includes(texto)
-
-                    ||
-
-                    equipo.marca
-                        ?.toLowerCase()
-                        .includes(texto)
-
-                    ||
-
-                    equipo.modelo
-                        ?.toLowerCase()
-                        .includes(texto)
-
-                    ||
-
-                    equipo.numeroSerie
-                        ?.toLowerCase()
-                        .includes(texto)
-
-                    ||
-
-                    equipo.agencia?.nombre
-                        ?.toLowerCase()
-                        .includes(texto)
-
+        try {
+            const respuesta =
+                await cambiarEstadoUPS(
+                    equipo.id,
+                    estado
                 );
 
-            }
-        );
+            setMensaje(
+                respuesta?.mensaje ||
+                "Estado actualizado correctamente."
+            );
 
+            await cargar();
+        } catch (e) {
+            setError(
+                mensajeError(
+                    e,
+                    "No fue posible cambiar el estado del UPS."
+                )
+            );
+        }
+    };
 
-    // =====================================================
-    // INTERFAZ
-    // =====================================================
+    const texto =
+        busqueda
+            .toLowerCase()
+            .trim();
+
+    const filtrados =
+        ups.filter((equipo) => {
+            if (!texto) return true;
+
+            return [
+                equipo.codigo,
+                equipo.marca,
+                equipo.modelo,
+                equipo.numeroSerie,
+                equipo.agenciaNombre,
+                equipo.estado
+            ].some((valor) =>
+                String(valor || "")
+                    .toLowerCase()
+                    .includes(texto)
+            );
+        });
 
     return (
-
         <Box>
-
             <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                mb={3}
+                sx={{
+                    display: "flex",
+                    justifyContent:
+                        "space-between",
+                    alignItems: "center",
+                    mb: 3
+                }}
             >
-
                 <Typography
                     variant="h4"
                     fontWeight="bold"
@@ -232,98 +182,96 @@ export default function UPS() {
                     Gestión de UPS
                 </Typography>
 
-
                 {puedeCrear && (
-
                     <Button
                         variant="contained"
-                        startIcon={
-                            <AddIcon />
-                        }
-                        onClick={
-                            nuevoUPS
-                        }
+                        startIcon={<AddIcon />}
+                        onClick={() => {
+                            setSeleccionado(null);
+                            setModalAbierto(true);
+                        }}
                     >
                         Nuevo UPS
                     </Button>
-
                 )}
-
             </Box>
 
-
-            {/* BUSCADOR */}
-
-            <Box mb={3}>
-
-                <TextField
-                    fullWidth
-                    placeholder="Buscar UPS por código, marca, modelo, serie o agencia..."
-                    value={busqueda}
-                    onChange={(e) =>
-                        setBusqueda(
-                            e.target.value
-                        )
-                    }
-                    InputProps={{
-
+            <TextField
+                fullWidth
+                sx={{ mb: 3 }}
+                placeholder="Buscar por código, marca, modelo, serie, agencia o estado..."
+                value={busqueda}
+                onChange={(e) =>
+                    setBusqueda(
+                        e.target.value
+                    )
+                }
+                slotProps={{
+                    input: {
                         startAdornment: (
-
                             <InputAdornment
                                 position="start"
                             >
-
                                 <SearchIcon />
-
                             </InputAdornment>
-
                         )
-
-                    }}
-                />
-
-            </Box>
-
-
-            {/* TABLA */}
+                    }
+                }}
+            />
 
             <UPSTable
-                ups={
-                    upsFiltrados
-                }
-                onEditar={
-                    editarUPS
-                }
-                onCambiarEstado={
-                    manejarCambioEstado
-                }
-                puedeEditar={
-                    puedeEditar
-                }
+                ups={filtrados}
+                estados={estados}
+                puedeEditar={puedeEditar}
+                onEditar={(equipo) => {
+                    setSeleccionado(equipo);
+                    setModalAbierto(true);
+                }}
+                onCambiarEstado={cambiarEstado}
             />
-
-
-            {/* MODAL */}
 
             <NuevaUPSModal
-                open={
-                    modalAbierto
-                }
-                onClose={() =>
-                    setModalAbierto(
-                        false
-                    )
-                }
-                onGuardado={
-                    cargarUPS
-                }
-                ups={
-                    upsSeleccionado
-                }
+                open={modalAbierto}
+                ups={seleccionado}
+                onClose={() => {
+                    setModalAbierto(false);
+                    setSeleccionado(null);
+                }}
+                onGuardado={async () => {
+                    await cargar();
+                    setMensaje(
+                        seleccionado
+                            ? "UPS actualizado correctamente."
+                            : "UPS creado correctamente."
+                    );
+                }}
             />
 
+            <Snackbar
+                open={Boolean(mensaje)}
+                autoHideDuration={4000}
+                onClose={() => setMensaje("")}
+            >
+                <Alert
+                    severity="success"
+                    onClose={() => setMensaje("")}
+                >
+                    {mensaje}
+                </Alert>
+            </Snackbar>
+
+            <Snackbar
+                open={Boolean(error)}
+                autoHideDuration={6000}
+                onClose={() => setError("")}
+            >
+                <Alert
+                    severity="error"
+                    onClose={() => setError("")}
+                >
+                    {error}
+                </Alert>
+            </Snackbar>
         </Box>
-
     );
-
 }

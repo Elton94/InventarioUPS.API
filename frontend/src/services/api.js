@@ -1,16 +1,32 @@
 import axios from "axios";
 
 const api = axios.create({
-    baseURL: "https://localhost:7295/api"
+    baseURL:
+        import.meta.env.VITE_API_URL ||
+        "https://localhost:7295/api"
 });
 
-// Agregar automáticamente el JWT
+export const limpiarSesion = () => {
+    [
+        "token",
+        "rol",
+        "usuarioId",
+        "nombreUsuario",
+        "nombreCompleto",
+        "permisos"
+    ].forEach((clave) =>
+        localStorage.removeItem(clave)
+    );
+};
+
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem("token");
+        const token =
+            localStorage.getItem("token");
 
         if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+            config.headers.Authorization =
+                `Bearer ${token}`;
         }
 
         return config;
@@ -18,18 +34,19 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Si el token expira, cerrar sesión
 api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            localStorage.removeItem("token");
-            localStorage.removeItem("rol");
-            localStorage.removeItem("usuarioId");
-            localStorage.removeItem("nombreUsuario");
-            localStorage.removeItem("nombreCompleto");
+            limpiarSesion();
 
-            window.location.href = "/login";
+            if (
+                window.location.pathname !==
+                "/login"
+            ) {
+                window.location.href =
+                    "/login";
+            }
         }
 
         return Promise.reject(error);

@@ -1,135 +1,54 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import {
+    Navigate,
+    useNavigate
+} from "react-router-dom";
 
 import {
+    Alert,
     Box,
     Button,
     Card,
     CardContent,
     CircularProgress,
     TextField,
-    Typography,
-    Alert
+    Typography
 } from "@mui/material";
 
-const API_URL =
-    "https://localhost:7295/api/Auth/login";
+import api from "../services/api";
+import {
+    obtenerRutaInicial
+} from "../services/permisos";
 
 export default function Login() {
+    const navigate = useNavigate();
 
-    const navigate =
-        useNavigate();
+    const [nombreUsuario, setNombreUsuario] =
+        useState("");
+    const [password, setPassword] =
+        useState("");
+    const [cargando, setCargando] =
+        useState(false);
+    const [error, setError] =
+        useState("");
 
-    const [
-        nombreUsuario,
-        setNombreUsuario
-    ] = useState("");
+    if (localStorage.getItem("token")) {
+        return (
+            <Navigate
+                to={obtenerRutaInicial()}
+                replace
+            />
+        );
+    }
 
-    const [
-        password,
-        setPassword
-    ] = useState("");
-
-    const [
-        cargando,
-        setCargando
-    ] = useState(false);
-
-    const [
-        error,
-        setError
-    ] = useState("");
-
-    // =====================================================
-    // DECODIFICAR PERMISOS DEL JWT
-    // =====================================================
-
-    const obtenerPermisosDesdeToken = (
-        token
-    ) => {
-
-        try {
-
-            const partes =
-                token.split(".");
-
-            if (partes.length !== 3) {
-                return [];
-            }
-
-            let base64 =
-                partes[1]
-                    .replace(/-/g, "+")
-                    .replace(/_/g, "/");
-
-            while (
-                base64.length % 4 !== 0
-            ) {
-                base64 += "=";
-            }
-
-            const json =
-                decodeURIComponent(
-                    atob(base64)
-                        .split("")
-                        .map(
-                            (caracter) =>
-                                "%" +
-                                (
-                                    "00" +
-                                    caracter
-                                        .charCodeAt(0)
-                                        .toString(16)
-                                ).slice(-2)
-                        )
-                        .join("")
-                );
-
-            const payload =
-                JSON.parse(json);
-
-            let permisos =
-                payload.Permiso || [];
-
-            if (
-                !Array.isArray(permisos)
-            ) {
-                permisos = [permisos];
-            }
-
-            return permisos;
-
-        } catch (error) {
-
-            console.error(
-                "No fue posible obtener los permisos del token:",
-                error
-            );
-
-            return [];
-        }
-    };
-
-    // =====================================================
-    // INICIAR SESIÓN
-    // =====================================================
-
-    const iniciarSesion = async (
-        e
-    ) => {
-
+    const iniciarSesion = async (e) => {
         e.preventDefault();
-
         setError("");
 
-        if (
-            !nombreUsuario.trim()
-        ) {
+        if (!nombreUsuario.trim()) {
             setError(
                 "Ingrese el nombre de usuario."
             );
-
             return;
         }
 
@@ -137,134 +56,64 @@ export default function Login() {
             setError(
                 "Ingrese la contraseña."
             );
-
             return;
         }
 
         try {
-
             setCargando(true);
 
-            const response =
-                await axios.post(
-                    API_URL,
+            const { data } =
+                await api.post(
+                    "/Auth/login",
                     {
                         nombreUsuario:
                             nombreUsuario.trim(),
-
-                        password:
-                            password
+                        password
                     }
                 );
 
-            const datos =
-                response.data;
-
-            if (!datos.token) {
+            if (!data?.token) {
                 setError(
-                    "El servidor no devolvió un token de autenticación."
+                    "El servidor no devolvió una sesión válida."
                 );
-
                 return;
             }
 
-            // -------------------------------------------------
-            // GUARDAR SESIÓN
-            // -------------------------------------------------
-
             localStorage.setItem(
                 "token",
-                datos.token
+                data.token
             );
-
             localStorage.setItem(
                 "usuarioId",
-                String(
-                    datos.usuarioId
-                )
+                String(data.usuarioId)
             );
-
             localStorage.setItem(
                 "nombreUsuario",
-                datos.nombreUsuario ||
-                    ""
+                data.nombreUsuario || ""
             );
-
             localStorage.setItem(
                 "nombreCompleto",
-                datos.nombreCompleto ||
-                    ""
+                data.nombreCompleto || ""
             );
-
             localStorage.setItem(
                 "rol",
-                datos.rol || ""
-            );
-
-            // -------------------------------------------------
-            // GUARDAR PERMISOS
-            // -------------------------------------------------
-
-            const permisos =
-                obtenerPermisosDesdeToken(
-                    datos.token
-                );
-
-            localStorage.setItem(
-                "permisos",
-                JSON.stringify(
-                    permisos
-                )
+                data.rol || ""
             );
 
             navigate(
-                "/inicio",
-                {
-                    replace: true
-                }
+                obtenerRutaInicial(),
+                { replace: true }
             );
+        } catch (errorLogin) {
+            const mensaje =
+                errorLogin.response?.data
+                    ?.mensaje;
 
-        } catch (error) {
-
-            console.error(
-                "Error al iniciar sesión:",
-                error
+            setError(
+                mensaje ||
+                "No fue posible iniciar sesión."
             );
-
-            if (
-                error.response?.status ===
-                401
-            ) {
-
-                setError(
-                    "Usuario o contraseña incorrectos."
-                );
-
-            } else if (
-                error.response?.data
-            ) {
-
-                const mensaje =
-                    typeof error.response.data ===
-                    "string"
-                        ? error.response.data
-                        : error.response.data?.message ||
-                          error.response.data?.mensaje;
-
-                setError(
-                    mensaje ||
-                    "No fue posible iniciar sesión."
-                );
-
-            } else {
-
-                setError(
-                    "No se pudo conectar con el servidor."
-                );
-            }
-
         } finally {
-
             setCargando(false);
         }
     };
@@ -278,10 +127,9 @@ export default function Login() {
                 justifyContent: "center",
                 background:
                     "linear-gradient(135deg, #eef2ff 0%, #f8fafc 100%)",
-                padding: 2
+                p: 2
             }}
         >
-
             <Card
                 elevation={8}
                 sx={{
@@ -290,19 +138,13 @@ export default function Login() {
                     borderRadius: 3
                 }}
             >
-
-                <CardContent
-                    sx={{ p: 4 }}
-                >
-
+                <CardContent sx={{ p: 4 }}>
                     <Box
                         sx={{
-                            textAlign:
-                                "center",
+                            textAlign: "center",
                             mb: 4
                         }}
                     >
-
                         <Typography
                             variant="h4"
                             fontWeight="bold"
@@ -310,7 +152,6 @@ export default function Login() {
                         >
                             UPS Asset Manager
                         </Typography>
-
                         <Typography
                             variant="body2"
                             color="text.secondary"
@@ -318,7 +159,6 @@ export default function Login() {
                         >
                             Gestión Corporativa
                         </Typography>
-
                     </Box>
 
                     <Typography
@@ -340,25 +180,18 @@ export default function Login() {
 
                     <Box
                         component="form"
-                        onSubmit={
-                            iniciarSesion
-                        }
+                        onSubmit={iniciarSesion}
                     >
-
                         <TextField
                             fullWidth
                             label="Nombre de usuario"
-                            value={
-                                nombreUsuario
-                            }
+                            value={nombreUsuario}
                             onChange={(e) =>
                                 setNombreUsuario(
                                     e.target.value
                                 )
                             }
-                            disabled={
-                                cargando
-                            }
+                            disabled={cargando}
                             autoComplete="username"
                             autoFocus
                             sx={{ mb: 2 }}
@@ -368,17 +201,13 @@ export default function Login() {
                             fullWidth
                             label="Contraseña"
                             type="password"
-                            value={
-                                password
-                            }
+                            value={password}
                             onChange={(e) =>
                                 setPassword(
                                     e.target.value
                                 )
                             }
-                            disabled={
-                                cargando
-                            }
+                            disabled={cargando}
                             autoComplete="current-password"
                             sx={{ mb: 3 }}
                         />
@@ -388,50 +217,28 @@ export default function Login() {
                             fullWidth
                             variant="contained"
                             size="large"
-                            disabled={
-                                cargando
-                            }
+                            disabled={cargando}
                             sx={{
                                 py: 1.4,
-                                fontWeight:
-                                    "bold"
+                                fontWeight: "bold"
                             }}
                         >
-
                             {cargando ? (
                                 <>
                                     <CircularProgress
                                         size={22}
                                         color="inherit"
-                                        sx={{
-                                            mr: 1
-                                        }}
+                                        sx={{ mr: 1 }}
                                     />
-
                                     Ingresando...
                                 </>
                             ) : (
                                 "Iniciar sesión"
                             )}
-
                         </Button>
-
                     </Box>
-
-                    <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        display="block"
-                        textAlign="center"
-                        sx={{ mt: 3 }}
-                    >
-                        Sistema de Inventario y Gestión de UPS
-                    </Typography>
-
                 </CardContent>
-
             </Card>
-
         </Box>
     );
 }

@@ -1,4 +1,4 @@
-﻿using InventarioUPS.API.Data;
+using InventarioUPS.API.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,45 +17,23 @@ namespace InventarioUPS.API.Controllers
             _context = context;
         }
 
-        // =====================================================
-        // DEPARTAMENTOS
-        // =====================================================
-
         [HttpGet("departamentos")]
-        public async Task<IActionResult> ObtenerDepartamentos()
-        {
-            var departamentos = await _context.Departamentos
+        public async Task<IActionResult> ObtenerDepartamentos() =>
+            Ok(await _context.Departamentos
                 .Where(d => d.Activo)
                 .OrderBy(d => d.Nombre)
-                .Select(d => new
-                {
-                    id = d.Id,
-                    nombre = d.Nombre
-                })
-                .ToListAsync();
-
-            return Ok(departamentos);
-        }
-
-        // =====================================================
-        // CIUDADES
-        // =====================================================
+                .Select(d => new { id = d.Id, nombre = d.Nombre })
+                .ToListAsync());
 
         [HttpGet("ciudades")]
-        public async Task<IActionResult> ObtenerCiudades(
-            [FromQuery] int? departamentoId)
+        public async Task<IActionResult> ObtenerCiudades([FromQuery] int? departamentoId)
         {
-            var consulta = _context.Ciudades
-                .Where(c => c.Activa);
+            var consulta = _context.Ciudades.Where(c => c.Activa);
 
-            if (departamentoId.HasValue &&
-                departamentoId.Value > 0)
-            {
-                consulta = consulta.Where(c =>
-                    c.DepartamentoId == departamentoId.Value);
-            }
+            if (departamentoId.HasValue && departamentoId.Value > 0)
+                consulta = consulta.Where(c => c.DepartamentoId == departamentoId.Value);
 
-            var ciudades = await consulta
+            return Ok(await consulta
                 .OrderBy(c => c.Nombre)
                 .Select(c => new
                 {
@@ -63,94 +41,78 @@ namespace InventarioUPS.API.Controllers
                     nombre = c.Nombre,
                     departamentoId = c.DepartamentoId
                 })
-                .ToListAsync();
-
-            return Ok(ciudades);
+                .ToListAsync());
         }
-
-        // =====================================================
-        // TIPOS DE AGENCIA
-        // =====================================================
 
         [HttpGet("tipos-agencia")]
-        public async Task<IActionResult> ObtenerTiposAgencia()
-        {
-            var tipos = await _context.TiposAgencia
+        public async Task<IActionResult> ObtenerTiposAgencia() =>
+            Ok(await _context.TiposAgencia
                 .Where(t => t.Activo)
                 .OrderBy(t => t.Nombre)
-                .Select(t => new
-                {
-                    id = t.Id,
-                    nombre = t.Nombre
-                })
-                .ToListAsync();
-
-            return Ok(tipos);
-        }
-
-        // =====================================================
-        // ESTADOS DE UPS
-        // =====================================================
+                .Select(t => new { id = t.Id, nombre = t.Nombre })
+                .ToListAsync());
 
         [HttpGet("estados-ups")]
-        public async Task<IActionResult> ObtenerEstadosUPS()
-        {
-            var estados = await _context.EstadosUPS
+        public async Task<IActionResult> ObtenerEstadosUPS() =>
+            Ok(await _context.EstadosUPS
                 .Where(e => e.Activo)
                 .OrderBy(e => e.Nombre)
-                .Select(e => new
-                {
-                    id = e.Id,
-                    nombre = e.Nombre
-                })
-                .ToListAsync();
-
-            return Ok(estados);
-        }
-
-        // =====================================================
-        // TIPOS DE MANTENIMIENTO
-        // =====================================================
+                .Select(e => new { id = e.Id, nombre = e.Nombre })
+                .ToListAsync());
 
         [HttpGet("tipos-mantenimiento")]
-        public async Task<IActionResult> ObtenerTiposMantenimiento()
-        {
-            var tipos = await _context.TiposMantenimiento
+        public async Task<IActionResult> ObtenerTiposMantenimiento() =>
+            Ok(await _context.TiposMantenimiento
                 .Where(t => t.Activo)
                 .OrderBy(t => t.Nombre)
-                .Select(t => new
-                {
-                    id = t.Id,
-                    nombre = t.Nombre
-                })
-                .ToListAsync();
-
-            return Ok(tipos);
-        }
-
-        // =====================================================
-        // ESTADOS DE MANTENIMIENTO
-        // =====================================================
+                .Select(t => new { id = t.Id, nombre = t.Nombre })
+                .ToListAsync());
 
         [HttpGet("estados-mantenimiento")]
-        public async Task<IActionResult> ObtenerEstadosMantenimiento()
-        {
-            var estados = await _context.EstadosMantenimiento
+        public async Task<IActionResult> ObtenerEstadosMantenimiento() =>
+            Ok(await _context.EstadosMantenimiento
                 .Where(e => e.Activo)
                 .OrderBy(e => e.Nombre)
-                .Select(e => new
-                {
-                    id = e.Id,
-                    nombre = e.Nombre
-                })
+                .Select(e => new { id = e.Id, nombre = e.Nombre })
+                .ToListAsync());
+
+        // El catálogo de marcas y modelos nace de los UPS reales.
+        // Así no se requiere una tabla adicional: al guardar una nueva
+        // marca/modelo, aparecerá automáticamente en el catálogo.
+        [HttpGet("marcas-ups")]
+        public async Task<IActionResult> ObtenerMarcasUPS()
+        {
+            var marcas = await _context.UPSs
+                .AsNoTracking()
+                .Where(u => u.Marca != "")
+                .Select(u => u.Marca)
+                .Distinct()
+                .OrderBy(x => x)
                 .ToListAsync();
 
-            return Ok(estados);
+            return Ok(marcas);
         }
 
-        // =====================================================
-        // RESUMEN DE CATÁLOGOS
-        // =====================================================
+        [HttpGet("modelos-ups")]
+        public async Task<IActionResult> ObtenerModelosUPS([FromQuery] string? marca)
+        {
+            var consulta = _context.UPSs.AsNoTracking().AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(marca))
+            {
+                var valor = marca.Trim().ToUpper();
+                consulta = consulta.Where(u => u.Marca.ToUpper() == valor);
+            }
+
+            var modelos = await consulta
+                .Where(u => u.Modelo != "")
+                .Select(u => u.Modelo)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToListAsync();
+
+            return Ok(modelos);
+        }
 
         [HttpGet("todos")]
         public async Task<IActionResult> ObtenerTodos()
@@ -158,65 +120,38 @@ namespace InventarioUPS.API.Controllers
             var departamentos = await _context.Departamentos
                 .Where(d => d.Activo)
                 .OrderBy(d => d.Nombre)
-                .Select(d => new
-                {
-                    id = d.Id,
-                    nombre = d.Nombre
-                })
+                .Select(d => new { id = d.Id, nombre = d.Nombre })
                 .ToListAsync();
 
             var ciudades = await _context.Ciudades
                 .Where(c => c.Activa)
                 .OrderBy(c => c.Nombre)
-                .Select(c => new
-                {
-                    id = c.Id,
-                    nombre = c.Nombre,
-                    departamentoId = c.DepartamentoId
-                })
+                .Select(c => new { id = c.Id, nombre = c.Nombre, departamentoId = c.DepartamentoId })
                 .ToListAsync();
 
             var tiposAgencia = await _context.TiposAgencia
                 .Where(t => t.Activo)
                 .OrderBy(t => t.Nombre)
-                .Select(t => new
-                {
-                    id = t.Id,
-                    nombre = t.Nombre
-                })
+                .Select(t => new { id = t.Id, nombre = t.Nombre })
                 .ToListAsync();
 
             var estadosUPS = await _context.EstadosUPS
                 .Where(e => e.Activo)
                 .OrderBy(e => e.Nombre)
-                .Select(e => new
-                {
-                    id = e.Id,
-                    nombre = e.Nombre
-                })
+                .Select(e => new { id = e.Id, nombre = e.Nombre })
                 .ToListAsync();
 
-            var tiposMantenimiento =
-                await _context.TiposMantenimiento
-                    .Where(t => t.Activo)
-                    .OrderBy(t => t.Nombre)
-                    .Select(t => new
-                    {
-                        id = t.Id,
-                        nombre = t.Nombre
-                    })
-                    .ToListAsync();
+            var tiposMantenimiento = await _context.TiposMantenimiento
+                .Where(t => t.Activo)
+                .OrderBy(t => t.Nombre)
+                .Select(t => new { id = t.Id, nombre = t.Nombre })
+                .ToListAsync();
 
-            var estadosMantenimiento =
-                await _context.EstadosMantenimiento
-                    .Where(e => e.Activo)
-                    .OrderBy(e => e.Nombre)
-                    .Select(e => new
-                    {
-                        id = e.Id,
-                        nombre = e.Nombre
-                    })
-                    .ToListAsync();
+            var estadosMantenimiento = await _context.EstadosMantenimiento
+                .Where(e => e.Activo)
+                .OrderBy(e => e.Nombre)
+                .Select(e => new { id = e.Id, nombre = e.Nombre })
+                .ToListAsync();
 
             return Ok(new
             {

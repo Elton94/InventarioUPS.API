@@ -27,6 +27,7 @@ namespace InventarioUPS.API.Data
             await ObtenerOCrearEstadoUPS(context, "En mantenimiento");
             await ObtenerOCrearEstadoUPS(context, "Fuera de servicio");
             await ObtenerOCrearEstadoUPS(context, "De baja");
+            await ObtenerOCrearEstadoUPS(context, "En resguardo");
 
             // =====================================================
             // TIPOS DE MANTENIMIENTO
@@ -44,6 +45,13 @@ namespace InventarioUPS.API.Data
             await ObtenerOCrearEstadoMantenimiento(context, "En proceso");
             await ObtenerOCrearEstadoMantenimiento(context, "Completado");
             await ObtenerOCrearEstadoMantenimiento(context, "Cancelado");
+
+            // =====================================================
+            // ROLES, PERMISOS Y POLÍTICA DE PRESUPUESTO
+            // =====================================================
+
+            await SembrarRolesPermisosAsync(context);
+            await AsegurarPoliticaPresupuestoAsync(context);
 
             // =====================================================
             // DEPARTAMENTOS Y CIUDADES
@@ -564,5 +572,222 @@ namespace InventarioUPS.API.Data
 
             return nuevo;
         }
+
+        // =====================================================
+        // ROLES Y PERMISOS BASE
+        // =====================================================
+
+        private static async Task SembrarRolesPermisosAsync(
+            InventarioUPSDbContext context)
+        {
+            var definiciones = new[]
+            {
+                new { Codigo = "VER_INICIO", Nombre = "Ver inicio", Descripcion = "Acceso al resumen general." },
+                new { Codigo = "VER_AGENCIAS", Nombre = "Ver agencias", Descripcion = "Consulta de agencias." },
+                new { Codigo = "CREAR_AGENCIAS", Nombre = "Crear agencias", Descripcion = "Registro de agencias." },
+                new { Codigo = "EDITAR_AGENCIAS", Nombre = "Editar agencias", Descripcion = "Edición y cambio de estado de agencias." },
+                new { Codigo = "VER_UPS", Nombre = "Ver UPS", Descripcion = "Consulta del inventario UPS." },
+                new { Codigo = "CREAR_UPS", Nombre = "Crear UPS", Descripcion = "Registro de UPS." },
+                new { Codigo = "EDITAR_UPS", Nombre = "Editar UPS", Descripcion = "Edición y cambio de estado de UPS." },
+                new { Codigo = "VER_MANTENIMIENTO", Nombre = "Ver mantenimiento", Descripcion = "Consulta de mantenimientos." },
+                new { Codigo = "CREAR_MANTENIMIENTO", Nombre = "Crear mantenimiento", Descripcion = "Registro de mantenimientos." },
+                new { Codigo = "EDITAR_MANTENIMIENTO", Nombre = "Editar mantenimiento", Descripcion = "Actualización de mantenimientos." },
+                new { Codigo = "VER_PRESUPUESTO", Nombre = "Ver presupuesto", Descripcion = "Consulta de proyecciones de baterías." },
+                new { Codigo = "GESTIONAR_PRESUPUESTO", Nombre = "Gestionar presupuesto", Descripcion = "Configuración de costos y política de reemplazo." },
+                new { Codigo = "GESTIONAR_USUARIOS", Nombre = "Gestionar usuarios", Descripcion = "Administración de usuarios." },
+                new { Codigo = "GESTIONAR_ROLES_PERMISOS", Nombre = "Gestionar roles y permisos", Descripcion = "Administración de roles y permisos." }
+            };
+
+            var permisos = new Dictionary<string, Permiso>(
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var item in definiciones)
+            {
+                var permiso = await context.Permisos
+                    .FirstOrDefaultAsync(p => p.Codigo == item.Codigo);
+
+                if (permiso == null)
+                {
+                    permiso = new Permiso
+                    {
+                        Codigo = item.Codigo,
+                        Nombre = item.Nombre,
+                        Descripcion = item.Descripcion,
+                        Activo = true
+                    };
+
+                    context.Permisos.Add(permiso);
+                }
+                else
+                {
+                    permiso.Nombre = item.Nombre;
+                    permiso.Descripcion = item.Descripcion;
+                    permiso.Activo = true;
+                }
+
+                permisos[item.Codigo] = permiso;
+            }
+
+            await context.SaveChangesAsync();
+
+            var controlTotal = await ObtenerOCrearRol(
+                context, "Control Total", "Acceso completo al sistema");
+
+            var administrador = await ObtenerOCrearRol(
+                context, "Administrador", "Administración operativa del sistema");
+
+            var tecnico = await ObtenerOCrearRol(
+                context, "Técnico", "Gestión técnica de UPS y mantenimientos");
+
+            var consulta = await ObtenerOCrearRol(
+                context, "Consulta", "Acceso de solo consulta");
+
+            await AsegurarPermisosRol(
+                context,
+                controlTotal,
+                permisos.Values.Select(p => p.Id),
+                forzarSincronizacion: true);
+
+            await AsegurarPermisosRol(
+                context,
+                administrador,
+                new[]
+                {
+                    permisos["VER_INICIO"].Id,
+                    permisos["VER_AGENCIAS"].Id,
+                    permisos["CREAR_AGENCIAS"].Id,
+                    permisos["EDITAR_AGENCIAS"].Id,
+                    permisos["VER_UPS"].Id,
+                    permisos["CREAR_UPS"].Id,
+                    permisos["EDITAR_UPS"].Id,
+                    permisos["VER_MANTENIMIENTO"].Id,
+                    permisos["CREAR_MANTENIMIENTO"].Id,
+                    permisos["EDITAR_MANTENIMIENTO"].Id,
+                    permisos["VER_PRESUPUESTO"].Id,
+                    permisos["GESTIONAR_PRESUPUESTO"].Id,
+                    permisos["GESTIONAR_USUARIOS"].Id
+                });
+
+            await AsegurarPermisosRol(
+                context,
+                tecnico,
+                new[]
+                {
+                    permisos["VER_INICIO"].Id,
+                    permisos["VER_AGENCIAS"].Id,
+                    permisos["VER_UPS"].Id,
+                    permisos["CREAR_UPS"].Id,
+                    permisos["EDITAR_UPS"].Id,
+                    permisos["VER_MANTENIMIENTO"].Id,
+                    permisos["CREAR_MANTENIMIENTO"].Id,
+                    permisos["EDITAR_MANTENIMIENTO"].Id
+                });
+
+            await AsegurarPermisosRol(
+                context,
+                consulta,
+                new[]
+                {
+                    permisos["VER_INICIO"].Id,
+                    permisos["VER_AGENCIAS"].Id,
+                    permisos["VER_UPS"].Id,
+                    permisos["VER_MANTENIMIENTO"].Id,
+                    permisos["VER_PRESUPUESTO"].Id
+                });
+        }
+
+        private static async Task<Rol> ObtenerOCrearRol(
+            InventarioUPSDbContext context,
+            string nombre,
+            string descripcion)
+        {
+            var rol = await context.Roles
+                .FirstOrDefaultAsync(r => r.Nombre == nombre);
+
+            if (rol != null)
+                return rol;
+
+            rol = new Rol
+            {
+                Nombre = nombre,
+                Descripcion = descripcion,
+                Activo = true
+            };
+
+            context.Roles.Add(rol);
+            await context.SaveChangesAsync();
+
+            return rol;
+        }
+
+        private static async Task AsegurarPermisosRol(
+            InventarioUPSDbContext context,
+            Rol rol,
+            IEnumerable<int> idsPermiso,
+            bool forzarSincronizacion = false)
+        {
+            var ids = idsPermiso.Distinct().ToList();
+
+            var actuales = await context.RolPermisos
+                .Where(rp => rp.RolId == rol.Id)
+                .ToListAsync();
+
+            if (!forzarSincronizacion && actuales.Count > 0)
+                return;
+
+            if (forzarSincronizacion)
+                context.RolPermisos.RemoveRange(actuales);
+
+            foreach (var permisoId in ids)
+            {
+                if (!forzarSincronizacion &&
+                    actuales.Any(rp => rp.PermisoId == permisoId))
+                    continue;
+
+                context.RolPermisos.Add(new RolPermiso
+                {
+                    RolId = rol.Id,
+                    PermisoId = permisoId,
+                    FechaCreacion = DateTime.Now
+                });
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        // =====================================================
+        // POLÍTICA GLOBAL ÚNICA
+        // =====================================================
+
+        private static async Task AsegurarPoliticaPresupuestoAsync(
+            InventarioUPSDbContext context)
+        {
+            var politicas = await context.PoliticaReemplazoBaterias
+                .OrderByDescending(p => p.Id)
+                .ToListAsync();
+
+            if (politicas.Count == 0)
+            {
+                context.PoliticaReemplazoBaterias.Add(
+                    new PoliticaReemplazoBaterias
+                    {
+                        MesesReemplazoLocal = 24,
+                        MesesReemplazoForanea = 18,
+                        FechaCreacion = DateTime.Now
+                    });
+
+                await context.SaveChangesAsync();
+                return;
+            }
+
+            if (politicas.Count > 1)
+            {
+                context.PoliticaReemplazoBaterias.RemoveRange(
+                    politicas.Skip(1));
+
+                await context.SaveChangesAsync();
+            }
+        }
+
     }
 }

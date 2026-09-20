@@ -1,160 +1,94 @@
-﻿using InventarioUPS.API.DTOs.Presupuesto;
+using InventarioUPS.API.DTOs.Presupuesto;
 using InventarioUPS.API.Models;
 using InventarioUPS.API.Repositories;
 
 namespace InventarioUPS.API.Services
 {
-    public class ConfiguracionPresupuestoService
-        : IConfiguracionPresupuestoService
+    public class ConfiguracionPresupuestoService : IConfiguracionPresupuestoService
     {
         private readonly IConfiguracionPresupuestoRepository _repository;
 
-        public ConfiguracionPresupuestoService(
-            IConfiguracionPresupuestoRepository repository)
+        public ConfiguracionPresupuestoService(IConfiguracionPresupuestoRepository repository)
         {
             _repository = repository;
         }
 
+        public async Task<List<ConfiguracionPresupuestoDto>> ObtenerTodasAsync() =>
+            (await _repository.ObtenerTodasAsync()).Select(MapearDto).ToList();
 
-        public async Task<List<ConfiguracionPresupuestoDto>>
-            ObtenerTodasAsync()
+        public async Task<ConfiguracionPresupuestoDto?> ObtenerPorIdAsync(int id)
         {
-            var configuraciones =
-                await _repository.ObtenerTodasAsync();
-
-            return configuraciones
-                .Select(MapearDto)
-                .ToList();
+            var entidad = await _repository.ObtenerPorIdAsync(id);
+            return entidad == null ? null : MapearDto(entidad);
         }
 
-
-        public async Task<ConfiguracionPresupuestoDto?>
-            ObtenerPorIdAsync(int id)
+        public async Task<ConfiguracionPresupuestoDto?> ObtenerPorAnioAsync(int anio)
         {
-            var configuracion =
-                await _repository.ObtenerPorIdAsync(id);
-
-            if (configuracion == null)
-                return null;
-
-            return MapearDto(configuracion);
+            var entidad = await _repository.ObtenerPorAnioAsync(anio);
+            return entidad == null ? null : MapearDto(entidad);
         }
 
-
-        public async Task<ConfiguracionPresupuestoDto?>
-            ObtenerPorAnioAsync(int anio)
+        public async Task CrearAsync(CrearConfiguracionPresupuestoDto dto)
         {
-            var configuracion =
-                await _repository.ObtenerPorAnioAsync(anio);
+            ValidarAnio(dto.Anio);
+            ValidarCosto(dto.CostoUnitarioBateria);
 
-            if (configuracion == null)
-                return null;
-
-            return MapearDto(configuracion);
-        }
-
-
-        public async Task CrearAsync(
-            CrearConfiguracionPresupuestoDto dto)
-        {
-            if (dto.Anio < 2020 || dto.Anio > 2100)
-                throw new ArgumentException(
-                    "El año debe estar entre 2020 y 2100.");
-
-            if (dto.MesesReemplazoLocal <= 0)
-                throw new ArgumentException(
-                    "El ciclo de reemplazo local debe ser mayor que cero.");
-
-            if (dto.MesesReemplazoForanea <= 0)
-                throw new ArgumentException(
-                    "El ciclo de reemplazo foráneo debe ser mayor que cero.");
-
-            if (dto.CostoUnitarioBateria < 0)
-                throw new ArgumentException(
-                    "El costo unitario no puede ser negativo.");
-
-            var existente =
-                await _repository.ObtenerPorAnioAsync(dto.Anio);
+            var existente = await _repository.ObtenerPorAnioAsync(dto.Anio);
 
             if (existente != null)
                 throw new InvalidOperationException(
-                    $"Ya existe una configuración activa para el año {dto.Anio}.");
+                    $"Ya existe una configuración para el año {dto.Anio}.");
 
-            var configuracion =
-                new ConfiguracionPresupuestoBaterias
-                {
-                    Anio = dto.Anio,
-                    MesesReemplazoLocal =
-                        dto.MesesReemplazoLocal,
-                    MesesReemplazoForanea =
-                        dto.MesesReemplazoForanea,
-                    CostoUnitarioBateria =
-                        dto.CostoUnitarioBateria,
-                    Activo = true,
-                    FechaCreacion = DateTime.Now
-                };
+            var configuracion = new ConfiguracionPresupuestoBaterias
+            {
+                Anio = dto.Anio,
+                MesesReemplazoLocal = 0,
+                MesesReemplazoForanea = 0,
+                CostoUnitarioBateria = dto.CostoUnitarioBateria,
+                Activo = true,
+                FechaCreacion = DateTime.Now
+            };
 
             await _repository.CrearAsync(configuracion);
         }
 
-
-        public async Task ActualizarAsync(
-            int id,
-            ActualizarConfiguracionPresupuestoDto dto)
+        public async Task ActualizarAsync(int id, ActualizarConfiguracionPresupuestoDto dto)
         {
-            if (dto.MesesReemplazoLocal <= 0)
-                throw new ArgumentException(
-                    "El ciclo de reemplazo local debe ser mayor que cero.");
+            ValidarCosto(dto.CostoUnitarioBateria);
 
-            if (dto.MesesReemplazoForanea <= 0)
-                throw new ArgumentException(
-                    "El ciclo de reemplazo foráneo debe ser mayor que cero.");
-
-            if (dto.CostoUnitarioBateria < 0)
-                throw new ArgumentException(
-                    "El costo unitario no puede ser negativo.");
-
-            var configuracion =
-                await _repository.ObtenerPorIdAsync(id);
+            var configuracion = await _repository.ObtenerPorIdAsync(id);
 
             if (configuracion == null)
                 throw new KeyNotFoundException(
                     "La configuración de presupuesto no existe.");
 
-            configuracion.MesesReemplazoLocal =
-                dto.MesesReemplazoLocal;
-
-            configuracion.MesesReemplazoForanea =
-                dto.MesesReemplazoForanea;
-
-            configuracion.CostoUnitarioBateria =
-                dto.CostoUnitarioBateria;
-
+            configuracion.CostoUnitarioBateria = dto.CostoUnitarioBateria;
             configuracion.Activo = dto.Activo;
-
-            configuracion.FechaModificacion =
-                DateTime.Now;
+            configuracion.FechaModificacion = DateTime.Now;
 
             await _repository.ActualizarAsync(configuracion);
         }
 
-
-        private static ConfiguracionPresupuestoDto
-            MapearDto(
-                ConfiguracionPresupuestoBaterias entidad)
+        private static void ValidarAnio(int anio)
         {
-            return new ConfiguracionPresupuestoDto
-            {
-                Id = entidad.Id,
-                Anio = entidad.Anio,
-                MesesReemplazoLocal =
-                    entidad.MesesReemplazoLocal,
-                MesesReemplazoForanea =
-                    entidad.MesesReemplazoForanea,
-                CostoUnitarioBateria =
-                    entidad.CostoUnitarioBateria,
-                Activo = entidad.Activo
-            };
+            if (anio < 2020 || anio > 2100)
+                throw new ArgumentException("El año debe estar entre 2020 y 2100.");
         }
+
+        private static void ValidarCosto(decimal costo)
+        {
+            if (costo <= 0)
+                throw new ArgumentException(
+                    "El costo unitario de la batería debe ser mayor que cero.");
+        }
+
+        private static ConfiguracionPresupuestoDto MapearDto(
+            ConfiguracionPresupuestoBaterias entidad) => new()
+        {
+            Id = entidad.Id,
+            Anio = entidad.Anio,
+            CostoUnitarioBateria = entidad.CostoUnitarioBateria,
+            Activo = entidad.Activo
+        };
     }
 }

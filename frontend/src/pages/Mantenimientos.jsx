@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
-import NuevoMantenimientoModal from "../components/mantenimientos/NuevoMantenimientoModal";
+import {
+    useEffect,
+    useMemo,
+    useState
+} from "react";
 
 import {
+    Alert,
     Autocomplete,
     Box,
     Button,
@@ -9,6 +13,7 @@ import {
     InputLabel,
     MenuItem,
     Select,
+    Snackbar,
     TextField,
     Typography
 } from "@mui/material";
@@ -16,362 +21,169 @@ import {
 import {
     obtenerMantenimientos
 } from "../services/mantenimientoService";
+import {
+    tienePermiso
+} from "../services/permisos";
 
 import MantenimientosTable
     from "../components/mantenimientos/MantenimientosTable";
+import NuevoMantenimientoModal
+    from "../components/mantenimientos/NuevoMantenimientoModal";
 
-import { tienePermiso } from "../services/permisos";
-
+const normalizar = (valor) =>
+    String(valor ?? "")
+        .toLowerCase()
+        .trim();
 
 export default function Mantenimientos() {
+    const [mantenimientos, setMantenimientos] =
+        useState([]);
+    const [tipoBusqueda, setTipoBusqueda] =
+        useState("agencia");
+    const [textoBusqueda, setTextoBusqueda] =
+        useState("");
+    const [fechaDesde, setFechaDesde] =
+        useState("");
+    const [fechaHasta, setFechaHasta] =
+        useState("");
+    const [modalAbierto, setModalAbierto] =
+        useState(false);
+    const [seleccionado, setSeleccionado] =
+        useState(null);
+    const [mensaje, setMensaje] =
+        useState("");
+    const [error, setError] =
+        useState("");
 
-    const [mantenimientos, setMantenimientos] = useState([]);
+    const puedeCrear =
+        tienePermiso(
+            "CREAR_MANTENIMIENTO"
+        );
 
-    const [tipoBusqueda, setTipoBusqueda] = useState("agencia");
+    const puedeEditar =
+        tienePermiso(
+            "EDITAR_MANTENIMIENTO"
+        );
 
-    const [textoBusqueda, setTextoBusqueda] = useState("");
-
-    const [fechaDesde, setFechaDesde] = useState("");
-
-    const [fechaHasta, setFechaHasta] = useState("");
-
-    const [modalAbierto, setModalAbierto] = useState(false);
-
-    const [mantenimientoEditar, setMantenimientoEditar] = useState(null);
-
-
-    // =====================================
-    // PERMISOS
-    // =====================================
-
-    const puedeCrear = tienePermiso("CREAR_MANTENIMIENTO");
-
-    const puedeEditar = tienePermiso("EDITAR_MANTENIMIENTO");
-
-
-    // =====================================
-    // CARGAR MANTENIMIENTOS
-    // =====================================
-
-    const cargarMantenimientos = async () => {
-
+    const cargar = async () => {
         try {
+            const datos =
+                await obtenerMantenimientos();
 
-            const datos = await obtenerMantenimientos();
-
-            setMantenimientos(datos);
-
-        } catch (error) {
-
-            console.error(
-                "Error al cargar mantenimientos:",
-                error
+            setMantenimientos(
+                Array.isArray(datos)
+                    ? datos
+                    : []
             );
-
+        } catch (e) {
+            setError(
+                e.response?.data?.mensaje ||
+                "No fue posible cargar los mantenimientos."
+            );
         }
-
     };
 
-
     useEffect(() => {
-
-        cargarMantenimientos();
-
+        cargar();
     }, []);
 
+    const campoPorTipo = {
+        agencia: "agenciaNombre",
+        codigoUPS: "codigoUPS",
+        numeroSerie: "numeroSerieUPS",
+        marca: "marcaUPS",
+        modelo: "modeloUPS",
+        tipo: "tipoMantenimiento",
+        tecnico: "tecnicoProveedor",
+        estado: "estado"
+    };
 
-    // =====================================
-    // LIMPIAR BÚSQUEDA
-    // =====================================
+    const opciones =
+        useMemo(() => {
+            const campo =
+                campoPorTipo[
+                    tipoBusqueda
+                ];
 
-    const limpiarBusqueda = () => {
+            if (!campo) return [];
 
+            return [
+                ...new Set(
+                    mantenimientos
+                        .map((m) =>
+                            m[campo]
+                        )
+                        .filter(Boolean)
+                )
+            ].sort();
+        }, [
+            mantenimientos,
+            tipoBusqueda
+        ]);
+
+    const filtrados =
+        mantenimientos.filter((m) => {
+            if (
+                tipoBusqueda ===
+                "fecha"
+            ) {
+                const valor =
+                    m.fechaMantenimiento
+                        ?.substring(0, 10);
+
+                if (
+                    fechaDesde &&
+                    valor < fechaDesde
+                ) {
+                    return false;
+                }
+
+                if (
+                    fechaHasta &&
+                    valor > fechaHasta
+                ) {
+                    return false;
+                }
+
+                return true;
+            }
+
+            const campo =
+                campoPorTipo[
+                    tipoBusqueda
+                ];
+
+            if (!campo) return true;
+
+            const texto =
+                normalizar(
+                    textoBusqueda
+                );
+
+            if (!texto) return true;
+
+            return normalizar(
+                m[campo]
+            ).includes(texto);
+        });
+
+    const limpiar = () => {
         setTextoBusqueda("");
         setFechaDesde("");
         setFechaHasta("");
-
     };
-
-
-    // =====================================
-    // EDITAR MANTENIMIENTO
-    // =====================================
-
-    const editarMantenimiento = (mantenimiento) => {
-
-        if (!puedeEditar) {
-            return;
-        }
-
-        setMantenimientoEditar(mantenimiento);
-
-        setModalAbierto(true);
-
-    };
-
-
-    // =====================================
-    // NUEVO MANTENIMIENTO
-    // =====================================
-
-    const nuevoMantenimiento = () => {
-
-        if (!puedeCrear) {
-            return;
-        }
-
-        setMantenimientoEditar(null);
-
-        setModalAbierto(true);
-
-    };
-
-
-    // =====================================
-    // CAMBIAR TIPO DE BÚSQUEDA
-    // =====================================
-
-    const cambiarTipoBusqueda = (event) => {
-
-        setTipoBusqueda(event.target.value);
-
-        limpiarBusqueda();
-
-    };
-
-
-    // =====================================
-    // OPCIONES DEL AUTOCOMPLETE
-    // =====================================
-
-    const obtenerOpciones = () => {
-
-        let valores = [];
-
-        switch (tipoBusqueda) {
-
-            case "agencia":
-
-                valores = mantenimientos.map(
-                    m => m.agenciaNombre
-                );
-
-                break;
-
-
-            case "marca":
-
-                valores = [];
-
-                break;
-
-
-            case "modelo":
-
-                valores = mantenimientos.map(
-                    m => m.modeloUPS
-                );
-
-                break;
-
-
-            case "tipo":
-
-                valores = mantenimientos.map(
-                    m => m.tipoMantenimiento
-                );
-
-                break;
-
-
-            case "tecnico":
-
-                valores = mantenimientos.map(
-                    m => m.tecnicoProveedor
-                );
-
-                break;
-
-
-            case "estado":
-
-                valores = mantenimientos.map(
-                    m => m.estado
-                );
-
-                break;
-
-
-            default:
-
-                valores = [];
-
-        }
-
-
-        return [
-            ...new Set(
-                valores.filter(Boolean)
-            )
-        ].sort();
-
-    };
-
-
-    // =====================================
-    // FILTRAR MANTENIMIENTOS
-    // =====================================
-
-    const mantenimientosFiltrados =
-        mantenimientos.filter(
-            (mantenimiento) => {
-
-                // -------------------------
-                // FECHA
-                // -------------------------
-
-                if (tipoBusqueda === "fecha") {
-
-                    const fecha =
-                        mantenimiento
-                            .fechaMantenimiento
-                            ?.substring(0, 10);
-
-                    if (
-                        fechaDesde &&
-                        fecha < fechaDesde
-                    ) {
-                        return false;
-                    }
-
-                    if (
-                        fechaHasta &&
-                        fecha > fechaHasta
-                    ) {
-                        return false;
-                    }
-
-                    return true;
-                }
-
-
-                // -------------------------
-                // SIN BÚSQUEDA
-                // -------------------------
-
-                const texto =
-                    textoBusqueda
-                        .toLowerCase()
-                        .trim();
-
-                if (!texto) {
-
-                    return true;
-
-                }
-
-
-                // -------------------------
-                // FILTROS
-                // -------------------------
-
-                switch (tipoBusqueda) {
-
-                    case "agencia":
-
-                        return (
-                            mantenimiento
-                                .agenciaNombre
-                                ?.toLowerCase()
-                                .includes(texto)
-                        );
-
-
-                    case "codigoUPS":
-
-                        return (
-                            mantenimiento
-                                .codigoUPS
-                                ?.toLowerCase()
-                                .includes(texto)
-                        );
-
-
-                    case "numeroSerie":
-
-                        return (
-                            mantenimiento
-                                .numeroSerieUPS
-                                ?.toLowerCase()
-                                .includes(texto)
-                        );
-
-
-                    case "modelo":
-
-                        return (
-                            mantenimiento
-                                .modeloUPS
-                                ?.toLowerCase()
-                                .includes(texto)
-                        );
-
-
-                    case "tipo":
-
-                        return (
-                            mantenimiento
-                                .tipoMantenimiento
-                                ?.toLowerCase()
-                                .includes(texto)
-                        );
-
-
-                    case "tecnico":
-
-                        return (
-                            mantenimiento
-                                .tecnicoProveedor
-                                ?.toLowerCase()
-                                .includes(texto)
-                        );
-
-
-                    case "estado":
-
-                        return (
-                            mantenimiento
-                                .estado
-                                ?.toLowerCase()
-                                .includes(texto)
-                        );
-
-
-                    default:
-
-                        return true;
-
-                }
-
-            }
-        );
-
-
-    // =====================================
-    // INTERFAZ
-    // =====================================
 
     return (
-
         <Box>
-
             <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                mb={3}
+                sx={{
+                    display: "flex",
+                    justifyContent:
+                        "space-between",
+                    alignItems: "center",
+                    mb: 3
+                }}
             >
-
                 <Typography
                     variant="h4"
                     fontWeight="bold"
@@ -379,97 +191,81 @@ export default function Mantenimientos() {
                     Gestión de Mantenimientos
                 </Typography>
 
-
                 {puedeCrear && (
-
                     <Button
                         variant="contained"
-                        onClick={nuevoMantenimiento}
+                        onClick={() => {
+                            setSeleccionado(
+                                null
+                            );
+                            setModalAbierto(
+                                true
+                            );
+                        }}
                     >
                         + Nuevo mantenimiento
                     </Button>
-
                 )}
-
             </Box>
 
-
-            {/* ========================= */}
-            {/* FILTROS */}
-            {/* ========================= */}
-
             <Box
-                display="flex"
-                gap={2}
-                alignItems="center"
-                mb={3}
+                sx={{
+                    display: "flex",
+                    gap: 2,
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    mb: 3
+                }}
             >
-
                 <FormControl
-                    sx={{
-                        minWidth: 230
-                    }}
+                    sx={{ minWidth: 230 }}
                 >
-
                     <InputLabel>
                         Buscar por
                     </InputLabel>
-
                     <Select
                         value={tipoBusqueda}
                         label="Buscar por"
-                        onChange={cambiarTipoBusqueda}
+                        onChange={(e) => {
+                            setTipoBusqueda(
+                                e.target.value
+                            );
+                            limpiar();
+                        }}
                     >
-
                         <MenuItem value="agencia">
                             Agencia
                         </MenuItem>
-
                         <MenuItem value="codigoUPS">
                             Código UPS
                         </MenuItem>
-
                         <MenuItem value="numeroSerie">
                             Número de serie
                         </MenuItem>
-
                         <MenuItem value="marca">
                             Marca
                         </MenuItem>
-
                         <MenuItem value="modelo">
                             Modelo
                         </MenuItem>
-
                         <MenuItem value="tipo">
                             Tipo de mantenimiento
                         </MenuItem>
-
                         <MenuItem value="tecnico">
                             Técnico / proveedor
                         </MenuItem>
-
                         <MenuItem value="estado">
                             Estado
                         </MenuItem>
-
                         <MenuItem value="fecha">
-                            Fecha de mantenimiento
+                            Fecha
                         </MenuItem>
-
                     </Select>
-
                 </FormControl>
 
-
-                {/* ========================= */}
-                {/* FECHAS */}
-                {/* ========================= */}
-
-                {tipoBusqueda === "fecha" ? (
-
+                {tipoBusqueda ===
+                "fecha" ? (
                     <>
-
                         <TextField
                             type="date"
                             label="Desde"
@@ -479,11 +275,12 @@ export default function Mantenimientos() {
                                     e.target.value
                                 )
                             }
-                            InputLabelProps={{
-                                shrink: true
+                            slotProps={{
+                                inputLabel: {
+                                    shrink: true
+                                }
                             }}
                         />
-
                         <TextField
                             type="date"
                             label="Hasta"
@@ -493,66 +290,55 @@ export default function Mantenimientos() {
                                     e.target.value
                                 )
                             }
-                            InputLabelProps={{
-                                shrink: true
+                            slotProps={{
+                                inputLabel: {
+                                    shrink: true
+                                }
                             }}
                         />
-
                     </>
-
-                ) : (
-
-                    [
-                        "agencia",
-                        "marca",
-                        "modelo",
-                        "tipo",
-                        "tecnico",
-                        "estado"
-                    ].includes(tipoBusqueda)
-
-                ) ? (
-
+                ) : [
+                    "agencia",
+                    "marca",
+                    "modelo",
+                    "tipo",
+                    "tecnico",
+                    "estado"
+                ].includes(tipoBusqueda) ? (
                     <Autocomplete
-                        fullWidth
                         freeSolo
-                        options={obtenerOpciones()}
-                        value={textoBusqueda || null}
-                        onChange={(
-                            event,
-                            nuevoValor
-                        ) => {
-
-                            setTextoBusqueda(
-                                nuevoValor || ""
-                            );
-
+                        sx={{
+                            minWidth: 320,
+                            flex: 1
                         }}
+                        options={opciones}
+                        inputValue={
+                            textoBusqueda
+                        }
                         onInputChange={(
-                            event,
-                            nuevoValor
-                        ) => {
-
+                            _,
+                            valor
+                        ) =>
                             setTextoBusqueda(
-                                nuevoValor
-                            );
-
-                        }}
-                        renderInput={(params) => (
-
+                                valor
+                            )
+                        }
+                        renderInput={(
+                            params
+                        ) => (
                             <TextField
                                 {...params}
-                                label={`Buscar ${tipoBusqueda}`}
+                                label="Buscar"
                             />
-
                         )}
                     />
-
                 ) : (
-
                     <TextField
-                        fullWidth
-                        label={`Buscar ${tipoBusqueda}`}
+                        sx={{
+                            minWidth: 320,
+                            flex: 1
+                        }}
+                        label="Buscar"
                         value={textoBusqueda}
                         onChange={(e) =>
                             setTextoBusqueda(
@@ -560,82 +346,89 @@ export default function Mantenimientos() {
                             )
                         }
                     />
-
                 )}
-
 
                 <Button
                     variant="outlined"
-                    onClick={limpiarBusqueda}
+                    onClick={limpiar}
                 >
                     Limpiar
                 </Button>
-
             </Box>
 
-
-            {/* ========================= */}
-            {/* RESULTADOS */}
-            {/* ========================= */}
-
             <Typography
-                variant="body1"
-                mb={2}
+                sx={{ mb: 2 }}
             >
-
                 Resultados encontrados:{" "}
-
                 <strong>
-                    {
-                        mantenimientosFiltrados.length
-                    }
+                    {filtrados.length}
                 </strong>
-
             </Typography>
 
-
-            {/* ========================= */}
-            {/* TABLA */}
-            {/* ========================= */}
-
             <MantenimientosTable
-                mantenimientos={
-                    mantenimientosFiltrados
-                }
-                onEditar={
-                    editarMantenimiento
-                }
+                mantenimientos={filtrados}
                 puedeEditar={puedeEditar}
+                onEditar={(m) => {
+                    setSeleccionado(m);
+                    setModalAbierto(true);
+                }}
             />
-
-
-            {/* ========================= */}
-            {/* MODAL */}
-            {/* ========================= */}
 
             <NuevoMantenimientoModal
                 open={modalAbierto}
+                mantenimientoEditar={
+                    seleccionado
+                }
                 onClose={() => {
-
                     setModalAbierto(false);
-
-                    setMantenimientoEditar(null);
-
+                    setSeleccionado(null);
                 }}
                 onGuardado={async () => {
+                    await cargar();
 
-                    await cargarMantenimientos();
+                    setMensaje(
+                        seleccionado
+                            ? "Mantenimiento actualizado correctamente."
+                            : "Mantenimiento registrado correctamente."
+                    );
 
-                    setMantenimientoEditar(null);
-
+                    setSeleccionado(null);
                 }}
-                mantenimientoEditar={
-                    mantenimientoEditar
-                }
             />
 
+            <Snackbar
+                open={Boolean(mensaje)}
+                autoHideDuration={4000}
+                onClose={() =>
+                    setMensaje("")
+                }
+            >
+                <Alert
+                    severity="success"
+                    onClose={() =>
+                        setMensaje("")
+                    }
+                >
+                    {mensaje}
+                </Alert>
+            </Snackbar>
+
+            <Snackbar
+                open={Boolean(error)}
+                autoHideDuration={6000}
+                onClose={() =>
+                    setError("")
+                }
+            >
+                <Alert
+                    severity="error"
+                    onClose={() =>
+                        setError("")
+                    }
+                >
+                    {error}
+                </Alert>
+            </Snackbar>
         </Box>
-
     );
-
 }

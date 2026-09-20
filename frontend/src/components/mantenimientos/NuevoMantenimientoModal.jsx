@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import {
+    useEffect,
+    useState
+} from "react";
 
 import {
     Alert,
@@ -17,25 +20,22 @@ import {
     Typography
 } from "@mui/material";
 
-import { obtenerUPS } from "../../services/upsService";
-
+import {
+    obtenerUPS
+} from "../../services/upsService";
 import {
     crearMantenimiento,
     actualizarMantenimiento
 } from "../../services/mantenimientoService";
-
 import {
-    obtenerUsuarios
+    obtenerResponsablesMantenimiento
 } from "../../services/usuarioService";
-
 import {
     obtenerTiposMantenimiento,
     obtenerEstadosMantenimiento
 } from "../../services/catalogosService";
 
-
-const formularioInicial = {
-    upsId: "",
+const inicial = {
     tipoMantenimientoId: "",
     fechaMantenimiento: "",
     descripcion: "",
@@ -47,41 +47,20 @@ const formularioInicial = {
     costoUnitarioBateria: ""
 };
 
+const fechaActual = () =>
+    new Date()
+        .toISOString()
+        .substring(0, 10);
 
-const obtenerFechaActual = () => {
-
-    const fecha = new Date();
-
-    const anio =
-        fecha.getFullYear();
-
-    const mes =
-        String(
-            fecha.getMonth() + 1
-        ).padStart(2, "0");
-
-    const dia =
-        String(
-            fecha.getDate()
-        ).padStart(2, "0");
-
-    return `${anio}-${mes}-${dia}`;
-};
-
-
-const formatearMoneda = (valor) => {
-
-    return Number(
-        valor || 0
-    ).toLocaleString(
-        "es-HN",
-        {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }
-    );
-};
-
+const moneda = (valor) =>
+    Number(valor || 0)
+        .toLocaleString(
+            "es-HN",
+            {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }
+        );
 
 export default function NuevoMantenimientoModal({
     open,
@@ -89,845 +68,432 @@ export default function NuevoMantenimientoModal({
     onGuardado,
     mantenimientoEditar = null
 }) {
-
-    const [ups, setUps] =
+    const [equipos, setEquipos] =
         useState([]);
+    const [upsSeleccionado, setUpsSeleccionado] =
+        useState(null);
+    const [tipos, setTipos] =
+        useState([]);
+    const [estados, setEstados] =
+        useState([]);
+    const [responsables, setResponsables] =
+        useState([]);
+    const [formulario, setFormulario] =
+        useState(inicial);
+    const [cargando, setCargando] =
+        useState(false);
+    const [guardando, setGuardando] =
+        useState(false);
+    const [error, setError] =
+        useState("");
 
-    const [
-        upsSeleccionado,
-        setUpsSeleccionado
-    ] = useState(null);
-
-    const [
-        tiposMantenimiento,
-        setTiposMantenimiento
-    ] = useState([]);
-
-    const [
-        estadosMantenimiento,
-        setEstadosMantenimiento
-    ] = useState([]);
-
-    const [
-        usuariosTecnicos,
-        setUsuariosTecnicos
-    ] = useState([]);
-
-    const [
-        usuarioTecnicoSeleccionado,
-        setUsuarioTecnicoSeleccionado
-    ] = useState(null);
-
-    const [
-        formulario,
-        setFormulario
-    ] = useState(formularioInicial);
-
-    const [
-        guardando,
-        setGuardando
-    ] = useState(false);
-
-    const [
-        cargando,
-        setCargando
-    ] = useState(false);
-
-    const [
-        cargandoUsuarios,
-        setCargandoUsuarios
-    ] = useState(false);
-
-    const [
-        error,
-        setError
-    ] = useState("");
-
-
-    const rol =
-        localStorage.getItem("rol") || "";
-
-    const nombreCompleto =
+    const nombreActual =
         localStorage.getItem(
             "nombreCompleto"
-        ) || "Usuario actual";
+        ) ||
+        localStorage.getItem(
+            "nombreUsuario"
+        ) ||
+        "";
 
-    const esAdministrador =
-        rol === "Administrador" ||
-        rol === "Control Total";
+    useEffect(() => {
+        if (!open) return;
 
-    const esTecnico =
-        rol === "Técnico";
+        const cargar = async () => {
+            try {
+                setCargando(true);
+                setError("");
 
+                const [
+                    upsData,
+                    tiposData,
+                    estadosData,
+                    responsablesData
+                ] = await Promise.all([
+                    obtenerUPS(),
+                    obtenerTiposMantenimiento(),
+                    obtenerEstadosMantenimiento(),
+                    obtenerResponsablesMantenimiento()
+                ]);
 
-    // =====================================================
-    // ESTADO
-    // =====================================================
+                const disponibles =
+                    (upsData || [])
+                        .filter(
+                            (u) =>
+                                String(
+                                    u.estado ||
+                                    ""
+                                )
+                                    .toLowerCase() !==
+                                "de baja"
+                        );
 
-    const estadoSeleccionado =
-        estadosMantenimiento.find(
-            estado =>
-                Number(estado.id) ===
-                Number(
-                    formulario.estadoMantenimientoId
-                )
+                setEquipos(disponibles);
+                setTipos(tiposData || []);
+                setEstados(
+                    estadosData || []
+                );
+                setResponsables(
+                    responsablesData || []
+                );
+
+                if (mantenimientoEditar) {
+                    const equipo =
+                        (upsData || [])
+                            .find(
+                                (u) =>
+                                    Number(u.id) ===
+                                    Number(
+                                        mantenimientoEditar
+                                            .upsId
+                                    )
+                            );
+
+                    setUpsSeleccionado(
+                        equipo || null
+                    );
+
+                    const cantidad =
+                        Number(
+                            mantenimientoEditar
+                                .cantidadBateriasReemplazadas ||
+                            0
+                        );
+
+                    const totalBaterias =
+                        Number(
+                            mantenimientoEditar
+                                .costoBaterias ||
+                            0
+                        );
+
+                    setFormulario({
+                        tipoMantenimientoId:
+                            mantenimientoEditar
+                                .tipoMantenimientoId ||
+                            "",
+                        fechaMantenimiento:
+                            mantenimientoEditar
+                                .fechaMantenimiento
+                                ?.substring(
+                                    0,
+                                    10
+                                ) ||
+                            "",
+                        descripcion:
+                            mantenimientoEditar
+                                .descripcion ||
+                            "",
+                        tecnicoProveedor:
+                            mantenimientoEditar
+                                .tecnicoProveedor ||
+                            "",
+                        costo:
+                            mantenimientoEditar
+                                .costo ??
+                            "",
+                        estadoMantenimientoId:
+                            mantenimientoEditar
+                                .estadoMantenimientoId ||
+                            "",
+                        observaciones:
+                            mantenimientoEditar
+                                .observaciones ||
+                            "",
+                        incluyeCambioBaterias:
+                            mantenimientoEditar
+                                .incluyeCambioBaterias ===
+                            true,
+                        costoUnitarioBateria:
+                            cantidad > 0
+                                ? totalBaterias /
+                                  cantidad
+                                : ""
+                    });
+                } else {
+                    setUpsSeleccionado(
+                        null
+                    );
+                    setFormulario({
+                        ...inicial,
+                        tecnicoProveedor:
+                            nombreActual
+                    });
+                }
+            } catch (e) {
+                setError(
+                    e.response?.data?.mensaje ||
+                    "No fue posible cargar los datos necesarios."
+                );
+            } finally {
+                setCargando(false);
+            }
+        };
+
+        cargar();
+    }, [
+        open,
+        mantenimientoEditar
+    ]);
+
+    const cambiar = (
+        campo,
+        valor
+    ) =>
+        setFormulario(
+            (actual) => ({
+                ...actual,
+                [campo]: valor
+            })
         );
 
+    const estadoNombre =
+        estados.find(
+            (e) =>
+                Number(e.id) ===
+                Number(
+                    formulario
+                        .estadoMantenimientoId
+                )
+        )?.nombre || "";
+
     const esProgramado =
-        estadoSeleccionado
-            ?.nombre
-            ?.trim()
+        estadoNombre
             .toLowerCase() ===
         "programado";
 
-
-    // =====================================================
-    // CÁLCULO DE BATERÍAS
-    // =====================================================
-
-    const cantidadBateriasUPS =
+    const cantidadBaterias =
         Number(
             upsSeleccionado
                 ?.cantidadBaterias ||
             0
         );
 
-    const costoUnitarioBateria =
+    const costoUnitario =
         Number(
             formulario
                 .costoUnitarioBateria ||
             0
         );
 
-    const costoTotalBaterias =
-        cantidadBateriasUPS *
-        costoUnitarioBateria;
-
-
-    // =====================================================
-    // CARGAR DATOS
-    // =====================================================
-
-    useEffect(() => {
-
-        if (!open) {
-            return;
-        }
-
-        setError("");
-
-        cargarDatos();
-
-    }, [
-        open,
-        mantenimientoEditar
-    ]);
-
-
-    const cargarDatos = async () => {
-
-        try {
-
-            setCargando(true);
-
-            const [
-                upsData,
-                tiposData,
-                estadosData
-            ] = await Promise.all([
-                obtenerUPS(),
-                obtenerTiposMantenimiento(),
-                obtenerEstadosMantenimiento()
-            ]);
-
-
-            setUps(
-                upsData || []
-            );
-
-            setTiposMantenimiento(
-                tiposData || []
-            );
-
-            setEstadosMantenimiento(
-                estadosData || []
-            );
-
-
-            // =================================================
-            // USUARIOS
-            // =================================================
-
-            if (esAdministrador) {
-
-                try {
-
-                    setCargandoUsuarios(
-                        true
-                    );
-
-                    const usuarios =
-                        await obtenerUsuarios();
-
-                    const activos =
-                        (usuarios || [])
-                            .filter(
-                                usuario =>
-                                    usuario.activo !==
-                                    false
-                            );
-
-                    setUsuariosTecnicos(
-                        activos
-                    );
-
-                } catch (errorUsuarios) {
-
-                    console.error(
-                        "Error al cargar usuarios:",
-                        errorUsuarios
-                    );
-
-                    setUsuariosTecnicos([]);
-
-                } finally {
-
-                    setCargandoUsuarios(
-                        false
-                    );
-                }
-
-            } else {
-
-                setUsuariosTecnicos([]);
-            }
-
-
-            // =================================================
-            // EDICIÓN
-            // =================================================
-
-            if (mantenimientoEditar) {
-
-                const upsEncontrado =
-                    (upsData || []).find(
-                        equipo =>
-                            Number(equipo.id) ===
-                            Number(
-                                mantenimientoEditar.upsId
-                            )
-                    );
-
-
-                setUpsSeleccionado(
-                    upsEncontrado || null
-                );
-
-
-                const tipoId =
-                    mantenimientoEditar
-                        .tipoMantenimientoId ??
-                    mantenimientoEditar
-                        .tipoMantenimiento?.id ??
-                    "";
-
-
-                const estadoId =
-                    mantenimientoEditar
-                        .estadoMantenimientoId ??
-                    mantenimientoEditar
-                        .estadoMantenimiento?.id ??
-                    "";
-
-
-                // =============================================
-                // RECUPERAR COSTO UNITARIO
-                //
-                // En BD tenemos:
-                // CostoBaterias = COSTO TOTAL
-                //
-                // Por eso:
-                //
-                // costo unitario =
-                // costo total / cantidad reemplazada
-                // =============================================
-
-                const cantidadHistorica =
-                    Number(
-                        mantenimientoEditar
-                            .cantidadBateriasReemplazadas ||
-                        0
-                    );
-
-                const costoTotalHistorico =
-                    Number(
-                        mantenimientoEditar
-                            .costoBaterias ||
-                        0
-                    );
-
-
-                let costoUnitarioCalculado =
-                    "";
-
-
-                if (
-                    mantenimientoEditar
-                        .incluyeCambioBaterias &&
-                    cantidadHistorica > 0
-                ) {
-
-                    costoUnitarioCalculado =
-                        costoTotalHistorico /
-                        cantidadHistorica;
-                }
-
-
-                setFormulario({
-
-                    upsId:
-                        mantenimientoEditar.upsId
-                            ? String(
-                                mantenimientoEditar.upsId
-                            )
-                            : "",
-
-                    tipoMantenimientoId:
-                        tipoId
-                            ? String(tipoId)
-                            : "",
-
-                    fechaMantenimiento:
-                        mantenimientoEditar
-                            .fechaMantenimiento
-                            ? mantenimientoEditar
-                                .fechaMantenimiento
-                                .substring(0, 10)
-                            : "",
-
-                    descripcion:
-                        mantenimientoEditar
-                            .descripcion || "",
-
-                    tecnicoProveedor:
-                        mantenimientoEditar
-                            .tecnicoProveedor || "",
-
-                    costo:
-                        mantenimientoEditar
-                            .costo ?? "",
-
-                    estadoMantenimientoId:
-                        estadoId
-                            ? String(estadoId)
-                            : "",
-
-                    observaciones:
-                        mantenimientoEditar
-                            .observaciones || "",
-
-                    incluyeCambioBaterias:
-                        mantenimientoEditar
-                            .incluyeCambioBaterias ===
-                        true,
-
-                    costoUnitarioBateria:
-                        mantenimientoEditar
-                            .incluyeCambioBaterias
-                            ? costoUnitarioCalculado
-                            : ""
-                });
-
-
-                setUsuarioTecnicoSeleccionado(
-                    null
-                );
-
-            } else {
-
-                setUpsSeleccionado(
-                    null
-                );
-
-                setUsuarioTecnicoSeleccionado(
-                    null
-                );
-
-                setFormulario({
-                    ...formularioInicial,
-
-                    tecnicoProveedor:
-                        esTecnico
-                            ? nombreCompleto
-                            : ""
-                });
-            }
-
-        } catch (errorCarga) {
-
-            console.error(
-                "Error al cargar datos de mantenimiento:",
-                errorCarga
-            );
-
-            setError(
-                "No se pudieron cargar los datos necesarios."
-            );
-
-        } finally {
-
-            setCargando(false);
-        }
-    };
-
-
-    // =====================================================
-    // TÉCNICO AL EDITAR
-    // =====================================================
-
-    useEffect(() => {
-
-        if (
-            !mantenimientoEditar ||
-            !esAdministrador ||
-            usuariosTecnicos.length === 0
-        ) {
-            return;
-        }
-
-
-        const tecnicoActual =
-            mantenimientoEditar
-                .tecnicoProveedor;
-
-
-        const usuario =
-            usuariosTecnicos.find(
-                item =>
-                    item.nombreCompleto ===
-                        tecnicoActual ||
-                    item.nombreUsuario ===
-                        tecnicoActual
-            );
-
-
-        setUsuarioTecnicoSeleccionado(
-            usuario || null
-        );
-
-    }, [
-        usuariosTecnicos,
-        mantenimientoEditar,
-        esAdministrador
-    ]);
-
-
-    // =====================================================
-    // CAMBIAR CAMPO
-    // =====================================================
-
-    const cambiarCampo = (
-        campo,
-        valor
-    ) => {
-
-        setFormulario(
-            previo => ({
-                ...previo,
-                [campo]: valor
-            })
-        );
-
-        if (error) {
-            setError("");
-        }
-    };
-
-
-    // =====================================================
-    // CAMBIO DE BATERÍAS
-    // =====================================================
-
-    const cambiarCambioBaterias =
-        marcado => {
-
-            setFormulario(
-                previo => ({
-                    ...previo,
-
-                    incluyeCambioBaterias:
-                        marcado,
-
-                    costoUnitarioBateria:
-                        marcado
-                            ? previo
-                                .costoUnitarioBateria
-                            : ""
-                })
-            );
-
-            if (error) {
-                setError("");
-            }
-        };
-
-
-    // =====================================================
-    // GUARDAR
-    // =====================================================
+    const totalBaterias =
+        cantidadBaterias *
+        costoUnitario;
 
     const guardar = async () => {
-
         setError("");
 
-
         if (!upsSeleccionado) {
-
             setError(
                 "Debe seleccionar un UPS."
             );
-
             return;
         }
-
-
-        if (!formulario.tipoMantenimientoId) {
-
-            setError(
-                "Debe seleccionar el tipo de mantenimiento."
-            );
-
-            return;
-        }
-
-
-        if (!formulario.fechaMantenimiento) {
-
-            setError(
-                "Debe seleccionar la fecha del mantenimiento."
-            );
-
-            return;
-        }
-
-
-        if (!formulario.estadoMantenimientoId) {
-
-            setError(
-                "Debe seleccionar el estado del mantenimiento."
-            );
-
-            return;
-        }
-
-
-        // =================================================
-        // FECHA
-        // =================================================
-
-        const fechaActual =
-            obtenerFechaActual();
-
-        const fechaEsFutura =
-            formulario.fechaMantenimiento >
-            fechaActual;
-
 
         if (
-            fechaEsFutura &&
-            !esProgramado
+            mantenimientoEditar &&
+            Number(
+                upsSeleccionado.id
+            ) !==
+            Number(
+                mantenimientoEditar
+                    .upsId
+            )
         ) {
-
             setError(
-                "Una fecha futura solamente puede utilizarse cuando el estado del mantenimiento es Programado."
+                "No se puede cambiar el UPS de un mantenimiento existente."
             );
-
             return;
         }
 
+        if (!formulario.tipoMantenimientoId) {
+            setError(
+                "Seleccione el tipo de mantenimiento."
+            );
+            return;
+        }
+
+        if (!formulario.estadoMantenimientoId) {
+            setError(
+                "Seleccione el estado del mantenimiento."
+            );
+            return;
+        }
+
+        if (!formulario.fechaMantenimiento) {
+            setError(
+                "Seleccione la fecha del mantenimiento."
+            );
+            return;
+        }
+
+        if (
+            formulario.fechaMantenimiento >
+                fechaActual() &&
+            !esProgramado
+        ) {
+            setError(
+                "Una fecha futura solamente puede utilizarse con estado Programado."
+            );
+            return;
+        }
+
+        if (!formulario.descripcion.trim()) {
+            setError(
+                "Ingrese una descripción."
+            );
+            return;
+        }
 
         if (
             !formulario
-                .descripcion
+                .tecnicoProveedor
                 .trim()
         ) {
-
             setError(
-                "Debe ingresar una descripción."
+                "Indique un técnico o proveedor."
             );
-
             return;
         }
-
-
-        // =================================================
-        // TÉCNICO
-        // =================================================
-
-        let tecnicoProveedor =
-            formulario
-                .tecnicoProveedor
-                .trim();
-
-
-        if (esTecnico) {
-
-            tecnicoProveedor =
-                nombreCompleto.trim();
-        }
-
-
-        if (!tecnicoProveedor) {
-
-            setError(
-                "Debe indicar el técnico o proveedor responsable."
-            );
-
-            return;
-        }
-
-
-        // =================================================
-        // COSTO SERVICIO
-        // =================================================
 
         if (
             formulario.costo === "" ||
             Number(formulario.costo) < 0
         ) {
-
             setError(
-                "Ingrese un costo válido."
+                "Ingrese un costo de mantenimiento válido."
             );
-
             return;
         }
-
-
-        // =================================================
-        // BATERÍAS
-        // =================================================
 
         if (
             formulario
                 .incluyeCambioBaterias
         ) {
-
-            if (
-                cantidadBateriasUPS <= 0
-            ) {
-
+            if (cantidadBaterias <= 0) {
                 setError(
-                    "El UPS no tiene una cantidad válida de baterías registrada."
+                    "El UPS no tiene una cantidad válida de baterías."
                 );
-
                 return;
             }
 
-
             if (
                 formulario
-                    .costoUnitarioBateria === "" ||
-                Number(
-                    formulario
-                        .costoUnitarioBateria
-                ) < 0
+                    .costoUnitarioBateria ===
+                    "" ||
+                costoUnitario < 0
             ) {
-
                 setError(
                     "Ingrese un costo unitario válido para las baterías."
                 );
-
                 return;
             }
         }
 
-
-        // =================================================
-        // DATOS
-        // =================================================
+        const datos = {
+            id:
+                mantenimientoEditar?.id ||
+                0,
+            upsId:
+                Number(
+                    upsSeleccionado.id
+                ),
+            tipoMantenimientoId:
+                Number(
+                    formulario
+                        .tipoMantenimientoId
+                ),
+            estadoMantenimientoId:
+                Number(
+                    formulario
+                        .estadoMantenimientoId
+                ),
+            fechaMantenimiento:
+                `${formulario.fechaMantenimiento}T00:00:00`,
+            descripcion:
+                formulario
+                    .descripcion
+                    .trim(),
+            tecnicoProveedor:
+                formulario
+                    .tecnicoProveedor
+                    .trim(),
+            costo:
+                Number(
+                    formulario.costo
+                ),
+            observaciones:
+                formulario
+                    .observaciones
+                    .trim(),
+            incluyeCambioBaterias:
+                formulario
+                    .incluyeCambioBaterias,
+            cantidadBateriasReemplazadas:
+                formulario
+                    .incluyeCambioBaterias
+                    ? cantidadBaterias
+                    : 0,
+            costoBaterias:
+                formulario
+                    .incluyeCambioBaterias
+                    ? totalBaterias
+                    : 0
+        };
 
         try {
-
             setGuardando(true);
 
-
-            const datos = {
-
-                id:
-                    mantenimientoEditar
-                        ?.id ?? 0,
-
-                upsId:
-                    Number(
-                        upsSeleccionado.id
-                    ),
-
-                tipoMantenimientoId:
-                    Number(
-                        formulario
-                            .tipoMantenimientoId
-                    ),
-
-                estadoMantenimientoId:
-                    Number(
-                        formulario
-                            .estadoMantenimientoId
-                    ),
-
-                fechaMantenimiento:
-                    `${formulario.fechaMantenimiento}T00:00:00`,
-
-                descripcion:
-                    formulario
-                        .descripcion
-                        .trim(),
-
-                tecnicoProveedor:
-                    tecnicoProveedor,
-
-                costo:
-                    Number(
-                        formulario.costo
-                    ),
-
-                observaciones:
-                    formulario
-                        .observaciones
-                        .trim(),
-
-                incluyeCambioBaterias:
-                    formulario
-                        .incluyeCambioBaterias,
-
-                cantidadBateriasReemplazadas:
-                    formulario
-                        .incluyeCambioBaterias
-                        ? cantidadBateriasUPS
-                        : 0,
-
-                // =============================================
-                // GUARDAMOS EL TOTAL
-                // =============================================
-
-                costoBaterias:
-                    formulario
-                        .incluyeCambioBaterias
-                        ? costoTotalBaterias
-                        : 0
-            };
-
-
             if (mantenimientoEditar) {
-
                 await actualizarMantenimiento(
                     mantenimientoEditar.id,
                     datos
                 );
-
             } else {
-
                 await crearMantenimiento(
                     datos
                 );
             }
 
-
             await onGuardado();
-
-            cerrar();
-
-        } catch (errorGuardar) {
-
-            console.error(
-                "Error al guardar mantenimiento:",
-                errorGuardar
-            );
-
-
-            const mensaje =
-                errorGuardar
-                    .response
-                    ?.data
-                    ?.mensaje ||
-                errorGuardar
-                    .response
-                    ?.data
-                    ?.message ||
-                "No se pudo guardar el mantenimiento.";
-
-
+            onClose();
+        } catch (e) {
             setError(
-                mensaje
+                e.response?.data?.mensaje ||
+                e.response?.data?.message ||
+                "No fue posible guardar el mantenimiento."
             );
-
         } finally {
-
             setGuardando(false);
         }
     };
 
-
-    // =====================================================
-    // CERRAR
-    // =====================================================
-
-    const cerrar = () => {
-
-        if (guardando) {
-            return;
-        }
-
-        setUpsSeleccionado(
-            null
+    const responsableOpciones =
+        responsables.map(
+            (r) =>
+                r.nombreCompleto ||
+                r.nombreUsuario
         );
-
-        setUsuarioTecnicoSeleccionado(
-            null
-        );
-
-        setFormulario({
-            ...formularioInicial
-        });
-
-        setError("");
-
-        onClose();
-    };
-
-
-    // =====================================================
-    // INTERFAZ
-    // =====================================================
 
     return (
-
         <Dialog
             open={open}
             onClose={
                 guardando
                     ? undefined
-                    : cerrar
+                    : onClose
             }
             fullWidth
             maxWidth="md"
         >
-
-            <DialogTitle
-                sx={{
-                    fontWeight: "bold"
-                }}
-            >
+            <DialogTitle>
                 {mantenimientoEditar
                     ? "Editar mantenimiento"
                     : "Nuevo mantenimiento"}
             </DialogTitle>
 
-
             <DialogContent>
-
                 {error && (
-
                     <Alert
                         severity="error"
                         sx={{
@@ -937,436 +503,283 @@ export default function NuevoMantenimientoModal({
                     >
                         {error}
                     </Alert>
-
                 )}
-
 
                 <Box
                     sx={{
                         display: "grid",
-
                         gridTemplateColumns:
                             "repeat(2, minmax(0, 1fr))",
-
                         gap: 2,
-
                         mt: 1
                     }}
                 >
-
-                    {/* UPS */}
-
                     <Box
                         sx={{
-                            gridColumn: "1 / -1"
+                            gridColumn:
+                                "1 / -1"
                         }}
                     >
-
                         <Autocomplete
-                            fullWidth
-                            options={ups}
-                            value={upsSeleccionado}
-                            loading={cargando}
+                            options={equipos}
+                            value={
+                                upsSeleccionado
+                            }
                             disabled={
                                 cargando ||
-                                guardando
-                            }
-                            onChange={(
-                                event,
-                                nuevoValor
-                            ) => {
-
-                                setUpsSeleccionado(
-                                    nuevoValor
-                                );
-
-                                cambiarCampo(
-                                    "upsId",
-                                    nuevoValor
-                                        ? nuevoValor.id
-                                        : ""
-                                );
-                            }}
-                            getOptionLabel={
-                                option =>
-                                    `${option.codigo || ""} - ${option.numeroSerie || ""} - ${option.marca || ""} ${option.modelo || ""}`
-                            }
-                            isOptionEqualToValue={
-                                (
-                                    option,
-                                    value
-                                ) =>
-                                    Number(option.id) ===
-                                    Number(value.id)
-                            }
-                            renderInput={
-                                params => (
-
-                                    <TextField
-                                        {...params}
-                                        label="UPS"
-                                        placeholder="Buscar por código, serie o equipo..."
-                                        required
-                                    />
-
+                                guardando ||
+                                Boolean(
+                                    mantenimientoEditar
                                 )
                             }
+                            getOptionLabel={(u) =>
+                                [
+                                    u.codigo,
+                                    u.numeroSerie,
+                                    u.marca,
+                                    u.modelo,
+                                    u.estado
+                                ]
+                                    .filter(Boolean)
+                                    .join(" - ")
+                            }
+                            isOptionEqualToValue={(
+                                a,
+                                b
+                            ) =>
+                                Number(a.id) ===
+                                Number(b.id)
+                            }
+                            onChange={(
+                                _,
+                                valor
+                            ) =>
+                                setUpsSeleccionado(
+                                    valor
+                                )
+                            }
+                            renderInput={(
+                                params
+                            ) => (
+                                <TextField
+                                    {...params}
+                                    required
+                                    label="UPS"
+                                    helperText={
+                                        mantenimientoEditar
+                                            ? "El UPS no puede cambiarse en un mantenimiento existente."
+                                            : "Los UPS De baja no aparecen disponibles."
+                                    }
+                                />
+                            )}
                         />
-
                     </Box>
-
-
-                    {/* TIPO */}
 
                     <TextField
                         select
-                        fullWidth
                         required
                         label="Tipo de mantenimiento"
                         value={
                             formulario
                                 .tipoMantenimientoId
                         }
-                        onChange={e =>
-                            cambiarCampo(
+                        onChange={(e) =>
+                            cambiar(
                                 "tipoMantenimientoId",
                                 e.target.value
                             )
                         }
-                        disabled={
-                            cargando ||
-                            guardando
-                        }
                     >
-
-                        <MenuItem value="">
-                            Seleccione...
-                        </MenuItem>
-
-                        {tiposMantenimiento.map(
-                            tipo => (
-
+                        {tipos.map(
+                            (tipo) => (
                                 <MenuItem
                                     key={tipo.id}
                                     value={tipo.id}
                                 >
                                     {tipo.nombre}
                                 </MenuItem>
-
                             )
                         )}
-
                     </TextField>
-
-
-                    {/* FECHA */}
-
-                    <Box>
-
-                        <Box
-                            component="label"
-                            sx={{
-                                display: "block",
-                                fontSize: "0.9rem",
-                                color: "text.secondary",
-                                mb: 0.5
-                            }}
-                        >
-                            Fecha de mantenimiento *
-                        </Box>
-
-                        <TextField
-                            fullWidth
-                            required
-                            type="date"
-                            value={
-                                formulario
-                                    .fechaMantenimiento
-                            }
-                            onChange={e =>
-                                cambiarCampo(
-                                    "fechaMantenimiento",
-                                    e.target.value
-                                )
-                            }
-                            disabled={guardando}
-                            inputProps={
-                                esProgramado
-                                    ? {}
-                                    : {
-                                        max:
-                                            obtenerFechaActual()
-                                    }
-                            }
-                        />
-
-                    </Box>
-
-
-                    {/* DESCRIPCIÓN */}
-
-                    <Box
-                        sx={{
-                            gridColumn: "1 / -1"
-                        }}
-                    >
-
-                        <TextField
-                            fullWidth
-                            required
-                            multiline
-                            rows={4}
-                            label="Descripción"
-                            value={
-                                formulario
-                                    .descripcion
-                            }
-                            onChange={e =>
-                                cambiarCampo(
-                                    "descripcion",
-                                    e.target.value
-                                )
-                            }
-                            disabled={guardando}
-                        />
-
-                    </Box>
-
-
-                    {/* TÉCNICO */}
-
-                    <Box>
-
-                        {esAdministrador ? (
-
-                            <Autocomplete
-                                fullWidth
-                                options={
-                                    usuariosTecnicos
-                                }
-                                value={
-                                    usuarioTecnicoSeleccionado
-                                }
-                                loading={
-                                    cargandoUsuarios
-                                }
-                                disabled={
-                                    guardando ||
-                                    cargandoUsuarios
-                                }
-                                onChange={(
-                                    event,
-                                    nuevoValor
-                                ) => {
-
-                                    setUsuarioTecnicoSeleccionado(
-                                        nuevoValor
-                                    );
-
-                                    cambiarCampo(
-                                        "tecnicoProveedor",
-                                        nuevoValor
-                                            ? (
-                                                nuevoValor
-                                                    .nombreCompleto ||
-                                                nuevoValor
-                                                    .nombreUsuario ||
-                                                ""
-                                            )
-                                            : ""
-                                    );
-                                }}
-                                getOptionLabel={
-                                    usuario =>
-                                        `${usuario.nombreCompleto || ""} (${usuario.nombreUsuario || ""})`
-                                }
-                                isOptionEqualToValue={
-                                    (
-                                        option,
-                                        value
-                                    ) =>
-                                        Number(option.id) ===
-                                        Number(value.id)
-                                }
-                                renderInput={
-                                    params => (
-
-                                        <TextField
-                                            {...params}
-                                            label="Técnico / proveedor"
-                                            required
-                                        />
-
-                                    )
-                                }
-                            />
-
-                        ) : (
-
-                            <TextField
-                                fullWidth
-                                required
-                                label="Técnico / proveedor"
-                                value={
-                                    nombreCompleto
-                                }
-                                disabled
-                            />
-
-                        )}
-
-                    </Box>
-
-
-                    {/* COSTO SERVICIO */}
-
-                    <TextField
-                        fullWidth
-                        label="Costo del mantenimiento"
-                        type="number"
-                        value={
-                            formulario.costo
-                        }
-                        onChange={e =>
-                            cambiarCampo(
-                                "costo",
-                                e.target.value
-                            )
-                        }
-                        disabled={guardando}
-                        inputProps={{
-                            min: 0,
-                            step: "0.01"
-                        }}
-                    />
-
-
-                    {/* ESTADO */}
 
                     <TextField
                         select
-                        fullWidth
                         required
                         label="Estado"
                         value={
                             formulario
                                 .estadoMantenimientoId
                         }
-                        onChange={e =>
-                            cambiarCampo(
+                        onChange={(e) =>
+                            cambiar(
                                 "estadoMantenimientoId",
                                 e.target.value
                             )
                         }
-                        disabled={
-                            cargando ||
-                            guardando
-                        }
                     >
-
-                        <MenuItem value="">
-                            Seleccione...
-                        </MenuItem>
-
-                        {estadosMantenimiento.map(
-                            estado => (
-
+                        {estados.map(
+                            (estado) => (
                                 <MenuItem
                                     key={estado.id}
                                     value={estado.id}
                                 >
                                     {estado.nombre}
                                 </MenuItem>
-
                             )
                         )}
-
                     </TextField>
 
+                    <TextField
+                        required
+                        type="date"
+                        label="Fecha de mantenimiento"
+                        value={
+                            formulario
+                                .fechaMantenimiento
+                        }
+                        onChange={(e) =>
+                            cambiar(
+                                "fechaMantenimiento",
+                                e.target.value
+                            )
+                        }
+                        slotProps={{
+                            inputLabel: {
+                                shrink: true
+                            },
+                            htmlInput:
+                                esProgramado
+                                    ? {}
+                                    : {
+                                        max:
+                                            fechaActual()
+                                    }
+                        }}
+                    />
 
-                    {/* CAMBIO DE BATERÍAS */}
+                    <Autocomplete
+                        freeSolo
+                        options={
+                            responsableOpciones
+                        }
+                        inputValue={
+                            formulario
+                                .tecnicoProveedor
+                        }
+                        onInputChange={(
+                            _,
+                            valor
+                        ) =>
+                            cambiar(
+                                "tecnicoProveedor",
+                                valor
+                            )
+                        }
+                        renderInput={(
+                            params
+                        ) => (
+                            <TextField
+                                {...params}
+                                required
+                                label="Técnico / proveedor"
+                                helperText="Seleccione un usuario técnico o escriba un proveedor externo."
+                            />
+                        )}
+                    />
+
+                    <TextField
+                        sx={{
+                            gridColumn:
+                                "1 / -1"
+                        }}
+                        required
+                        multiline
+                        rows={3}
+                        label="Descripción"
+                        value={
+                            formulario.descripcion
+                        }
+                        onChange={(e) =>
+                            cambiar(
+                                "descripcion",
+                                e.target.value
+                            )
+                        }
+                    />
+
+                    <TextField
+                        type="number"
+                        label="Costo del mantenimiento"
+                        value={
+                            formulario.costo
+                        }
+                        onChange={(e) =>
+                            cambiar(
+                                "costo",
+                                e.target.value
+                            )
+                        }
+                    />
+
+                    <Box />
 
                     <Paper
                         variant="outlined"
                         sx={{
-                            gridColumn: "1 / -1",
-                            p: 2.5,
-                            mt: 0.5
+                            gridColumn:
+                                "1 / -1",
+                            p: 2
                         }}
                     >
-
                         <Typography
-                            variant="subtitle1"
                             fontWeight="bold"
                         >
                             Cambio de baterías
                         </Typography>
 
-
                         <FormControlLabel
-                            sx={{ mt: 1 }}
                             control={
-
                                 <Checkbox
                                     checked={
                                         formulario
                                             .incluyeCambioBaterias
                                     }
-                                    onChange={e =>
-                                        cambiarCambioBaterias(
+                                    onChange={(e) =>
+                                        cambiar(
+                                            "incluyeCambioBaterias",
                                             e.target.checked
                                         )
                                     }
-                                    disabled={guardando}
                                 />
-
                             }
                             label={
                                 esProgramado
                                     ? "Este mantenimiento contempla cambio de baterías"
-                                    : "Se realizó cambio de baterías"
+                                    : "Este mantenimiento incluye cambio de baterías"
                             }
                         />
 
-
                         {formulario
                             .incluyeCambioBaterias && (
-
                             <Box
                                 sx={{
-                                    mt: 2,
-
                                     display: "grid",
-
                                     gridTemplateColumns:
-                                        "repeat(2, minmax(0, 1fr))",
-
-                                    gap: 2
+                                        "1fr 1fr",
+                                    gap: 2,
+                                    mt: 1
                                 }}
                             >
-
-                                {/* CANTIDAD */}
-
                                 <TextField
-                                    fullWidth
-                                    label={
-                                        esProgramado
-                                            ? "Baterías a reemplazar"
-                                            : "Baterías reemplazadas"
-                                    }
+                                    label="Cantidad"
                                     value={
-                                        cantidadBateriasUPS ||
+                                        cantidadBaterias ||
                                         ""
                                     }
                                     disabled
-                                    helperText="Se reemplaza el banco completo registrado en el UPS."
+                                    helperText="Se reemplaza el banco completo."
                                 />
-
-
-                                {/* COSTO UNITARIO */}
-
                                 <TextField
-                                    fullWidth
                                     required
                                     type="number"
                                     label="Costo unitario por batería"
@@ -1374,141 +787,72 @@ export default function NuevoMantenimientoModal({
                                         formulario
                                             .costoUnitarioBateria
                                     }
-                                    onChange={e =>
-                                        cambiarCampo(
+                                    onChange={(e) =>
+                                        cambiar(
                                             "costoUnitarioBateria",
                                             e.target.value
                                         )
                                     }
-                                    disabled={guardando}
-                                    inputProps={{
-                                        min: 0,
-                                        step: "0.01"
-                                    }}
                                 />
 
-
-                                {/* RESUMEN */}
-
-                                <Paper
-                                    variant="outlined"
+                                <Typography
                                     sx={{
                                         gridColumn:
-                                            "1 / -1",
-
-                                        p: 2
+                                            "1 / -1"
                                     }}
                                 >
-
-                                    <Typography
-                                        variant="body2"
-                                        color="text.secondary"
-                                    >
-                                        Cálculo del cambio
-                                    </Typography>
-
-
-                                    <Typography
-                                        sx={{
-                                            mt: 0.5
-                                        }}
-                                    >
-                                        {cantidadBateriasUPS} baterías
-                                        {" × "}
-                                        L{" "}
-                                        {formatearMoneda(
-                                            costoUnitarioBateria
-                                        )}
-                                    </Typography>
-
-
-                                    <Typography
-                                        variant="h6"
-                                        fontWeight="bold"
-                                        sx={{
-                                            mt: 1
-                                        }}
-                                    >
-                                        Total: L{" "}
-                                        {formatearMoneda(
-                                            costoTotalBaterias
-                                        )}
-                                    </Typography>
-
-                                </Paper>
-
+                                    {cantidadBaterias} baterías × L {moneda(costoUnitario)}
+                                    {" = "}
+                                    <strong>
+                                        L {moneda(totalBaterias)}
+                                    </strong>
+                                </Typography>
                             </Box>
-
                         )}
-
                     </Paper>
 
-
-                    {/* OBSERVACIONES */}
-
-                    <Box
+                    <TextField
                         sx={{
-                            gridColumn: "1 / -1"
+                            gridColumn:
+                                "1 / -1"
                         }}
-                    >
-
-                        <TextField
-                            fullWidth
-                            label="Observaciones"
-                            multiline
-                            rows={3}
-                            value={
-                                formulario
-                                    .observaciones
-                            }
-                            onChange={e =>
-                                cambiarCampo(
-                                    "observaciones",
-                                    e.target.value
-                                )
-                            }
-                            disabled={guardando}
-                        />
-
-                    </Box>
-
+                        multiline
+                        rows={2}
+                        label="Observaciones"
+                        value={
+                            formulario
+                                .observaciones
+                        }
+                        onChange={(e) =>
+                            cambiar(
+                                "observaciones",
+                                e.target.value
+                            )
+                        }
+                    />
                 </Box>
-
             </DialogContent>
 
-
-            <DialogActions
-                sx={{
-                    px: 3,
-                    pb: 2
-                }}
-            >
-
+            <DialogActions>
                 <Button
-                    onClick={cerrar}
+                    onClick={onClose}
                     disabled={guardando}
                 >
                     Cancelar
                 </Button>
-
                 <Button
                     variant="contained"
                     onClick={guardar}
                     disabled={
-                        guardando ||
-                        cargando
+                        cargando ||
+                        guardando
                     }
                 >
                     {guardando
                         ? "Guardando..."
-                        : mantenimientoEditar
-                            ? "Actualizar"
-                            : "Guardar"}
+                        : "Guardar"}
                 </Button>
-
             </DialogActions>
-
         </Dialog>
-
     );
 }

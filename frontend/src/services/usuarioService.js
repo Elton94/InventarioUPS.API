@@ -147,3 +147,16 @@ export const actualizarPermisosRol = async (
 
     return response.data;
 };
+
+// =====================================================
+// RESPONSABLES DE MANTENIMIENTO
+// =====================================================
+
+export const obtenerResponsablesMantenimiento =
+    async () => {
+        const response = await api.get(
+            `${API_URL}/responsables-mantenimiento`
+        );
+
+        return response.data;
+    };

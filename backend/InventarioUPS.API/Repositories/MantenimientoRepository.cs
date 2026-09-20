@@ -146,6 +146,15 @@ namespace InventarioUPS.API.Repositories
             existente.CostoBaterias =
                 mantenimiento.CostoBaterias;
 
+            existente.AgenciaIdRegistro =
+                mantenimiento.AgenciaIdRegistro;
+
+            existente.AgenciaNombreRegistro =
+                mantenimiento.AgenciaNombreRegistro;
+
+            existente.EstadoUPSAnteriorId =
+                mantenimiento.EstadoUPSAnteriorId;
+
             existente.FechaModificacion =
                 DateTime.Now;
 

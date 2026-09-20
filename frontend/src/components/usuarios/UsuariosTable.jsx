@@ -23,6 +23,7 @@ export default function UsuariosTable({
     onEditar,
     onCambiarEstado,
     puedeGestionarUsuarios = false,
+    puedeGestionarRoles = false,
     usuarioActualId = 0
 }) {
     return (
@@ -46,6 +47,19 @@ export default function UsuariosTable({
                             Number(
                                 usuarioActualId
                             );
+
+                        const esControlTotal =
+                            String(
+                                usuario.rolNombre ||
+                                ""
+                            )
+                                .trim()
+                                .toLowerCase() ===
+                            "control total";
+
+                        const protegido =
+                            esControlTotal &&
+                            !puedeGestionarRoles;
 
                         return (
                             <TableRow
@@ -86,24 +100,31 @@ export default function UsuariosTable({
                                     {puedeGestionarUsuarios && (
                                         <>
                                             <Tooltip title="Editar usuario">
-                                                <IconButton
-                                                    color="primary"
-                                                    onClick={() =>
-                                                        onEditar(
-                                                            usuario
-                                                        )
-                                                    }
-                                                >
-                                                    <EditIcon />
-                                                </IconButton>
+                                                <span>
+                                                    <IconButton
+                                                        color="primary"
+                                                        disabled={
+                                                            protegido
+                                                        }
+                                                        onClick={() =>
+                                                            onEditar(
+                                                                usuario
+                                                            )
+                                                        }
+                                                    >
+                                                        <EditIcon />
+                                                    </IconButton>
+                                                </span>
                                             </Tooltip>
 
                                             <Tooltip
                                                 title={
-                                                    esActual &&
-                                                    usuario.activo
-                                                        ? "No puede desactivar su propio usuario"
-                                                        : usuario.activo
+                                                    protegido
+                                                        ? "Solo quien gestiona roles puede modificar un usuario Control Total"
+                                                        : esActual &&
+                                                          usuario.activo
+                                                            ? "No puede desactivar su propio usuario"
+                                                            : usuario.activo
                                                             ? "Desactivar usuario"
                                                             : "Activar usuario"
                                                 }
@@ -111,8 +132,11 @@ export default function UsuariosTable({
                                                 <span>
                                                     <IconButton
                                                         disabled={
-                                                            esActual &&
-                                                            usuario.activo
+                                                            protegido ||
+                                                            (
+                                                                esActual &&
+                                                                usuario.activo
+                                                            )
                                                         }
                                                         color={
                                                             usuario.activo

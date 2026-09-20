@@ -299,7 +299,13 @@ namespace InventarioUPS.API.Controllers
             if (EsControlTotal(rol.Nombre) &&
                 !await TienePermisoGestionarRolesAsync())
             {
-                return Forbid();
+                return StatusCode(
+                    StatusCodes.Status403Forbidden,
+                    new
+                    {
+                        mensaje =
+                            "No tiene permiso para asignar el rol Control Total."
+                    });
             }
 
             var usuario = new Usuario
@@ -457,7 +463,13 @@ namespace InventarioUPS.API.Controllers
                 !esActualmenteControlTotal &&
                 !await TienePermisoGestionarRolesAsync())
             {
-                return Forbid();
+                return StatusCode(
+                    StatusCodes.Status403Forbidden,
+                    new
+                    {
+                        mensaje =
+                            "No tiene permiso para asignar el rol Control Total."
+                    });
             }
 
             // -------------------------------------------------

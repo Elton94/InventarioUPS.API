@@ -268,6 +268,9 @@ export default function Usuarios() {
                             cambiarEstado
                         }
                         puedeGestionarUsuarios
+                        puedeGestionarRoles={
+                            puedeRoles
+                        }
                         usuarioActualId={
                             usuarioActualId
                         }

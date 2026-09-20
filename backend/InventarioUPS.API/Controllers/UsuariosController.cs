@@ -434,6 +434,18 @@ namespace InventarioUPS.API.Controllers
             var esActualmenteControlTotal =
                 EsControlTotal(rolActual);
 
+            if (esActualmenteControlTotal &&
+                !await TienePermisoGestionarRolesAsync())
+            {
+                return StatusCode(
+                    StatusCodes.Status403Forbidden,
+                    new
+                    {
+                        mensaje =
+                            "No tiene permiso para modificar usuarios con rol Control Total."
+                    });
+            }
+
             var nuevoEsControlTotal =
                 EsControlTotal(rol.Nombre);
 
@@ -546,6 +558,18 @@ namespace InventarioUPS.API.Controllers
 
             var esControlTotal =
                 EsControlTotal(rolNombre);
+
+            if (esControlTotal &&
+                !await TienePermisoGestionarRolesAsync())
+            {
+                return StatusCode(
+                    StatusCodes.Status403Forbidden,
+                    new
+                    {
+                        mensaje =
+                            "No tiene permiso para cambiar el estado de usuarios con rol Control Total."
+                    });
+            }
 
             if (!activo &&
                 usuario.Activo &&

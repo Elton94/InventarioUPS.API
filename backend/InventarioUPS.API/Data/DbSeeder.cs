@@ -630,6 +630,25 @@ namespace InventarioUPS.API.Data
 
             await context.SaveChangesAsync();
 
+            // =================================================
+            // PERMISOS OBSOLETOS
+            // Reportes fue eliminado del MVP. Si el permiso quedó
+            // de una versión anterior, se desactiva para que no
+            // aparezca en la administración de roles.
+            // =================================================
+
+            var permisosObsoletos = await context.Permisos
+                .Where(p => p.Codigo == "VER_REPORTES")
+                .ToListAsync();
+
+            foreach (var permisoObsoleto in permisosObsoletos)
+            {
+                permisoObsoleto.Activo = false;
+                permisoObsoleto.FechaModificacion = DateTime.Now;
+            }
+
+            await context.SaveChangesAsync();
+
             var controlTotal = await ObtenerOCrearRol(
                 context, "Control Total", "Acceso completo al sistema");
 

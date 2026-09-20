@@ -87,6 +87,11 @@ namespace InventarioUPS.API.Services
             _ = await ObtenerTipoAsync(mantenimiento.TipoMantenimientoId);
             var estado = await ObtenerEstadoAsync(mantenimiento.EstadoMantenimientoId);
 
+            await ValidarMantenimientoActivoDuplicadoAsync(
+                mantenimiento.UPSId,
+                mantenimiento.Id,
+                estado.Nombre);
+
             ValidarFecha(mantenimiento.FechaMantenimiento, estado.Nombre);
             PrepararBaterias(mantenimiento, ups);
             LimpiarTextos(mantenimiento);

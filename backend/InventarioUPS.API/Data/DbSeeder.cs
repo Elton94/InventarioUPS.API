@@ -697,17 +697,19 @@ namespace InventarioUPS.API.Data
 
             await context.SaveChangesAsync();
 
+            var sistemaSinRoles =
+                !await context.Roles.AnyAsync();
+
+            var sistemaSinAsignaciones =
+                !await context.RolPermisos.AnyAsync();
+
+            // Control Total es el único rol reservado del sistema.
+            // Siempre debe existir y siempre conserva todos los
+            // permisos activos.
             var controlTotal = await ObtenerOCrearRol(
-                context, "Control Total", "Acceso completo al sistema");
-
-            var administrador = await ObtenerOCrearRol(
-                context, "Administrador", "Administración operativa del sistema");
-
-            var tecnico = await ObtenerOCrearRol(
-                context, "Técnico", "Gestión técnica de UPS y mantenimientos");
-
-            var consulta = await ObtenerOCrearRol(
-                context, "Consulta", "Acceso de solo consulta");
+                context,
+                "Control Total",
+                "Acceso completo al sistema");
 
             await AsegurarPermisosRol(
                 context,
@@ -715,52 +717,101 @@ namespace InventarioUPS.API.Data
                 permisos.Values.Select(p => p.Id),
                 forzarSincronizacion: true);
 
-            await AsegurarPermisosRol(
-                context,
-                administrador,
-                new[]
-                {
-                    permisos["VER_INICIO"].Id,
-                    permisos["VER_AGENCIAS"].Id,
-                    permisos["CREAR_AGENCIAS"].Id,
-                    permisos["EDITAR_AGENCIAS"].Id,
-                    permisos["VER_UPS"].Id,
-                    permisos["CREAR_UPS"].Id,
-                    permisos["EDITAR_UPS"].Id,
-                    permisos["VER_MANTENIMIENTO"].Id,
-                    permisos["CREAR_MANTENIMIENTO"].Id,
-                    permisos["EDITAR_MANTENIMIENTO"].Id,
-                    permisos["VER_PRESUPUESTO"].Id,
-                    permisos["GESTIONAR_PRESUPUESTO"].Id,
-                    permisos["GESTIONAR_USUARIOS"].Id
-                });
+            // Los demás roles se crean solamente en una base nueva.
+            // Si luego el usuario los renombra, elimina permisos o
+            // crea roles propios desde el frontend, el Seeder NO
+            // deshace esa configuración al reiniciar la API.
+            if (sistemaSinRoles)
+            {
+                await ObtenerOCrearRol(
+                    context,
+                    "Administrador",
+                    "Administración operativa del sistema");
 
-            await AsegurarPermisosRol(
-                context,
-                tecnico,
-                new[]
-                {
-                    permisos["VER_INICIO"].Id,
-                    permisos["VER_AGENCIAS"].Id,
-                    permisos["VER_UPS"].Id,
-                    permisos["CREAR_UPS"].Id,
-                    permisos["EDITAR_UPS"].Id,
-                    permisos["VER_MANTENIMIENTO"].Id,
-                    permisos["CREAR_MANTENIMIENTO"].Id,
-                    permisos["EDITAR_MANTENIMIENTO"].Id
-                });
+                await ObtenerOCrearRol(
+                    context,
+                    "Técnico",
+                    "Gestión técnica de UPS y mantenimientos");
 
-            await AsegurarPermisosRol(
-                context,
-                consulta,
-                new[]
+                await ObtenerOCrearRol(
+                    context,
+                    "Consulta",
+                    "Acceso de solo consulta");
+            }
+
+            if (sistemaSinAsignaciones)
+            {
+                var administrador =
+                    await context.Roles
+                        .FirstOrDefaultAsync(r =>
+                            r.Nombre == "Administrador");
+
+                var tecnico =
+                    await context.Roles
+                        .FirstOrDefaultAsync(r =>
+                            r.Nombre == "Técnico");
+
+                var consulta =
+                    await context.Roles
+                        .FirstOrDefaultAsync(r =>
+                            r.Nombre == "Consulta");
+
+                if (administrador != null)
                 {
-                    permisos["VER_INICIO"].Id,
-                    permisos["VER_AGENCIAS"].Id,
-                    permisos["VER_UPS"].Id,
-                    permisos["VER_MANTENIMIENTO"].Id,
-                    permisos["VER_PRESUPUESTO"].Id
-                });
+                    await AsegurarPermisosRol(
+                        context,
+                        administrador,
+                        new[]
+                        {
+                            permisos["VER_INICIO"].Id,
+                            permisos["VER_AGENCIAS"].Id,
+                            permisos["CREAR_AGENCIAS"].Id,
+                            permisos["EDITAR_AGENCIAS"].Id,
+                            permisos["VER_UPS"].Id,
+                            permisos["CREAR_UPS"].Id,
+                            permisos["EDITAR_UPS"].Id,
+                            permisos["VER_MANTENIMIENTO"].Id,
+                            permisos["CREAR_MANTENIMIENTO"].Id,
+                            permisos["EDITAR_MANTENIMIENTO"].Id,
+                            permisos["VER_PRESUPUESTO"].Id,
+                            permisos["GESTIONAR_PRESUPUESTO"].Id,
+                            permisos["GESTIONAR_USUARIOS"].Id
+                        });
+                }
+
+                if (tecnico != null)
+                {
+                    await AsegurarPermisosRol(
+                        context,
+                        tecnico,
+                        new[]
+                        {
+                            permisos["VER_INICIO"].Id,
+                            permisos["VER_AGENCIAS"].Id,
+                            permisos["VER_UPS"].Id,
+                            permisos["CREAR_UPS"].Id,
+                            permisos["EDITAR_UPS"].Id,
+                            permisos["VER_MANTENIMIENTO"].Id,
+                            permisos["CREAR_MANTENIMIENTO"].Id,
+                            permisos["EDITAR_MANTENIMIENTO"].Id
+                        });
+                }
+
+                if (consulta != null)
+                {
+                    await AsegurarPermisosRol(
+                        context,
+                        consulta,
+                        new[]
+                        {
+                            permisos["VER_INICIO"].Id,
+                            permisos["VER_AGENCIAS"].Id,
+                            permisos["VER_UPS"].Id,
+                            permisos["VER_MANTENIMIENTO"].Id,
+                            permisos["VER_PRESUPUESTO"].Id
+                        });
+                }
+            }
         }
 
         private static async Task<Rol> ObtenerOCrearRol(

@@ -1,1050 +1,636 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+    useEffect,
+    useMemo,
+    useState
+} from "react";
 
-import { obtenerAgencias } from "../services/agenciaService";
-import { obtenerUPS } from "../services/upsService";
-import { obtenerMantenimientos } from "../services/mantenimientoService";
-import { obtenerProyeccionPresupuesto } from "../services/presupuestoService";
+import {
+    Alert,
+    Box,
+    Card,
+    CardContent,
+    CircularProgress,
+    Grid,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Typography
+} from "@mui/material";
 
-import "./Home.css";
+import {
+    obtenerAgencias
+} from "../services/agenciaService";
+import {
+    obtenerUPS
+} from "../services/upsService";
+import {
+    obtenerMantenimientos
+} from "../services/mantenimientoService";
+import {
+    obtenerProyeccionPresupuesto
+} from "../services/presupuestoService";
+import {
+    tienePermiso
+} from "../services/permisos";
 
-
-const formatoNumero = new Intl.NumberFormat("es-HN");
-
-const formatoMoneda = new Intl.NumberFormat("es-HN", {
-    style: "currency",
-    currency: "HNL",
-    minimumFractionDigits: 2
-});
-
-
-function obtenerEstadoUPS(ups) {
-    return (
-        ups?.estadoUPS?.nombre ||
-        ups?.estadoUPSNombre ||
-        ups?.estado ||
-        "Sin estado"
-    );
-}
-
-
-function obtenerCantidadBaterias(ups) {
-    const cantidad = Number(
-        ups?.cantidadBaterias ?? 0
-    );
-
-    return Number.isFinite(cantidad)
-        ? cantidad
-        : 0;
-}
-
-
-function obtenerCostoProyeccion(item) {
-    return Number(
-        item?.subtotal ??
-        item?.costoTotal ??
-        item?.total ??
-        item?.costo ??
-        0
-    );
-}
-
-
-function obtenerBateriasProyectadas(item) {
-    return Number(
-        item?.cantidadBaterias ??
-        item?.baterias ??
-        item?.cantidad ??
-        0
-    );
-}
-
-
-function obtenerAgenciaProyeccion(item) {
-    return (
-        item?.agenciaNombre ||
-        item?.nombreAgencia ||
-        item?.agencia ||
-        "—"
-    );
-}
-
-
-function obtenerUPSProyeccion(item) {
-    return (
-        item?.codigoUPS ||
-        item?.upsCodigo ||
-        item?.codigo ||
-        "—"
-    );
-}
-
-
-function obtenerFechaProyeccion(item) {
-    return (
-        item?.fechaProyectada ||
-        item?.fechaReemplazo ||
-        item?.fecha ||
-        null
-    );
-}
-
-
-function formatearFecha(fecha) {
-
-    if (!fecha) {
-        return "—";
+const moneda = new Intl.NumberFormat(
+    "es-HN",
+    {
+        style: "currency",
+        currency: "HNL"
     }
+);
 
-    const fechaConvertida =
-        new Date(fecha);
+const numero =
+    new Intl.NumberFormat("es-HN");
 
-    if (
-        Number.isNaN(
-            fechaConvertida.getTime()
-        )
-    ) {
-        return "—";
-    }
-
-    return fechaConvertida.toLocaleDateString(
-        "es-HN"
-    );
-}
-
-
-function Indicador({
-    titulo,
-    valor,
-    descripcion,
-    onClick
-}) {
-
-    return (
-        <div
-            className={
-                onClick
-                    ? "dashboard-indicator clickable"
-                    : "dashboard-indicator"
-            }
-            onClick={onClick}
-        >
-
-            <div className="indicator-title">
-                {titulo}
-            </div>
-
-            <div className="indicator-value">
-                {valor}
-            </div>
-
-            <div className="indicator-description">
-                {descripcion}
-            </div>
-
-        </div>
-    );
-}
-
+const fecha = (valor) =>
+    valor
+        ? new Date(
+            valor
+        ).toLocaleDateString("es-HN")
+        : "—";
 
 export default function Home() {
-
-    const navigate = useNavigate();
-
     const [agencias, setAgencias] =
         useState([]);
-
     const [ups, setUps] =
         useState([]);
-
-    const [mantenimientos, setMantenimientos] =
-        useState([]);
-
-    const [proyeccion, setProyeccion] =
-        useState([]);
-
+    const [
+        mantenimientos,
+        setMantenimientos
+    ] = useState([]);
+    const [
+        detalleProyeccion,
+        setDetalleProyeccion
+    ] = useState([]);
     const [cargando, setCargando] =
         useState(true);
-
     const [error, setError] =
         useState("");
 
+    const puedeAgencias =
+        tienePermiso("VER_AGENCIAS");
+    const puedeUPS =
+        tienePermiso("VER_UPS");
+    const puedeMantenimiento =
+        tienePermiso(
+            "VER_MANTENIMIENTO"
+        );
+    const puedePresupuesto =
+        tienePermiso(
+            "VER_PRESUPUESTO"
+        );
 
-    const anioActual =
+    const anio =
         new Date().getFullYear();
 
-
     useEffect(() => {
+        const cargar = async () => {
+            setCargando(true);
+            setError("");
 
-        const cargarDashboard =
-            async () => {
+            const tareas = [];
 
-                try {
-
-                    setCargando(true);
-                    setError("");
-
-                    const resultados =
-                        await Promise.allSettled([
-                            obtenerAgencias(),
-                            obtenerUPS(),
-                            obtenerMantenimientos(),
-                            obtenerProyeccionPresupuesto(
-                                anioActual
+            if (puedeAgencias) {
+                tareas.push(
+                    obtenerAgencias()
+                        .then((datos) =>
+                            setAgencias(
+                                datos || []
                             )
-                        ]);
+                        )
+                );
+            }
 
-
-                    const [
-                        resultadoAgencias,
-                        resultadoUPS,
-                        resultadoMantenimientos,
-                        resultadoProyeccion
-                    ] = resultados;
-
-
-                    if (
-                        resultadoAgencias.status ===
-                        "fulfilled"
-                    ) {
-
-                        setAgencias(
-                            resultadoAgencias.value || []
-                        );
-
-                    }
-
-
-                    if (
-                        resultadoUPS.status ===
-                        "fulfilled"
-                    ) {
-
-                        setUps(
-                            resultadoUPS.value || []
-                        );
-
-                    }
-
-
-                    if (
-                        resultadoMantenimientos.status ===
-                        "fulfilled"
-                    ) {
-
-                        setMantenimientos(
-                            resultadoMantenimientos.value || []
-                        );
-
-                    }
-
-
-                    if (
-                        resultadoProyeccion.status ===
-                        "fulfilled"
-                    ) {
-
-                        const datos =
-                            resultadoProyeccion.value;
-
-
-                        if (
-                            Array.isArray(datos)
-                        ) {
-
-                            setProyeccion(
-                                datos
-                            );
-
-                        } else if (
-                            Array.isArray(
-                                datos?.detalle
+            if (puedeUPS) {
+                tareas.push(
+                    obtenerUPS()
+                        .then((datos) =>
+                            setUps(
+                                datos || []
                             )
-                        ) {
+                        )
+                );
+            }
 
-                            setProyeccion(
-                                datos.detalle
-                            );
-
-                        } else if (
-                            Array.isArray(
-                                datos?.agencias
+            if (puedeMantenimiento) {
+                tareas.push(
+                    obtenerMantenimientos()
+                        .then((datos) =>
+                            setMantenimientos(
+                                datos || []
                             )
-                        ) {
+                        )
+                );
+            }
 
-                            setProyeccion(
-                                datos.agencias
+            if (puedePresupuesto) {
+                tareas.push(
+                    obtenerProyeccionPresupuesto(
+                        anio
+                    )
+                        .then((datos) => {
+                            const detalle =
+                                Array.isArray(
+                                    datos?.agencias
+                                )
+                                    ? datos.agencias
+                                        .flatMap(
+                                            (a) =>
+                                                Array.isArray(
+                                                    a.ups
+                                                )
+                                                    ? a.ups
+                                                    : []
+                                        )
+                                    : [];
+
+                            setDetalleProyeccion(
+                                detalle
                             );
+                        })
+                        .catch((e) => {
+                            if (
+                                e.response
+                                    ?.status !==
+                                404
+                            ) {
+                                throw e;
+                            }
+                            setDetalleProyeccion(
+                                []
+                            );
+                        })
+                );
+            }
 
-                        } else {
+            const resultados =
+                await Promise.allSettled(
+                    tareas
+                );
 
-                            setProyeccion([]);
+            if (
+                resultados.some(
+                    (r) =>
+                        r.status ===
+                        "rejected"
+                )
+            ) {
+                setError(
+                    "Parte de la información del inicio no pudo cargarse."
+                );
+            }
 
-                        }
+            setCargando(false);
+        };
 
-                    }
-
-
-                    const todosFallaron =
-                        resultados.every(
-                            resultado =>
-                                resultado.status ===
-                                "rejected"
-                        );
-
-
-                    if (todosFallaron) {
-
-                        setError(
-                            "No se pudo cargar la información del dashboard."
-                        );
-
-                    }
-
-                } catch (error) {
-
-                    console.error(
-                        "Error al cargar dashboard:",
-                        error
-                    );
-
-                    setError(
-                        "No se pudo cargar la información del dashboard."
-                    );
-
-                } finally {
-
-                    setCargando(false);
-
-                }
-
-            };
-
-
-        cargarDashboard();
-
-    }, [anioActual]);
-
+        cargar();
+    }, []);
 
     const agenciasActivas =
-        useMemo(
-            () =>
-                agencias.filter(
-                    agencia =>
-                        agencia.activa !== false
-                ),
-            [agencias]
-        );
+        agencias.filter(
+            (a) => a.activa
+        ).length;
 
-
-    const totalBaterias =
-        useMemo(
-            () =>
-                ups.reduce(
-                    (
-                        total,
-                        equipo
-                    ) =>
-                        total +
-                        obtenerCantidadBaterias(
-                            equipo
-                        ),
+    const baterias =
+        ups.reduce(
+            (total, equipo) =>
+                total +
+                Number(
+                    equipo.cantidadBaterias ||
                     0
                 ),
-            [ups]
+            0
         );
 
-
-    const upsFueraServicio =
-        useMemo(
-            () =>
-                ups.filter(
-                    equipo =>
-                        obtenerEstadoUPS(
-                            equipo
-                        )
-                            .toLowerCase()
-                            .trim() ===
-                        "fuera de servicio"
-                ),
-            [ups]
-        );
-
+    const fueraServicio =
+        ups.filter(
+            (equipo) =>
+                [
+                    "fuera de servicio",
+                    "de baja"
+                ].includes(
+                    String(
+                        equipo.estado || ""
+                    )
+                        .toLowerCase()
+                )
+        ).length;
 
     const costoMantenimiento =
-        useMemo(
-            () =>
-                mantenimientos.reduce(
-                    (
-                        total,
-                        mantenimiento
-                    ) =>
-                        total +
-                        Number(
-                            mantenimiento?.costo ||
-                            0
-                        ),
-                    0
-                ),
-            [mantenimientos]
-        );
-
-
-    const totalBateriasProyectadas =
-        useMemo(
-            () =>
-                proyeccion.reduce(
-                    (
-                        total,
-                        item
-                    ) =>
-                        total +
-                        obtenerBateriasProyectadas(
-                            item
-                        ),
-                    0
-                ),
-            [proyeccion]
-        );
-
-
-    const presupuestoProyectado =
-        useMemo(
-            () =>
-                proyeccion.reduce(
-                    (
-                        total,
-                        item
-                    ) =>
-                        total +
-                        obtenerCostoProyeccion(
-                            item
-                        ),
-                    0
-                ),
-            [proyeccion]
-        );
-
-
-    const estadosUPS =
-        useMemo(() => {
-
-            const estados = {};
-
-            ups.forEach(
-                equipo => {
-
-                    const estado =
-                        obtenerEstadoUPS(
-                            equipo
-                        );
-
-                    estados[estado] =
-                        (
-                            estados[estado] ||
-                            0
-                        ) + 1;
-
-                }
-            );
-
-
-            return Object.entries(
-                estados
-            ).sort(
+        mantenimientos.reduce(
+            (total, m) =>
+                total +
+                Number(m.costo || 0) +
                 (
-                    [, cantidadA],
-                    [, cantidadB]
-                ) =>
-                    cantidadB -
-                    cantidadA
-            );
-
-        }, [ups]);
-
-
-    const mantenimientosRecientes =
-        useMemo(
-            () =>
-                [...mantenimientos]
-                    .sort(
-                        (
-                            a,
-                            b
-                        ) =>
-                            new Date(
-                                b.fechaMantenimiento
-                            ) -
-                            new Date(
-                                a.fechaMantenimiento
-                            )
-                    )
-                    .slice(0, 5),
-            [mantenimientos]
+                    m.incluyeCambioBaterias
+                        ? Number(
+                            m.costoBaterias ||
+                            0
+                        )
+                        : 0
+                ),
+            0
         );
 
-
-    if (cargando) {
-
-        return (
-            <div className="dashboard-loading">
-
-                <div className="dashboard-spinner" />
-
-                <span>
-                    Cargando información...
-                </span>
-
-            </div>
+    const presupuesto =
+        detalleProyeccion.reduce(
+            (total, item) =>
+                total +
+                Number(
+                    item.costoEstimado ||
+                    0
+                ),
+            0
         );
 
-    }
+    const bateriasProyectadas =
+        detalleProyeccion.reduce(
+            (total, item) =>
+                total +
+                Number(
+                    item.cantidadBaterias ||
+                    0
+                ),
+            0
+        );
 
-
-    return (
-
-        <div className="dashboard">
-
-            {/* ENCABEZADO */}
-
-            <div className="dashboard-header">
-
-                <div>
-
-                    <h1>
-                        Inicio
-                    </h1>
-
-                    <p>
-                        Resumen general del inventario
-                        nacional de UPS.
-                    </p>
-
-                </div>
-
-
-                <div className="projection-year">
-
-                    <span>
-                        Proyección
-                    </span>
-
-                    <strong>
-                        {anioActual}
-                    </strong>
-
-                </div>
-
-            </div>
-
-
-            {error && (
-
-                <div className="dashboard-alert">
-                    {error}
-                </div>
-
-            )}
-
-
-            {/* INDICADORES */}
-
-            <div className="dashboard-indicators">
-
-                <Indicador
-                    titulo="Agencias activas"
-                    valor={formatoNumero.format(
-                        agenciasActivas.length
-                    )}
-                    descripcion="Agencias registradas"
-                    onClick={() =>
-                        navigate("/agencias")
-                    }
-                />
-
-
-                <Indicador
-                    titulo="UPS registrados"
-                    valor={formatoNumero.format(
-                        ups.length
-                    )}
-                    descripcion="Equipos en inventario"
-                    onClick={() =>
-                        navigate("/ups")
-                    }
-                />
-
-
-                <Indicador
-                    titulo="Fuera de servicio"
-                    valor={formatoNumero.format(
-                        upsFueraServicio.length
-                    )}
-                    descripcion="UPS no operativos"
-                    onClick={() =>
-                        navigate("/ups")
-                    }
-                />
-
-
-                <Indicador
-                    titulo="Total de baterías"
-                    valor={formatoNumero.format(
-                        totalBaterias
-                    )}
-                    descripcion="Baterías instaladas"
-                />
-
-
-                <Indicador
-                    titulo="Mantenimientos"
-                    valor={formatoNumero.format(
-                        mantenimientos.length
-                    )}
-                    descripcion="Registros de mantenimiento"
-                    onClick={() =>
-                        navigate(
-                            "/mantenimientos"
+    const recientes = useMemo(
+        () =>
+            [...mantenimientos]
+                .sort(
+                    (a, b) =>
+                        new Date(
+                            b.fechaMantenimiento
+                        ) -
+                        new Date(
+                            a.fechaMantenimiento
                         )
-                    }
-                />
-
-
-                <Indicador
-                    titulo="Costo mantenimiento"
-                    valor={formatoMoneda.format(
-                        costoMantenimiento
-                    )}
-                    descripcion="Costo acumulado"
-                />
-
-
-                <Indicador
-                    titulo="Baterías proyectadas"
-                    valor={formatoNumero.format(
-                        totalBateriasProyectadas
-                    )}
-                    descripcion={`Reemplazos ${anioActual}`}
-                />
-
-
-                <Indicador
-                    titulo="Presupuesto proyectado"
-                    valor={formatoMoneda.format(
-                        presupuestoProyectado
-                    )}
-                    descripcion={`Presupuesto ${anioActual}`}
-                    onClick={() =>
-                        navigate(
-                            "/presupuesto"
-                        )
-                    }
-                />
-
-            </div>
-
-
-            {/* INFORMACIÓN OPERATIVA */}
-
-            <div className="dashboard-columns">
-
-                {/* UPS POR ESTADO */}
-
-                <section className="dashboard-panel">
-
-                    <div className="panel-header">
-
-                        <div>
-
-                            <h2>
-                                UPS por estado
-                            </h2>
-
-                            <p>
-                                Distribución actual del inventario
-                            </p>
-
-                        </div>
-
-                    </div>
-
-
-                    <div className="state-table">
-
-                        <div className="state-header">
-
-                            <span>
-                                Estado
-                            </span>
-
-                            <span>
-                                Cantidad
-                            </span>
-
-                            <span>
-                                Porcentaje
-                            </span>
-
-                        </div>
-
-
-                        {estadosUPS.length === 0 ? (
-
-                            <div className="empty-row">
-                                No hay UPS registrados.
-                            </div>
-
-                        ) : (
-
-                            estadosUPS.map(
-                                (
-                                    [
-                                        estado,
-                                        cantidad
-                                    ]
-                                ) => {
-
-                                    const porcentaje =
-                                        ups.length
-                                            ? Math.round(
-                                                (
-                                                    cantidad /
-                                                    ups.length
-                                                ) * 100
-                                            )
-                                            : 0;
-
-
-                                    return (
-
-                                        <div
-                                            className="state-row"
-                                            key={estado}
-                                        >
-
-                                            <span>
-                                                {estado}
-                                            </span>
-
-                                            <strong>
-                                                {cantidad}
-                                            </strong>
-
-                                            <div className="percentage">
-
-                                                <span>
-                                                    {porcentaje}%
-                                                </span>
-
-                                                <div className="progress">
-
-                                                    <div
-                                                        style={{
-                                                            width:
-                                                                `${porcentaje}%`
-                                                        }}
-                                                    />
-
-                                                </div>
-
-                                            </div>
-
-                                        </div>
-
-                                    );
-
-                                }
-                            )
-
-                        )}
-
-                    </div>
-
-                </section>
-
-
-                {/* MANTENIMIENTOS */}
-
-                <section className="dashboard-panel">
-
-                    <div className="panel-header">
-
-                        <div>
-
-                            <h2>
-                                Mantenimientos recientes
-                            </h2>
-
-                            <p>
-                                Últimos registros realizados
-                            </p>
-
-                        </div>
-
-
-                        {mantenimientos.length > 0 && (
-
-                            <button
-                                className="panel-button"
-                                onClick={() =>
-                                    navigate(
-                                        "/mantenimientos"
-                                    )
-                                }
-                            >
-                                Ver todos
-                            </button>
-
-                        )}
-
-                    </div>
-
-
-                    {mantenimientosRecientes.length === 0 ? (
-
-                        <div className="empty-maintenance">
-
-                            <strong>
-                                No hay mantenimientos registrados.
-                            </strong>
-
-                            <span>
-                                Los registros aparecerán
-                                aquí cuando sean creados.
-                            </span>
-
-                        </div>
-
-                    ) : (
-
-                        <div className="maintenance-table">
-
-                            <div className="maintenance-header">
-
-                                <span>
-                                    Fecha
-                                </span>
-
-                                <span>
-                                    UPS
-                                </span>
-
-                                <span>
-                                    Agencia
-                                </span>
-
-                                <span>
-                                    Tipo
-                                </span>
-
-                                <span>
-                                    Costo
-                                </span>
-
-                            </div>
-
-
-                            {mantenimientosRecientes.map(
-                                mantenimiento => (
-
-                                    <div
-                                        className="maintenance-row"
-                                        key={
-                                            mantenimiento.id
-                                        }
-                                    >
-
-                                        <span>
-                                            {formatearFecha(
-                                                mantenimiento.fechaMantenimiento
-                                            )}
-                                        </span>
-
-                                        <strong>
-                                            {mantenimiento.codigoUPS ||
-                                                "—"}
-                                        </strong>
-
-                                        <span>
-                                            {mantenimiento.agenciaNombre ||
-                                                "—"}
-                                        </span>
-
-                                        <span>
-                                            {mantenimiento.tipoMantenimiento ||
-                                                "—"}
-                                        </span>
-
-                                        <strong>
-                                            {formatoMoneda.format(
-                                                Number(
-                                                    mantenimiento.costo ||
-                                                    0
-                                                )
-                                            )}
-                                        </strong>
-
-                                    </div>
-
-                                )
-                            )}
-
-                        </div>
-
-                    )}
-
-                </section>
-
-            </div>
-
-
-            {/* PROYECCIÓN */}
-
-            <section className="dashboard-panel projection-panel">
-
-                <div className="panel-header">
-
-                    <div>
-
-                        <h2>
-                            Próximos reemplazos de baterías
-                        </h2>
-
-                        <p>
-                            Necesidades proyectadas para{" "}
-                            {anioActual}
-                        </p>
-
-                    </div>
-
-
-                    {proyeccion.length > 0 && (
-
-                        <button
-                            className="panel-button"
-                            onClick={() =>
-                                navigate(
-                                    "/presupuesto"
-                                )
-                            }
-                        >
-                            Ver presupuesto
-                        </button>
-
-                    )}
-
-                </div>
-
-
-                {proyeccion.length === 0 ? (
-
-                    <div className="empty-projection">
-
-                        <strong>
-                            No hay reemplazos proyectados
-                            para este año.
-                        </strong>
-
-                        <span>
-                            Las proyecciones aparecerán
-                            cuando existan UPS cuyo ciclo
-                            de reemplazo corresponda a este año.
-                        </span>
-
-                    </div>
-
-                ) : (
-
-                    <div className="projection-table">
-
-                        <div className="projection-header">
-
-                            <span>
-                                Agencia
-                            </span>
-
-                            <span>
-                                UPS
-                            </span>
-
-                            <span>
-                                Baterías
-                            </span>
-
-                            <span>
-                                Fecha proyectada
-                            </span>
-
-                            <span>
-                                Costo estimado
-                            </span>
-
-                        </div>
-
-
-                        {proyeccion
-                            .slice(0, 8)
-                            .map(
-                                (
-                                    item,
-                                    index
-                                ) => (
-
-                                    <div
-                                        className="projection-row"
-                                        key={
-                                            item.id ??
-                                            index
-                                        }
-                                    >
-
-                                        <strong>
-                                            {obtenerAgenciaProyeccion(
-                                                item
-                                            )}
-                                        </strong>
-
-                                        <span>
-                                            {obtenerUPSProyeccion(
-                                                item
-                                            )}
-                                        </span>
-
-                                        <span>
-                                            {obtenerBateriasProyectadas(
-                                                item
-                                            )}
-                                        </span>
-
-                                        <span>
-                                            {formatearFecha(
-                                                obtenerFechaProyeccion(
-                                                    item
-                                                )
-                                            )}
-                                        </span>
-
-                                        <strong>
-                                            {formatoMoneda.format(
-                                                obtenerCostoProyeccion(
-                                                    item
-                                                )
-                                            )}
-                                        </strong>
-
-                                    </div>
-
-                                )
-                            )}
-
-                    </div>
-
-                )}
-
-            </section>
-
-        </div>
-
+                )
+                .slice(0, 5),
+        [mantenimientos]
     );
 
+    if (cargando) {
+        return (
+            <Box
+                sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    py: 10
+                }}
+            >
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    const tarjetas = [
+        puedeAgencias && {
+            titulo: "Agencias activas",
+            valor:
+                numero.format(
+                    agenciasActivas
+                )
+        },
+        puedeUPS && {
+            titulo: "UPS registrados",
+            valor:
+                numero.format(ups.length)
+        },
+        puedeUPS && {
+            titulo:
+                "Fuera de servicio / baja",
+            valor:
+                numero.format(
+                    fueraServicio
+                )
+        },
+        puedeUPS && {
+            titulo:
+                "Baterías instaladas",
+            valor:
+                numero.format(baterias)
+        },
+        puedeMantenimiento && {
+            titulo: "Mantenimientos",
+            valor:
+                numero.format(
+                    mantenimientos.length
+                )
+        },
+        puedeMantenimiento && {
+            titulo:
+                "Costo de mantenimiento",
+            valor:
+                moneda.format(
+                    costoMantenimiento
+                )
+        },
+        puedePresupuesto && {
+            titulo:
+                `Baterías proyectadas ${anio}`,
+            valor:
+                numero.format(
+                    bateriasProyectadas
+                )
+        },
+        puedePresupuesto && {
+            titulo:
+                `Presupuesto ${anio}`,
+            valor:
+                moneda.format(
+                    presupuesto
+                )
+        }
+    ].filter(Boolean);
+
+    return (
+        <Box>
+            <Typography
+                variant="h4"
+                fontWeight="bold"
+            >
+                Inicio
+            </Typography>
+            <Typography
+                color="text.secondary"
+                sx={{ mb: 3 }}
+            >
+                Resumen de los módulos a los que tiene acceso.
+            </Typography>
+
+            {error && (
+                <Alert
+                    severity="warning"
+                    sx={{ mb: 3 }}
+                >
+                    {error}
+                </Alert>
+            )}
+
+            <Grid
+                container
+                spacing={2}
+                sx={{ mb: 4 }}
+            >
+                {tarjetas.map(
+                    (tarjeta) => (
+                        <Grid
+                            key={
+                                tarjeta.titulo
+                            }
+                            size={{
+                                xs: 12,
+                                sm: 6,
+                                md: 3
+                            }}
+                        >
+                            <Card>
+                                <CardContent>
+                                    <Typography
+                                        color="text.secondary"
+                                        variant="body2"
+                                    >
+                                        {
+                                            tarjeta.titulo
+                                        }
+                                    </Typography>
+                                    <Typography
+                                        variant="h5"
+                                        fontWeight="bold"
+                                        sx={{ mt: 1 }}
+                                    >
+                                        {
+                                            tarjeta.valor
+                                        }
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    )
+                )}
+            </Grid>
+
+            {puedeMantenimiento && (
+                <Card sx={{ mb: 3 }}>
+                    <CardContent>
+                        <Typography
+                            variant="h6"
+                            fontWeight="bold"
+                            sx={{ mb: 2 }}
+                        >
+                            Mantenimientos recientes
+                        </Typography>
+
+                        <TableContainer>
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>
+                                            Fecha
+                                        </TableCell>
+                                        <TableCell>
+                                            UPS
+                                        </TableCell>
+                                        <TableCell>
+                                            Agencia histórica
+                                        </TableCell>
+                                        <TableCell>
+                                            Tipo
+                                        </TableCell>
+                                        <TableCell>
+                                            Estado
+                                        </TableCell>
+                                        <TableCell
+                                            align="right"
+                                        >
+                                            Total
+                                        </TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {recientes.map(
+                                        (m) => (
+                                            <TableRow
+                                                key={
+                                                    m.id
+                                                }
+                                            >
+                                                <TableCell>
+                                                    {
+                                                        fecha(
+                                                            m.fechaMantenimiento
+                                                        )
+                                                    }
+                                                </TableCell>
+                                                <TableCell>
+                                                    {
+                                                        m.codigoUPS
+                                                    }
+                                                </TableCell>
+                                                <TableCell>
+                                                    {
+                                                        m.agenciaNombre
+                                                    }
+                                                </TableCell>
+                                                <TableCell>
+                                                    {
+                                                        m.tipoMantenimiento
+                                                    }
+                                                </TableCell>
+                                                <TableCell>
+                                                    {
+                                                        m.estado
+                                                    }
+                                                </TableCell>
+                                                <TableCell
+                                                    align="right"
+                                                >
+                                                    {
+                                                        moneda.format(
+                                                            Number(
+                                                                m.costo ||
+                                                                0
+                                                            ) +
+                                                            (
+                                                                m.incluyeCambioBaterias
+                                                                    ? Number(
+                                                                        m.costoBaterias ||
+                                                                        0
+                                                                    )
+                                                                    : 0
+                                                            )
+                                                        )
+                                                    }
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    )}
+
+                                    {recientes.length ===
+                                        0 && (
+                                        <TableRow>
+                                            <TableCell
+                                                colSpan={6}
+                                                align="center"
+                                            >
+                                                No hay mantenimientos registrados.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </CardContent>
+                </Card>
+            )}
+
+            {puedePresupuesto && (
+                <Card>
+                    <CardContent>
+                        <Typography
+                            variant="h6"
+                            fontWeight="bold"
+                            sx={{ mb: 2 }}
+                        >
+                            Reemplazos de baterías {anio}
+                        </Typography>
+
+                        <TableContainer>
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>
+                                            Agencia
+                                        </TableCell>
+                                        <TableCell>
+                                            UPS
+                                        </TableCell>
+                                        <TableCell>
+                                            Fecha
+                                        </TableCell>
+                                        <TableCell>
+                                            Estado de proyección
+                                        </TableCell>
+                                        <TableCell
+                                            align="right"
+                                        >
+                                            Costo
+                                        </TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {detalleProyeccion
+                                        .slice(0, 8)
+                                        .map(
+                                            (item) => (
+                                                <TableRow
+                                                    key={
+                                                        item.upsId
+                                                    }
+                                                >
+                                                    <TableCell>
+                                                        {
+                                                            item.agencia
+                                                        }
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {
+                                                            item.codigoUPS
+                                                        }
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {
+                                                            fecha(
+                                                                item.fechaProyectadaReemplazo
+                                                            )
+                                                        }
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {
+                                                            item.estaVencido
+                                                                ? "Vencido"
+                                                                : item.tieneMantenimientoProgramado
+                                                                    ? "Programado"
+                                                                    : "Proyectado"
+                                                        }
+                                                    </TableCell>
+                                                    <TableCell
+                                                        align="right"
+                                                    >
+                                                        {
+                                                            moneda.format(
+                                                                item.costoEstimado ||
+                                                                0
+                                                            )
+                                                        }
+                                                    </TableCell>
+                                                </TableRow>
+                                            )
+                                        )}
+
+                                    {detalleProyeccion.length ===
+                                        0 && (
+                                        <TableRow>
+                                            <TableCell
+                                                colSpan={5}
+                                                align="center"
+                                            >
+                                                No hay reemplazos proyectados para este año o falta configurar el costo anual.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </CardContent>
+                </Card>
+            )}
+        </Box>
+    );
 }

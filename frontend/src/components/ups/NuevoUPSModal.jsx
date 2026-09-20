@@ -1,31 +1,35 @@
-import { useEffect, useState } from "react";
+import {
+    useEffect,
+    useState
+} from "react";
 
 import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
-    Button,
-    MenuItem,
+    Alert,
     Autocomplete,
     Box,
-    Alert
+    Button,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    MenuItem,
+    TextField
 } from "@mui/material";
 
-import { obtenerAgencias } from "../../services/agenciaService";
-
+import {
+    obtenerAgencias
+} from "../../services/agenciaService";
 import {
     crearUPS,
     actualizarUPS
 } from "../../services/upsService";
-
 import {
-    obtenerEstadosUPS
+    obtenerEstadosUPS,
+    obtenerMarcasUPS,
+    obtenerModelosUPS
 } from "../../services/catalogosService";
 
-
-const formularioInicial = {
+const inicial = {
     codigo: "",
     marca: "",
     modelo: "",
@@ -38,6 +42,10 @@ const formularioInicial = {
     fechaUltimoCambioBaterias: ""
 };
 
+const hoy = () =>
+    new Date()
+        .toISOString()
+        .substring(0, 10);
 
 export default function NuevoUPSModal({
     open,
@@ -45,601 +53,292 @@ export default function NuevoUPSModal({
     onGuardado,
     ups
 }) {
+    const [agencias, setAgencias] =
+        useState([]);
+    const [estados, setEstados] =
+        useState([]);
+    const [marcas, setMarcas] =
+        useState([]);
+    const [modelos, setModelos] =
+        useState([]);
+    const [formulario, setFormulario] =
+        useState(inicial);
+    const [cargando, setCargando] =
+        useState(false);
+    const [guardando, setGuardando] =
+        useState(false);
+    const [error, setError] =
+        useState("");
 
-    const [agencias, setAgencias] = useState([]);
-    const [estadosUPS, setEstadosUPS] = useState([]);
-
-    const [formulario, setFormulario] = useState(
-        formularioInicial
-    );
-
-    const [guardando, setGuardando] = useState(false);
-    const [cargando, setCargando] = useState(false);
-    const [error, setError] = useState("");
-
-
-    useEffect(() => {
-
-        if (!open) {
-            return;
-        }
-
-        setError("");
-
-        cargarDatos();
-
-    }, [open, ups]);
-
-
-    const cargarDatos = async () => {
-
+    const cargarModelos = async (
+        marca
+    ) => {
         try {
-
-            setCargando(true);
-
-            const [
-                agenciasData,
-                estadosData
-            ] = await Promise.all([
-                obtenerAgencias(),
-                obtenerEstadosUPS()
-            ]);
-
-
-            const agenciasActivas =
-                (agenciasData || []).filter(
-                    agencia => agencia.activa
+            const datos =
+                await obtenerModelosUPS(
+                    marca || ""
                 );
 
-
-            setAgencias(agenciasActivas);
-
-            setEstadosUPS(
-                estadosData || []
+            setModelos(
+                Array.isArray(datos)
+                    ? datos
+                    : []
             );
+        } catch {
+            setModelos([]);
+        }
+    };
 
+    useEffect(() => {
+        if (!open) return;
 
-            if (ups) {
+        const cargar = async () => {
+            try {
+                setCargando(true);
+                setError("");
 
-                const estadoId =
-                    ups.estadoUPSId ??
-                    ups.estadoUPS?.id ??
-                    "";
+                const [
+                    agenciasData,
+                    estadosData,
+                    marcasData
+                ] = await Promise.all([
+                    obtenerAgencias(),
+                    obtenerEstadosUPS(),
+                    obtenerMarcasUPS()
+                ]);
 
+                setAgencias(
+                    (agenciasData || [])
+                        .filter(
+                            (a) => a.activa
+                        )
+                );
+                setEstados(
+                    estadosData || []
+                );
+                setMarcas(
+                    marcasData || []
+                );
 
-                setFormulario({
+                if (ups) {
+                    setFormulario({
+                        codigo:
+                            ups.codigo || "",
+                        marca:
+                            ups.marca || "",
+                        modelo:
+                            ups.modelo || "",
+                        numeroSerie:
+                            ups.numeroSerie || "",
+                        capacidadVA:
+                            ups.capacidadVA ?? "",
+                        agenciaId:
+                            ups.agenciaId ?? "",
+                        fechaInstalacion:
+                            ups.fechaInstalacion
+                                ?.substring(0, 10) ||
+                            "",
+                        estadoUPSId:
+                            ups.estadoUPSId ?? "",
+                        cantidadBaterias:
+                            ups.cantidadBaterias ??
+                            "",
+                        fechaUltimoCambioBaterias:
+                            ups
+                                .fechaUltimoCambioBaterias
+                                ?.substring(0, 10) ||
+                            ""
+                    });
 
-                    codigo:
-                        ups.codigo || "",
-
-                    marca:
-                        ups.marca || "",
-
-                    modelo:
-                        ups.modelo || "",
-
-                    numeroSerie:
-                        ups.numeroSerie || "",
-
-                    capacidadVA:
-                        ups.capacidadVA ?? "",
-
-                    agenciaId:
-                        ups.agenciaId ??
-                        ups.agencia?.id ??
-                        "",
-
-                    fechaInstalacion:
-                        ups.fechaInstalacion
-                            ? ups.fechaInstalacion.substring(
-                                0,
-                                10
-                            )
-                            : "",
-
-                    estadoUPSId:
-                        estadoId
-                            ? String(estadoId)
-                            : "",
-
-                    cantidadBaterias:
-                        ups.cantidadBaterias ?? "",
-
-                    fechaUltimoCambioBaterias:
-                        ups.fechaUltimoCambioBaterias
-                            ? ups.fechaUltimoCambioBaterias.substring(
-                                0,
-                                10
-                            )
-                            : ""
-                });
-
-            } else {
-
-                setFormulario({
-                    ...formularioInicial
-                });
-
+                    await cargarModelos(
+                        ups.marca
+                    );
+                } else {
+                    setFormulario({
+                        ...inicial
+                    });
+                    setModelos([]);
+                }
+            } catch {
+                setError(
+                    "No fue posible cargar los datos del formulario."
+                );
+            } finally {
+                setCargando(false);
             }
+        };
 
-        } catch (error) {
+        cargar();
+    }, [open, ups]);
 
-            console.error(
-                "Error al cargar datos del formulario UPS:",
-                error
-            );
-
-            setError(
-                "No se pudieron cargar las agencias y estados de UPS."
-            );
-
-        } finally {
-
-            setCargando(false);
-
-        }
-
+    const cambiar = (
+        campo,
+        valor
+    ) => {
+        setFormulario(
+            (actual) => ({
+                ...actual,
+                [campo]: valor
+            })
+        );
     };
-
-
-    const manejarCambio = event => {
-
-        const {
-            name,
-            value
-        } = event.target;
-
-
-        setFormulario(prev => ({
-            ...prev,
-            [name]: value
-        }));
-
-    };
-
-
-    const obtenerFechaActual = () => {
-
-        const fecha =
-            new Date();
-
-        const anio =
-            fecha.getFullYear();
-
-        const mes =
-            String(
-                fecha.getMonth() + 1
-            ).padStart(2, "0");
-
-        const dia =
-            String(
-                fecha.getDate()
-            ).padStart(2, "0");
-
-        return `${anio}-${mes}-${dia}`;
-
-    };
-
-
-    const obtenerNombreCiudad = agencia => {
-
-        if (!agencia) {
-            return "";
-        }
-
-
-        if (
-            typeof agencia.ciudad === "string"
-        ) {
-
-            return agencia.ciudad;
-
-        }
-
-
-        if (
-            agencia.ciudad &&
-            typeof agencia.ciudad === "object"
-        ) {
-
-            return (
-                agencia.ciudad.nombre ||
-                agencia.ciudad.nombreCiudad ||
-                agencia.ciudad.descripcion ||
-                ""
-            );
-
-        }
-
-
-        if (
-            agencia.ciudadNombre
-        ) {
-
-            return agencia.ciudadNombre;
-
-        }
-
-
-        return "";
-
-    };
-
-
-    const obtenerNombreDepartamento = agencia => {
-
-        if (!agencia) {
-            return "";
-        }
-
-
-        if (
-            typeof agencia.departamento === "string"
-        ) {
-
-            return agencia.departamento;
-
-        }
-
-
-        if (
-            agencia.departamento &&
-            typeof agencia.departamento === "object"
-        ) {
-
-            return (
-                agencia.departamento.nombre ||
-                agencia.departamento.nombreDepartamento ||
-                agencia.departamento.descripcion ||
-                ""
-            );
-
-        }
-
-
-        if (
-            agencia.departamentoNombre
-        ) {
-
-            return agencia.departamentoNombre;
-
-        }
-
-
-        if (
-            agencia.ciudad?.departamento
-        ) {
-
-            if (
-                typeof agencia.ciudad.departamento === "string"
-            ) {
-
-                return agencia.ciudad.departamento;
-
-            }
-
-            return (
-                agencia.ciudad.departamento.nombre ||
-                agencia.ciudad.departamento.nombreDepartamento ||
-                agencia.ciudad.departamento.descripcion ||
-                ""
-            );
-
-        }
-
-
-        return "";
-
-    };
-
-
-    const obtenerEtiquetaAgencia = agencia => {
-
-        if (!agencia) {
-            return "";
-        }
-
-
-        const codigo =
-            agencia.codigo || "";
-
-
-        const nombre =
-            agencia.nombre || "";
-
-
-        const ciudad =
-            obtenerNombreCiudad(agencia);
-
-
-        const departamento =
-            obtenerNombreDepartamento(agencia);
-
-
-        const ubicacion =
-            ciudad && departamento
-                ? `${ciudad}, ${departamento}`
-                : ciudad || departamento;
-
-
-        return [
-            codigo,
-            nombre,
-            ubicacion
-        ]
-            .filter(Boolean)
-            .join(" - ");
-
-    };
-
 
     const guardar = async () => {
-
         setError("");
 
-
         if (!formulario.codigo.trim()) {
-
             setError(
                 "El código es obligatorio."
             );
-
             return;
-
         }
 
-
         if (!formulario.numeroSerie.trim()) {
-
             setError(
                 "El número de serie es obligatorio."
             );
-
             return;
-
         }
 
-
         if (!formulario.marca.trim()) {
-
             setError(
                 "La marca es obligatoria."
             );
-
             return;
-
         }
 
-
         if (!formulario.modelo.trim()) {
-
             setError(
                 "El modelo es obligatorio."
             );
-
             return;
-
         }
 
-
         if (
-            !formulario.capacidadVA ||
-            Number(formulario.capacidadVA) <= 0
+            Number(formulario.capacidadVA) <=
+            0
         ) {
-
             setError(
                 "La capacidad debe ser mayor que cero."
             );
-
             return;
-
         }
-
 
         if (!formulario.agenciaId) {
-
             setError(
-                "Seleccione una agencia."
+                "Seleccione una agencia activa."
             );
-
             return;
-
         }
 
-
         if (!formulario.fechaInstalacion) {
-
             setError(
                 "La fecha de instalación es obligatoria."
             );
-
             return;
-
         }
-
-
-        const fechaActual =
-            obtenerFechaActual();
-
 
         if (
             formulario.fechaInstalacion >
-            fechaActual
+            hoy()
         ) {
-
             setError(
                 "La fecha de instalación no puede ser futura."
             );
-
             return;
-
         }
-
 
         if (!formulario.estadoUPSId) {
-
             setError(
-                "Seleccione el estado del UPS."
+                "Seleccione un estado."
             );
-
             return;
-
         }
 
-
         if (
-            formulario.cantidadBaterias === "" ||
-            Number(formulario.cantidadBaterias) <= 0
+            Number(
+                formulario.cantidadBaterias
+            ) <= 0
         ) {
-
             setError(
                 "La cantidad de baterías debe ser mayor que cero."
             );
-
             return;
-
         }
 
-
         if (
-            formulario.fechaUltimoCambioBaterias &&
-            formulario.fechaUltimoCambioBaterias >
-                fechaActual
-        ) {
-
-            setError(
-                "La fecha del último cambio de baterías no puede ser futura."
-            );
-
-            return;
-
-        }
-
-
-        if (
-            formulario.fechaUltimoCambioBaterias &&
-            formulario.fechaUltimoCambioBaterias <
+            formulario
+                .fechaUltimoCambioBaterias &&
+            formulario
+                .fechaUltimoCambioBaterias <
                 formulario.fechaInstalacion
         ) {
-
             setError(
-                "La fecha del último cambio de baterías no puede ser anterior a la fecha de instalación."
+                "La fecha del último cambio no puede ser anterior a la instalación."
             );
-
             return;
-
         }
-
 
         try {
-
             setGuardando(true);
 
-
-            const datosUPS = {
-
-                id:
-                    ups?.id ?? 0,
-
-                codigo:
-                    formulario.codigo.trim(),
-
+            const datos = {
+                ...formulario,
                 marca:
                     formulario.marca.trim(),
-
                 modelo:
-                    formulario.modelo.trim(),
-
-                numeroSerie:
-                    formulario.numeroSerie.trim(),
-
-                capacidadVA:
-                    Number(
-                        formulario.capacidadVA
-                    ),
-
-                agenciaId:
-                    Number(
-                        formulario.agenciaId
-                    ),
-
-                estadoUPSId:
-                    Number(
-                        formulario.estadoUPSId
-                    ),
-
-                fechaInstalacion:
-                    formulario.fechaInstalacion,
-
-                cantidadBaterias:
-                    Number(
-                        formulario.cantidadBaterias
-                    ),
-
-                fechaUltimoCambioBaterias:
-                    formulario.fechaUltimoCambioBaterias ||
-                    null
-
+                    formulario.modelo.trim()
             };
 
-
             if (ups) {
-
                 await actualizarUPS(
                     ups.id,
-                    datosUPS
+                    datos
                 );
-
             } else {
-
-                await crearUPS(
-                    datosUPS
-                );
-
+                await crearUPS(datos);
             }
 
-
             await onGuardado();
-
             onClose();
-
-        } catch (error) {
-
-            console.error(
-                "Error al guardar UPS:",
-                error
+        } catch (e) {
+            setError(
+                e.response?.data?.mensaje ||
+                e.response?.data?.message ||
+                "No fue posible guardar el UPS."
             );
-
-
-            const mensaje =
-                error.response?.data?.mensaje ||
-                error.response?.data?.message ||
-                "No se pudo guardar el UPS.";
-
-
-            setError(mensaje);
-
         } finally {
-
             setGuardando(false);
-
         }
-
     };
-
 
     const agenciaSeleccionada =
         agencias.find(
-            agencia =>
-                Number(agencia.id) ===
+            (a) =>
+                Number(a.id) ===
                 Number(
                     formulario.agenciaId
                 )
         ) || null;
 
+    const estadoActual =
+        estados.find(
+            (e) =>
+                Number(e.id) ===
+                Number(
+                    formulario.estadoUPSId
+                )
+        )?.nombre;
+
+    const esBaja =
+        ups &&
+        String(
+            ups.estado || estadoActual || ""
+        )
+            .toLowerCase() ===
+            "de baja";
 
     return (
-
         <Dialog
             open={open}
             onClose={
@@ -650,372 +349,294 @@ export default function NuevoUPSModal({
             fullWidth
             maxWidth="sm"
         >
-
             <DialogTitle>
-
                 {ups
                     ? "Editar UPS"
                     : "Nuevo UPS"}
-
             </DialogTitle>
 
-
             <DialogContent>
-
                 {error && (
-
                     <Alert
                         severity="error"
-                        sx={{
-                            mt: 1,
-                            mb: 1
-                        }}
+                        sx={{ mt: 1, mb: 2 }}
                     >
-
                         {error}
-
                     </Alert>
-
                 )}
 
+                {ups &&
+                    !agenciaSeleccionada && (
+                    <Alert
+                        severity="warning"
+                        sx={{ mt: 1, mb: 2 }}
+                    >
+                        La agencia actual está inactiva. Para guardar cambios, traslade el UPS a una agencia activa.
+                    </Alert>
+                )}
 
                 <Box
                     sx={{
                         display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
+                        flexDirection:
+                            "column",
+                        gap: 2,
                         mt: 1
                     }}
                 >
-
                     <TextField
-                        fullWidth
                         required
                         label="Código"
-                        name="codigo"
-                        value={
-                            formulario.codigo
-                        }
-                        onChange={
-                            manejarCambio
-                        }
-                        disabled={
-                            guardando
+                        value={formulario.codigo}
+                        onChange={(e) =>
+                            cambiar(
+                                "codigo",
+                                e.target.value
+                            )
                         }
                     />
 
-
                     <TextField
-                        fullWidth
                         required
                         label="Número de serie"
-                        name="numeroSerie"
                         value={
                             formulario.numeroSerie
                         }
-                        onChange={
-                            manejarCambio
-                        }
-                        disabled={
-                            guardando
-                        }
-                    />
-
-
-                    <TextField
-                        fullWidth
-                        required
-                        label="Marca"
-                        name="marca"
-                        value={
-                            formulario.marca
-                        }
-                        onChange={
-                            manejarCambio
-                        }
-                        disabled={
-                            guardando
+                        onChange={(e) =>
+                            cambiar(
+                                "numeroSerie",
+                                e.target.value
+                            )
                         }
                     />
 
-
-                    <TextField
-                        fullWidth
-                        required
-                        label="Modelo"
-                        name="modelo"
-                        value={
-                            formulario.modelo
-                        }
-                        onChange={
-                            manejarCambio
-                        }
-                        disabled={
-                            guardando
-                        }
+                    <Autocomplete
+                        freeSolo
+                        options={marcas}
+                        value={formulario.marca}
+                        onInputChange={(
+                            _,
+                            valor
+                        ) => {
+                            cambiar(
+                                "marca",
+                                valor
+                            );
+                            cambiar(
+                                "modelo",
+                                ""
+                            );
+                            cargarModelos(
+                                valor
+                            );
+                        }}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                required
+                                label="Marca"
+                                helperText="Puede escribir una marca nueva. Quedará disponible en el catálogo al guardar el UPS."
+                            />
+                        )}
                     />
 
+                    <Autocomplete
+                        freeSolo
+                        options={modelos}
+                        value={formulario.modelo}
+                        onInputChange={(
+                            _,
+                            valor
+                        ) =>
+                            cambiar(
+                                "modelo",
+                                valor
+                            )
+                        }
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                required
+                                label="Modelo"
+                                helperText="Puede escribir un modelo nuevo para la marca seleccionada."
+                            />
+                        )}
+                    />
 
                     <TextField
-                        fullWidth
                         required
-                        label="Capacidad (VA)"
-                        name="capacidadVA"
                         type="number"
+                        label="Capacidad (VA)"
                         value={
                             formulario.capacidadVA
                         }
-                        onChange={
-                            manejarCambio
+                        onChange={(e) =>
+                            cambiar(
+                                "capacidadVA",
+                                e.target.value
+                            )
                         }
-                        disabled={
-                            guardando
-                        }
-                        inputProps={{
-                            min: 1
-                        }}
                     />
 
-
                     <Autocomplete
-                        fullWidth
                         options={agencias}
                         value={
                             agenciaSeleccionada
                         }
-                        loading={cargando}
-                        disabled={
-                            guardando ||
-                            cargando
+                        getOptionLabel={(a) =>
+                            [
+                                a.codigo,
+                                a.nombre,
+                                a.ciudadNombre
+                            ]
+                                .filter(Boolean)
+                                .join(" - ")
                         }
-                        getOptionLabel={
-                            agencia =>
-                                obtenerEtiquetaAgencia(
-                                    agencia
-                                )
+                        isOptionEqualToValue={(
+                            a,
+                            b
+                        ) =>
+                            Number(a.id) ===
+                            Number(b.id)
                         }
-                        isOptionEqualToValue={
-                            (
-                                option,
-                                value
-                            ) =>
-                                Number(option.id) ===
-                                Number(value.id)
-                        }
-                        onChange={
-                            (
-                                event,
-                                nuevaAgencia
-                            ) => {
-
-                                setFormulario(
-                                    prev => ({
-                                        ...prev,
-                                        agenciaId:
-                                            nuevaAgencia
-                                                ? nuevaAgencia.id
-                                                : ""
-                                    })
-                                );
-
-                            }
-                        }
-                        renderInput={
-                            params => (
-
-                                <TextField
-                                    {...params}
-                                    required
-                                    label="Agencia"
-                                    placeholder="Buscar agencia..."
-                                />
-
+                        onChange={(
+                            _,
+                            valor
+                        ) =>
+                            cambiar(
+                                "agenciaId",
+                                valor
+                                    ? valor.id
+                                    : ""
                             )
                         }
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                required
+                                label="Agencia"
+                                placeholder="Buscar agencia..."
+                            />
+                        )}
                     />
 
-
-                    <Box>
-
-                        <Box
-                            component="label"
-                            sx={{
-                                display: "block",
-                                fontSize: "0.9rem",
-                                color: "text.secondary",
-                                mb: 0.5
-                            }}
-                        >
-                            Fecha de instalación *
-                        </Box>
-
-
-                        <TextField
-                            fullWidth
-                            required
-                            name="fechaInstalacion"
-                            type="date"
-                            value={
-                                formulario.fechaInstalacion
-                            }
-                            onChange={
-                                manejarCambio
-                            }
-                            disabled={
-                                guardando
-                            }
-                            inputProps={{
-                                max: obtenerFechaActual()
-                            }}
-                        />
-
-                    </Box>
-
-
                     <TextField
-                        fullWidth
                         required
-                        label="Cantidad de baterías"
-                        name="cantidadBaterias"
-                        type="number"
+                        type="date"
+                        label="Fecha de instalación"
                         value={
-                            formulario.cantidadBaterias
+                            formulario
+                                .fechaInstalacion
                         }
-                        onChange={
-                            manejarCambio
+                        onChange={(e) =>
+                            cambiar(
+                                "fechaInstalacion",
+                                e.target.value
+                            )
                         }
-                        disabled={
-                            guardando
-                        }
-                        inputProps={{
-                            min: 1
+                        slotProps={{
+                            inputLabel: {
+                                shrink: true
+                            },
+                            htmlInput: {
+                                max: hoy()
+                            }
                         }}
                     />
 
-
-                    <Box>
-
-                        <Box
-                            component="label"
-                            sx={{
-                                display: "block",
-                                fontSize: "0.9rem",
-                                color: "text.secondary",
-                                mb: 0.5
-                            }}
-                        >
-                            Último cambio de baterías
-                        </Box>
-
-
-                        <TextField
-                            fullWidth
-                            name="fechaUltimoCambioBaterias"
-                            type="date"
-                            value={
-                                formulario.fechaUltimoCambioBaterias
-                            }
-                            onChange={
-                                manejarCambio
-                            }
-                            disabled={
-                                guardando
-                            }
-                            inputProps={{
-                                min:
-                                    formulario.fechaInstalacion ||
-                                    undefined,
-                                max: obtenerFechaActual()
-                            }}
-                        />
-
-                    </Box>
-
+                    <TextField
+                        required
+                        type="number"
+                        label="Cantidad de baterías"
+                        value={
+                            formulario
+                                .cantidadBaterias
+                        }
+                        onChange={(e) =>
+                            cambiar(
+                                "cantidadBaterias",
+                                e.target.value
+                            )
+                        }
+                    />
 
                     <TextField
-                        fullWidth
-                        required
+                        type="date"
+                        label="Último cambio de baterías"
+                        value={
+                            formulario
+                                .fechaUltimoCambioBaterias
+                        }
+                        onChange={(e) =>
+                            cambiar(
+                                "fechaUltimoCambioBaterias",
+                                e.target.value
+                            )
+                        }
+                        helperText="Si existen cambios de batería completados en Mantenimiento, el sistema conservará la fecha real más reciente."
+                        slotProps={{
+                            inputLabel: {
+                                shrink: true
+                            },
+                            htmlInput: {
+                                min:
+                                    formulario
+                                        .fechaInstalacion ||
+                                    undefined,
+                                max: hoy()
+                            }
+                        }}
+                    />
+
+                    <TextField
                         select
+                        required
                         label="Estado"
-                        name="estadoUPSId"
                         value={
                             formulario.estadoUPSId
                         }
-                        onChange={
-                            manejarCambio
-                        }
-                        disabled={
-                            guardando ||
-                            cargando
+                        disabled={esBaja}
+                        onChange={(e) =>
+                            cambiar(
+                                "estadoUPSId",
+                                e.target.value
+                            )
                         }
                     >
-
-                        <MenuItem value="">
-                            Seleccione...
-                        </MenuItem>
-
-
-                        {estadosUPS.map(
-                            estado => (
-
+                        {estados.map(
+                            (estado) => (
                                 <MenuItem
-                                    key={
-                                        estado.id
-                                    }
-                                    value={
-                                        estado.id
-                                    }
+                                    key={estado.id}
+                                    value={estado.id}
                                 >
-
-                                    {
-                                        estado.nombre
-                                    }
-
+                                    {estado.nombre}
                                 </MenuItem>
-
                             )
                         )}
-
                     </TextField>
-
                 </Box>
-
             </DialogContent>
 
-
             <DialogActions>
-
                 <Button
                     onClick={onClose}
-                    disabled={
-                        guardando
-                    }
+                    disabled={guardando}
                 >
                     Cancelar
                 </Button>
-
-
                 <Button
                     variant="contained"
                     onClick={guardar}
                     disabled={
-                        guardando ||
-                        cargando
+                        cargando ||
+                        guardando
                     }
                 >
-
                     {guardando
                         ? "Guardando..."
-                        : ups
-                            ? "Actualizar"
-                            : "Guardar"}
-
+                        : "Guardar"}
                 </Button>
-
             </DialogActions>
-
         </Dialog>
-
     );
-
 }

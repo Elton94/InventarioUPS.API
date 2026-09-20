@@ -1,20 +1,21 @@
-import { useEffect, useState } from "react";
+import {
+    useEffect,
+    useState
+} from "react";
 
 import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
+    Alert,
+    Box,
     Button,
-    TextField,
-    FormControlLabel,
-    Checkbox,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     FormControl,
     InputLabel,
-    Select,
     MenuItem,
-    Alert,
-    Box
+    Select,
+    TextField
 } from "@mui/material";
 
 import {
@@ -28,7 +29,7 @@ import {
     obtenerTiposAgencia
 } from "../../services/catalogosService";
 
-const formularioInicial = {
+const inicial = {
     codigo: "",
     nombre: "",
     ciudadId: "",
@@ -43,234 +44,168 @@ export default function NuevaAgenciaModal({
     onGuardado,
     agencia
 }) {
-    const [formulario, setFormulario] = useState(
-        formularioInicial
-    );
-
-    const [departamentos, setDepartamentos] = useState([]);
-    const [ciudades, setCiudades] = useState([]);
-    const [tiposAgencia, setTiposAgencia] = useState([]);
-
-    const [departamentoId, setDepartamentoId] = useState("");
-
-    const [cargandoCatalogos, setCargandoCatalogos] =
+    const [formulario, setFormulario] =
+        useState(inicial);
+    const [departamentoId, setDepartamentoId] =
+        useState("");
+    const [departamentos, setDepartamentos] =
+        useState([]);
+    const [ciudades, setCiudades] =
+        useState([]);
+    const [tipos, setTipos] =
+        useState([]);
+    const [cargando, setCargando] =
         useState(false);
+    const [guardando, setGuardando] =
+        useState(false);
+    const [error, setError] =
+        useState("");
 
-    const [guardando, setGuardando] = useState(false);
-    const [error, setError] = useState("");
+    const cargarCiudades =
+        async (id) => {
+            if (!id) {
+                setCiudades([]);
+                return;
+            }
+
+            const datos =
+                await obtenerCiudades(id);
+
+            setCiudades(
+                Array.isArray(datos)
+                    ? datos
+                    : []
+            );
+        };
 
     useEffect(() => {
         if (!open) return;
 
-        setError("");
+        const cargar = async () => {
+            try {
+                setCargando(true);
+                setError("");
 
-        cargarCatalogos();
+                const [deps, tiposData] =
+                    await Promise.all([
+                        obtenerDepartamentos(),
+                        obtenerTiposAgencia()
+                    ]);
 
-        if (agencia) {
-            const ciudadId =
-                agencia.ciudadId ??
-                agencia.ciudad?.id ??
-                "";
-
-            const tipoAgenciaId =
-                agencia.tipoAgenciaId ??
-                agencia.tipoAgencia?.id ??
-                "";
-
-            const depId =
-                agencia.ciudad?.departamentoId ??
-                agencia.ciudad?.departamento?.id ??
-                "";
-
-            setDepartamentoId(
-                depId ? String(depId) : ""
-            );
-
-            setFormulario({
-                codigo: agencia.codigo || "",
-                nombre: agencia.nombre || "",
-                ciudadId: ciudadId
-                    ? String(ciudadId)
-                    : "",
-                direccion: agencia.direccion || "",
-                tipoAgenciaId: tipoAgenciaId
-                    ? String(tipoAgenciaId)
-                    : "",
-                activa:
-                    agencia.activa ?? true
-            });
-
-            if (depId) {
-                cargarCiudades(depId);
-            }
-        } else {
-            setDepartamentoId("");
-            setCiudades([]);
-            setFormulario(formularioInicial);
-        }
-    }, [open, agencia]);
-
-    const cargarCatalogos = async () => {
-        try {
-            setCargandoCatalogos(true);
-
-            const [
-                departamentosData,
-                tiposData
-            ] = await Promise.all([
-                obtenerDepartamentos(),
-                obtenerTiposAgencia()
-            ]);
-
-            setDepartamentos(
-                departamentosData || []
-            );
-
-            setTiposAgencia(
-                tiposData || []
-            );
-        } catch (error) {
-            console.error(
-                "Error al cargar catálogos:",
-                error
-            );
-
-            setError(
-                "No se pudieron cargar los catálogos."
-            );
-        } finally {
-            setCargandoCatalogos(false);
-        }
-    };
-
-    const cargarCiudades = async (
-        idDepartamento
-    ) => {
-        if (!idDepartamento) {
-            setCiudades([]);
-            return;
-        }
-
-        try {
-            const datos =
-                await obtenerCiudades(
-                    idDepartamento
+                setDepartamentos(
+                    Array.isArray(deps)
+                        ? deps
+                        : []
+                );
+                setTipos(
+                    Array.isArray(tiposData)
+                        ? tiposData
+                        : []
                 );
 
-            setCiudades(datos || []);
-        } catch (error) {
-            console.error(
-                "Error al cargar ciudades:",
-                error
-            );
+                if (agencia) {
+                    const dep =
+                        agencia.departamentoId ||
+                        "";
 
-            setCiudades([]);
+                    setDepartamentoId(
+                        dep
+                            ? String(dep)
+                            : ""
+                    );
 
-            setError(
-                "No se pudieron cargar las ciudades."
-            );
-        }
-    };
+                    setFormulario({
+                        codigo:
+                            agencia.codigo || "",
+                        nombre:
+                            agencia.nombre || "",
+                        ciudadId:
+                            agencia.ciudadId
+                                ? String(
+                                    agencia.ciudadId
+                                )
+                                : "",
+                        direccion:
+                            agencia.direccion || "",
+                        tipoAgenciaId:
+                            agencia.tipoAgenciaId
+                                ? String(
+                                    agencia.tipoAgenciaId
+                                )
+                                : "",
+                        activa:
+                            agencia.activa !==
+                            false
+                    });
 
-    const determinarTipoAgencia = (
-        ciudadSeleccionada
+                    if (dep) {
+                        await cargarCiudades(
+                            dep
+                        );
+                    }
+                } else {
+                    setDepartamentoId("");
+                    setCiudades([]);
+                    setFormulario({
+                        ...inicial
+                    });
+                }
+            } catch {
+                setError(
+                    "No fue posible cargar los catálogos."
+                );
+            } finally {
+                setCargando(false);
+            }
+        };
+
+        cargar();
+    }, [open, agencia]);
+
+    const determinarTipo = (
+        ciudadId
     ) => {
-        if (!ciudadSeleccionada) {
-            return;
-        }
-
-        const nombre =
-            ciudadSeleccionada.nombre
-                ?.trim()
-                .toLowerCase();
-
-        const esLocal =
-            nombre === "san pedro sula" ||
-            nombre === "la ceiba" ||
-            nombre === "distrito central";
-
-        const tipoLocal =
-            tiposAgencia.find(
-                tipo =>
-                    tipo.nombre
-                        ?.trim()
-                        .toLowerCase() === "local"
-            );
-
-        const tipoForanea =
-            tiposAgencia.find(
-                tipo =>
-                    tipo.nombre
-                        ?.trim()
-                        .toLowerCase() ===
-                        "foránea" ||
-                    tipo.nombre
-                        ?.trim()
-                        .toLowerCase() ===
-                        "foranea"
-            );
-
-        const tipo = esLocal
-            ? tipoLocal
-            : tipoForanea;
-
-        setFormulario(prev => ({
-            ...prev,
-            tipoAgenciaId: tipo
-                ? String(tipo.id)
-                : ""
-        }));
-    };
-
-    const cambiarDepartamento = async event => {
-        const idDepartamento =
-            event.target.value;
-
-        setDepartamentoId(
-            idDepartamento
-        );
-
-        setFormulario(prev => ({
-            ...prev,
-            ciudadId: "",
-            tipoAgenciaId: ""
-        }));
-
-        await cargarCiudades(
-            idDepartamento
-        );
-    };
-
-    const cambiarCiudad = event => {
-        const ciudadId =
-            event.target.value;
-
-        const ciudadSeleccionada =
+        const ciudad =
             ciudades.find(
-                ciudad =>
-                    String(ciudad.id) ===
+                (c) =>
+                    String(c.id) ===
                     String(ciudadId)
             );
 
-        setFormulario(prev => ({
-            ...prev,
-            ciudadId
-        }));
+        if (!ciudad) return;
 
-        determinarTipoAgencia(
-            ciudadSeleccionada
-        );
-    };
+        const nombre =
+            String(ciudad.nombre || "")
+                .trim()
+                .toLowerCase();
 
-    const cambiarValor = event => {
-        const {
-            name,
-            value
-        } = event.target;
+        const local = [
+            "san pedro sula",
+            "la ceiba",
+            "distrito central"
+        ].includes(nombre);
 
-        setFormulario(prev => ({
-            ...prev,
-            [name]: value
+        const tipo =
+            tipos.find((t) => {
+                const valor =
+                    String(t.nombre || "")
+                        .trim()
+                        .toLowerCase();
+
+                return local
+                    ? valor === "local"
+                    : valor === "foránea" ||
+                      valor === "foranea";
+            });
+
+        setFormulario((actual) => ({
+            ...actual,
+            ciudadId:
+                String(ciudadId),
+            tipoAgenciaId:
+                tipo
+                    ? String(tipo.id)
+                    : ""
         }));
     };
 
@@ -305,16 +240,16 @@ export default function NuevaAgenciaModal({
             return;
         }
 
-        if (!formulario.tipoAgenciaId) {
+        if (!formulario.direccion.trim()) {
             setError(
-                "No se pudo determinar el tipo de agencia."
+                "La dirección es obligatoria."
             );
             return;
         }
 
-        if (!formulario.direccion.trim()) {
+        if (!formulario.tipoAgenciaId) {
             setError(
-                "La dirección es obligatoria."
+                "No se pudo determinar el tipo de agencia."
             );
             return;
         }
@@ -323,21 +258,22 @@ export default function NuevaAgenciaModal({
             setGuardando(true);
 
             const datos = {
-                id: agencia?.id ?? 0,
+                ...formulario,
                 codigo:
                     formulario.codigo.trim(),
                 nombre:
                     formulario.nombre.trim(),
-                ciudadId: Number(
-                    formulario.ciudadId
-                ),
                 direccion:
                     formulario.direccion.trim(),
-                tipoAgenciaId: Number(
-                    formulario.tipoAgenciaId
-                ),
-                activa:
-                    formulario.activa
+                ciudadId:
+                    Number(
+                        formulario.ciudadId
+                    ),
+                tipoAgenciaId:
+                    Number(
+                        formulario
+                            .tipoAgenciaId
+                    )
             };
 
             if (agencia) {
@@ -352,33 +288,26 @@ export default function NuevaAgenciaModal({
             }
 
             await onGuardado();
-
             onClose();
-        } catch (error) {
-            console.error(
-                "Error al guardar agencia:",
-                error
+        } catch (e) {
+            setError(
+                e.response?.data?.mensaje ||
+                e.response?.data?.message ||
+                "No fue posible guardar la agencia."
             );
-
-            const mensaje =
-                error.response?.data?.mensaje ||
-                error.response?.data?.message ||
-                "No se pudo guardar la agencia.";
-
-            setError(mensaje);
         } finally {
             setGuardando(false);
         }
     };
 
-    const tipoSeleccionado =
-        tiposAgencia.find(
-            tipo =>
-                String(tipo.id) ===
+    const tipoNombre =
+        tipos.find(
+            (t) =>
+                String(t.id) ===
                 String(
                     formulario.tipoAgenciaId
                 )
-        );
+        )?.nombre || "";
 
     return (
         <Dialog
@@ -388,8 +317,8 @@ export default function NuevaAgenciaModal({
                     ? undefined
                     : onClose
             }
-            maxWidth="md"
             fullWidth
+            maxWidth="md"
         >
             <DialogTitle>
                 {agencia
@@ -401,10 +330,7 @@ export default function NuevaAgenciaModal({
                 {error && (
                     <Alert
                         severity="error"
-                        sx={{
-                            mt: 1,
-                            mb: 2
-                        }}
+                        sx={{ mt: 1, mb: 2 }}
                     >
                         {error}
                     </Alert>
@@ -420,71 +346,78 @@ export default function NuevaAgenciaModal({
                     }}
                 >
                     <TextField
-                        fullWidth
                         label="Código"
-                        name="codigo"
-                        value={
-                            formulario.codigo
-                        }
-                        onChange={
-                            cambiarValor
+                        value={formulario.codigo}
+                        onChange={(e) =>
+                            setFormulario(
+                                (a) => ({
+                                    ...a,
+                                    codigo:
+                                        e.target.value
+                                })
+                            )
                         }
                         disabled={guardando}
                         required
                     />
 
                     <TextField
-                        fullWidth
                         label="Nombre"
-                        name="nombre"
-                        value={
-                            formulario.nombre
-                        }
-                        onChange={
-                            cambiarValor
+                        value={formulario.nombre}
+                        onChange={(e) =>
+                            setFormulario(
+                                (a) => ({
+                                    ...a,
+                                    nombre:
+                                        e.target.value
+                                })
+                            )
                         }
                         disabled={guardando}
                         required
                     />
 
-                    <FormControl
-                        fullWidth
-                        required
-                    >
+                    <FormControl required>
                         <InputLabel>
                             Departamento
                         </InputLabel>
-
                         <Select
-                            value={
-                                departamentoId
-                            }
+                            value={departamentoId}
                             label="Departamento"
-                            onChange={
-                                cambiarDepartamento
-                            }
                             disabled={
-                                cargandoCatalogos ||
+                                cargando ||
                                 guardando
                             }
+                            onChange={async (e) => {
+                                const valor =
+                                    e.target.value;
+
+                                setDepartamentoId(
+                                    valor
+                                );
+                                setFormulario(
+                                    (a) => ({
+                                        ...a,
+                                        ciudadId: "",
+                                        tipoAgenciaId:
+                                            ""
+                                    })
+                                );
+                                await cargarCiudades(
+                                    valor
+                                );
+                            }}
                         >
                             <MenuItem value="">
                                 Seleccione...
                             </MenuItem>
-
                             {departamentos.map(
-                                departamento => (
+                                (d) => (
                                     <MenuItem
-                                        key={
-                                            departamento.id
-                                        }
-                                        value={
-                                            departamento.id
-                                        }
+                                        key={d.id}
+                                        value={d.id}
                                     >
-                                        {
-                                            departamento.nombre
-                                        }
+                                        {d.nombre}
                                     </MenuItem>
                                 )
                             )}
@@ -492,7 +425,6 @@ export default function NuevaAgenciaModal({
                     </FormControl>
 
                     <FormControl
-                        fullWidth
                         required
                         disabled={
                             !departamentoId ||
@@ -502,33 +434,28 @@ export default function NuevaAgenciaModal({
                         <InputLabel>
                             Ciudad
                         </InputLabel>
-
                         <Select
                             value={
-                                formulario.ciudadId
+                                formulario
+                                    .ciudadId
                             }
                             label="Ciudad"
-                            onChange={
-                                cambiarCiudad
+                            onChange={(e) =>
+                                determinarTipo(
+                                    e.target.value
+                                )
                             }
                         >
                             <MenuItem value="">
                                 Seleccione...
                             </MenuItem>
-
                             {ciudades.map(
-                                ciudad => (
+                                (c) => (
                                     <MenuItem
-                                        key={
-                                            ciudad.id
-                                        }
-                                        value={
-                                            ciudad.id
-                                        }
+                                        key={c.id}
+                                        value={c.id}
                                     >
-                                        {
-                                            ciudad.nombre
-                                        }
+                                        {c.nombre}
                                     </MenuItem>
                                 )
                             )}
@@ -536,98 +463,50 @@ export default function NuevaAgenciaModal({
                     </FormControl>
 
                     <TextField
-                        fullWidth
                         label="Dirección"
-                        name="direccion"
                         value={
                             formulario.direccion
                         }
-                        onChange={
-                            cambiarValor
+                        onChange={(e) =>
+                            setFormulario(
+                                (a) => ({
+                                    ...a,
+                                    direccion:
+                                        e.target.value
+                                })
+                            )
                         }
                         disabled={guardando}
                         required
                     />
 
                     <TextField
-                        fullWidth
                         label="Tipo de Agencia"
-                        value={
-                            tipoSeleccionado?.nombre ||
-                            ""
-                        }
+                        value={tipoNombre}
                         disabled
-                        helperText={
-                            formulario.ciudadId
-                                ? "Determinado automáticamente"
-                                : "Seleccione una ciudad"
-                        }
+                        helperText="Se determina automáticamente según la ciudad."
                     />
-
-                    <Box
-                        sx={{
-                            gridColumn:
-                                "1 / -1",
-                            display: "flex",
-                            alignItems:
-                                "center"
-                        }}
-                    >
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                    checked={
-                                        formulario.activa
-                                    }
-                                    onChange={
-                                        event =>
-                                            setFormulario(
-                                                prev => ({
-                                                    ...prev,
-                                                    activa:
-                                                        event
-                                                            .target
-                                                            .checked
-                                                })
-                                            )
-                                    }
-                                    disabled={
-                                        guardando
-                                    }
-                                />
-                            }
-                            label="Agencia activa"
-                        />
-                    </Box>
                 </Box>
             </DialogContent>
 
-            <DialogActions
-                sx={{
-                    px: 3,
-                    pb: 2
-                }}
-            >
+            <DialogActions>
                 <Button
                     onClick={onClose}
                     disabled={guardando}
                 >
                     Cancelar
                 </Button>
-
                 <Button
                     variant="contained"
                     onClick={guardar}
                     disabled={
-                        guardando ||
-                        cargandoCatalogos
+                        cargando ||
+                        guardando
                     }
                 >
                     {guardando
                         ? "Guardando..."
-                        : agencia
-                            ? "Guardar cambios"
-                            : "Guardar"}
+                        : "Guardar"}
                 </Button>
             </DialogActions>
         </Dialog>

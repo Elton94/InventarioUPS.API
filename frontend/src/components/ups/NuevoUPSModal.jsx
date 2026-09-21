@@ -31,6 +31,7 @@ import {
 
 const inicial = {
     codigo: "",
+    numeroInventario: "",
     marca: "",
     modelo: "",
     numeroSerie: "",
@@ -124,6 +125,8 @@ export default function NuevoUPSModal({
                     setFormulario({
                         codigo:
                             ups.codigo || "",
+                        numeroInventario:
+                            ups.numeroInventario || "",
                         marca:
                             ups.marca || "",
                         modelo:
@@ -189,6 +192,13 @@ export default function NuevoUPSModal({
         if (!formulario.codigo.trim()) {
             setError(
                 "El código es obligatorio."
+            );
+            return;
+        }
+
+        if (!formulario.numeroInventario.trim()) {
+            setError(
+                "El número de inventario es obligatorio."
             );
             return;
         }
@@ -421,6 +431,21 @@ export default function NuevoUPSModal({
                                 e.target.value
                             )
                         }
+                    />
+
+                    <TextField
+                        required
+                        label="Número de inventario"
+                        value={
+                            formulario.numeroInventario
+                        }
+                        onChange={(e) =>
+                            cambiar(
+                                "numeroInventario",
+                                e.target.value
+                            )
+                        }
+                        helperText="Identificador patrimonial o número de inventario asignado al equipo."
                     />
 
                     <TextField

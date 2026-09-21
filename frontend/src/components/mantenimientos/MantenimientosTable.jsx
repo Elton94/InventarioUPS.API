@@ -88,6 +88,7 @@ export default function MantenimientosTable({
                     <TableRow>
                         <TableCell><strong>Agencia</strong></TableCell>
                         <TableCell><strong>UPS</strong></TableCell>
+                        <TableCell><strong>Inventario</strong></TableCell>
                         <TableCell><strong>Serie</strong></TableCell>
                         <TableCell><strong>Tipo</strong></TableCell>
                         <TableCell><strong>Fecha</strong></TableCell>
@@ -129,6 +130,12 @@ export default function MantenimientosTable({
                                     <TableCell>
                                         {
                                             m.codigoUPS ||
+                                            "—"
+                                        }
+                                    </TableCell>
+                                    <TableCell>
+                                        {
+                                            m.numeroInventarioUPS ||
                                             "—"
                                         }
                                     </TableCell>
@@ -250,7 +257,7 @@ export default function MantenimientosTable({
                     {mantenimientos.length === 0 && (
                         <TableRow>
                             <TableCell
-                                colSpan={10}
+                                colSpan={11}
                                 align="center"
                             >
                                 No se encontraron mantenimientos.

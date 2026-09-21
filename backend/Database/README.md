@@ -16,6 +16,14 @@ El script agrega únicamente los campos que necesita la lógica nueva para:
 
 El script está preparado para ejecutarse una vez sobre `InventarioUPSDB`.
 
+## Número de inventario de UPS
+
+Después del script anterior, ejecutar también:
+
+`backend/Database/20260921_NumeroInventarioUPS.sql`
+
+Este script agrega `NumeroInventario` a la tabla `UPSs`, lo deja obligatorio y único, y asigna temporalmente `INV-PEND-{Id}` a los UPS existentes para que luego se reemplace desde la aplicación por el número de inventario real.
+
 ## Reglas principales agregadas
 
 - El tipo de agencia se determina por ciudad: San Pedro Sula, La Ceiba y Distrito Central son Locales; las demás son Foráneas.

@@ -106,6 +106,7 @@ namespace InventarioUPS.API.Controllers
         {
             Id = equipo.Id,
             Codigo = equipo.Codigo,
+            NumeroInventario = equipo.NumeroInventario,
             Marca = equipo.Marca,
             Modelo = equipo.Modelo,
             NumeroSerie = equipo.NumeroSerie,

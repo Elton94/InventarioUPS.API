@@ -180,6 +180,8 @@ namespace InventarioUPS.API.Services
                 throw new ArgumentException("El código del UPS es obligatorio.");
             if (string.IsNullOrWhiteSpace(ups.NumeroInventario))
                 throw new ArgumentException("El número de inventario del UPS es obligatorio.");
+            if (ups.NumeroInventario.Length > 100)
+                throw new ArgumentException("El número de inventario no puede superar 100 caracteres.");
             if (string.IsNullOrWhiteSpace(ups.Marca))
                 throw new ArgumentException("La marca del UPS es obligatoria.");
             if (string.IsNullOrWhiteSpace(ups.Modelo))

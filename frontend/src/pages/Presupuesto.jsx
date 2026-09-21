@@ -734,7 +734,9 @@ export default function Presupuesto() {
                                                                     {equipo.codigoUPS}
                                                                 </strong>
                                                                 <br />
-                                                                {equipo.numeroSerie}
+                                                                Inventario: {equipo.numeroInventario || "—"}
+                                                                <br />
+                                                                Serie: {equipo.numeroSerie || "—"}
                                                             </TableCell>
                                                             <TableCell>
                                                                 {equipo.marca}
@@ -841,7 +843,9 @@ export default function Presupuesto() {
                                                             {equipo.agencia}
                                                         </TableCell>
                                                         <TableCell>
-                                                            {equipo.codigoUPS}
+                                                            <strong>{equipo.codigoUPS}</strong>
+                                                            <br />
+                                                            Inventario: {equipo.numeroInventario || "—"}
                                                         </TableCell>
                                                         <TableCell>
                                                             {equipo.observacion}

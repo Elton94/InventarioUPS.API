@@ -171,6 +171,11 @@ namespace InventarioUPS.API.Data
                 .IsRequired();
 
             modelBuilder.Entity<UPS>()
+                .Property(u => u.NumeroInventario)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            modelBuilder.Entity<UPS>()
                 .Property(u => u.Marca)
                 .HasMaxLength(100)
                 .IsRequired();
@@ -187,6 +192,10 @@ namespace InventarioUPS.API.Data
 
             modelBuilder.Entity<UPS>()
                 .HasIndex(u => u.Codigo)
+                .IsUnique();
+
+            modelBuilder.Entity<UPS>()
+                .HasIndex(u => u.NumeroInventario)
                 .IsUnique();
 
             modelBuilder.Entity<UPS>()

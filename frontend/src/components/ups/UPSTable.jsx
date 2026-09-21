@@ -29,6 +29,7 @@ export default function UPSTable({
                 <TableHead>
                     <TableRow>
                         <TableCell><strong>Código</strong></TableCell>
+                        <TableCell><strong>Inventario</strong></TableCell>
                         <TableCell><strong>Marca</strong></TableCell>
                         <TableCell><strong>Modelo</strong></TableCell>
                         <TableCell><strong>Número de serie</strong></TableCell>
@@ -52,6 +53,7 @@ export default function UPSTable({
                                 hover
                             >
                                 <TableCell>{equipo.codigo}</TableCell>
+                                <TableCell>{equipo.numeroInventario || "—"}</TableCell>
                                 <TableCell>{equipo.marca}</TableCell>
                                 <TableCell>{equipo.modelo}</TableCell>
                                 <TableCell>{equipo.numeroSerie}</TableCell>
@@ -108,7 +110,7 @@ export default function UPSTable({
                     {ups.length === 0 && (
                         <TableRow>
                             <TableCell
-                                colSpan={8}
+                                colSpan={9}
                                 align="center"
                             >
                                 No hay UPS registrados.

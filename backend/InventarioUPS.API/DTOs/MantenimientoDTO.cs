@@ -18,6 +18,7 @@ namespace InventarioUPS.API.DTOs
 
         public int? AgenciaIdRegistro { get; set; }
         public string? CodigoUPS { get; set; }
+        public string? NumeroInventarioUPS { get; set; }
         public string? NumeroSerieUPS { get; set; }
         public string? MarcaUPS { get; set; }
         public string? ModeloUPS { get; set; }

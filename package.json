@@ -1,0 +1,9 @@
+{
+  "name": "inventario-ups",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "dev:api": "dotnet run --project backend/InventarioUPS.API --launch-profile https"
+  }
+}

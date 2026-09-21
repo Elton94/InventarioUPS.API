@@ -2,8 +2,9 @@ import axios from "axios";
 
 const api = axios.create({
     baseURL:
-        import.meta.env.VITE_API_URL ||
-        "http://localhost:5148/api"
+        import.meta.env.DEV
+            ? "/api"
+            : (import.meta.env.VITE_API_URL || "/api")
 });
 
 export const limpiarSesion = () => {

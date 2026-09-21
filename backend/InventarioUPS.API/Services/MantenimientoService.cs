@@ -393,6 +393,7 @@ namespace InventarioUPS.API.Services
             CostoBaterias = m.CostoBaterias,
             AgenciaIdRegistro = m.AgenciaIdRegistro,
             CodigoUPS = m.UPS?.Codigo,
+            NumeroInventarioUPS = m.UPS?.NumeroInventario,
             NumeroSerieUPS = m.UPS?.NumeroSerie,
             MarcaUPS = m.UPS?.Marca,
             ModeloUPS = m.UPS?.Modelo,

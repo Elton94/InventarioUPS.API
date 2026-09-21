@@ -26,6 +26,9 @@ namespace InventarioUPS.API.Services
             if (await _repository.ExisteCodigoAsync(ups.Codigo))
                 throw new InvalidOperationException("Ya existe un UPS con ese código.");
 
+            if (await _repository.ExisteNumeroInventarioAsync(ups.NumeroInventario))
+                throw new InvalidOperationException("Ya existe un UPS con ese número de inventario.");
+
             if (await _repository.ExisteNumeroSerieAsync(ups.NumeroSerie))
                 throw new InvalidOperationException("Ya existe un UPS con ese número de serie.");
 
@@ -70,6 +73,9 @@ namespace InventarioUPS.API.Services
 
             if (await _repository.ExisteCodigoExceptoIdAsync(ups.Codigo, ups.Id))
                 throw new InvalidOperationException("Ya existe otro UPS con ese código.");
+
+            if (await _repository.ExisteNumeroInventarioExceptoIdAsync(ups.NumeroInventario, ups.Id))
+                throw new InvalidOperationException("Ya existe otro UPS con ese número de inventario.");
 
             if (await _repository.ExisteNumeroSerieExceptoIdAsync(ups.NumeroSerie, ups.Id))
                 throw new InvalidOperationException("Ya existe otro UPS con ese número de serie.");
@@ -165,12 +171,15 @@ namespace InventarioUPS.API.Services
                 throw new ArgumentException("Los datos del UPS son obligatorios.");
 
             ups.Codigo = ups.Codigo?.Trim() ?? string.Empty;
+            ups.NumeroInventario = ups.NumeroInventario?.Trim() ?? string.Empty;
             ups.Marca = ups.Marca?.Trim() ?? string.Empty;
             ups.Modelo = ups.Modelo?.Trim() ?? string.Empty;
             ups.NumeroSerie = ups.NumeroSerie?.Trim() ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(ups.Codigo))
                 throw new ArgumentException("El código del UPS es obligatorio.");
+            if (string.IsNullOrWhiteSpace(ups.NumeroInventario))
+                throw new ArgumentException("El número de inventario del UPS es obligatorio.");
             if (string.IsNullOrWhiteSpace(ups.Marca))
                 throw new ArgumentException("La marca del UPS es obligatoria.");
             if (string.IsNullOrWhiteSpace(ups.Modelo))

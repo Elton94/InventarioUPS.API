@@ -54,6 +54,7 @@ namespace InventarioUPS.API.Repositories
                 throw new InvalidOperationException("El UPS no existe.");
 
             existente.Codigo = ups.Codigo;
+            existente.NumeroInventario = ups.NumeroInventario;
             existente.Marca = ups.Marca;
             existente.Modelo = ups.Modelo;
             existente.NumeroSerie = ups.NumeroSerie;
@@ -97,6 +98,22 @@ namespace InventarioUPS.API.Repositories
         {
             var valor = codigo.Trim().ToUpper();
             return _context.UPSs.AnyAsync(u => u.Id != upsId && u.Codigo.ToUpper() == valor);
+        }
+
+        public Task<bool> ExisteNumeroInventarioAsync(string numeroInventario)
+        {
+            var valor = numeroInventario.Trim().ToUpper();
+            return _context.UPSs.AnyAsync(u => u.NumeroInventario.ToUpper() == valor);
+        }
+
+        public Task<bool> ExisteNumeroInventarioExceptoIdAsync(
+            string numeroInventario,
+            int upsId)
+        {
+            var valor = numeroInventario.Trim().ToUpper();
+            return _context.UPSs.AnyAsync(u =>
+                u.Id != upsId &&
+                u.NumeroInventario.ToUpper() == valor);
         }
 
         public Task<bool> ExisteNumeroSerieAsync(string numeroSerie)

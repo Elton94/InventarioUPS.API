@@ -16,6 +16,8 @@ export const obtenerUPSPorId =
 const mapear = (ups, id = 0) => ({
     id: Number(id || ups.id || 0),
     codigo: ups.codigo?.trim(),
+    numeroInventario:
+        ups.numeroInventario?.trim(),
     marca: ups.marca?.trim(),
     modelo: ups.modelo?.trim(),
     numeroSerie:

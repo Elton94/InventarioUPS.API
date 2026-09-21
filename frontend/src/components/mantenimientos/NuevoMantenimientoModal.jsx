@@ -535,6 +535,7 @@ export default function NuevoMantenimientoModal({
                             getOptionLabel={(u) =>
                                 [
                                     u.codigo,
+                                    u.numeroInventario,
                                     u.numeroSerie,
                                     u.marca,
                                     u.modelo,

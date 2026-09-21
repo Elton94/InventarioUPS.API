@@ -469,9 +469,11 @@ export default function Home() {
                                                     }
                                                 </TableCell>
                                                 <TableCell>
-                                                    {
-                                                        m.codigoUPS
-                                                    }
+                                                    <strong>
+                                                        {m.codigoUPS || "—"}
+                                                    </strong>
+                                                    <br />
+                                                    Inventario: {m.numeroInventarioUPS || "—"}
                                                 </TableCell>
                                                 <TableCell>
                                                     {
@@ -580,9 +582,11 @@ export default function Home() {
                                                         }
                                                     </TableCell>
                                                     <TableCell>
-                                                        {
-                                                            item.codigoUPS
-                                                        }
+                                                        <strong>
+                                                            {item.codigoUPS || "—"}
+                                                        </strong>
+                                                        <br />
+                                                        Inventario: {item.numeroInventario || "—"}
                                                     </TableCell>
                                                     <TableCell>
                                                         {

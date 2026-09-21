@@ -18,6 +18,12 @@ namespace InventarioUPS.API.Repositories
 
         Task<bool> ExisteCodigoExceptoIdAsync(string codigo, int upsId);
 
+        Task<bool> ExisteNumeroInventarioAsync(string numeroInventario);
+
+        Task<bool> ExisteNumeroInventarioExceptoIdAsync(
+            string numeroInventario,
+            int upsId);
+
         Task<bool> ExisteNumeroSerieAsync(string numeroSerie);
 
         Task<bool> ExisteNumeroSerieExceptoIdAsync(

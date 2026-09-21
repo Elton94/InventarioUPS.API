@@ -152,6 +152,7 @@ export default function UPS() {
 
             return [
                 equipo.codigo,
+                equipo.numeroInventario,
                 equipo.marca,
                 equipo.modelo,
                 equipo.numeroSerie,
@@ -199,7 +200,7 @@ export default function UPS() {
             <TextField
                 fullWidth
                 sx={{ mb: 3 }}
-                placeholder="Buscar por código, marca, modelo, serie, agencia o estado..."
+                placeholder="Buscar por código, inventario, marca, modelo, serie, agencia o estado..."
                 value={busqueda}
                 onChange={(e) =>
                     setBusqueda(

@@ -36,14 +36,6 @@ import {
     tienePermiso
 } from "../services/permisos";
 
-const moneda = new Intl.NumberFormat(
-    "es-HN",
-    {
-        style: "currency",
-        currency: "HNL"
-    }
-);
-
 const numero =
     new Intl.NumberFormat("es-HN");
 
@@ -221,17 +213,6 @@ export default function Home() {
                 )
         ).length;
 
-    const presupuesto =
-        detalleProyeccion.reduce(
-            (total, item) =>
-                total +
-                Number(
-                    item.costoEstimado ||
-                    0
-                ),
-            0
-        );
-
     const bateriasProyectadas =
         detalleProyeccion.reduce(
             (total, item) =>
@@ -313,14 +294,6 @@ export default function Home() {
             valor:
                 numero.format(
                     bateriasProyectadas
-                )
-        },
-        puedePresupuesto && {
-            titulo:
-                `Presupuesto ${anio}`,
-            valor:
-                moneda.format(
-                    presupuesto
                 )
         }
     ].filter(Boolean);
@@ -503,11 +476,6 @@ export default function Home() {
                                         <TableCell>
                                             Estado de proyección
                                         </TableCell>
-                                        <TableCell
-                                            align="right"
-                                        >
-                                            Costo
-                                        </TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -546,16 +514,6 @@ export default function Home() {
                                                                     : "Proyectado"
                                                         }
                                                     </TableCell>
-                                                    <TableCell
-                                                        align="right"
-                                                    >
-                                                        {
-                                                            moneda.format(
-                                                                item.costoEstimado ||
-                                                                0
-                                                            )
-                                                        }
-                                                    </TableCell>
                                                 </TableRow>
                                             )
                                         )}
@@ -564,10 +522,10 @@ export default function Home() {
                                         0 && (
                                         <TableRow>
                                             <TableCell
-                                                colSpan={5}
+                                                colSpan={4}
                                                 align="center"
                                             >
-                                                No hay reemplazos proyectados para este año o falta configurar el costo anual.
+                                                No hay reemplazos disponibles. Revise la configuración en Proyecciones.
                                             </TableCell>
                                         </TableRow>
                                     )}

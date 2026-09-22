@@ -57,6 +57,8 @@ namespace InventarioUPS.API.Services
             PrepararBaterias(mantenimiento, ups);
             LimpiarTextos(mantenimiento);
 
+            mantenimiento.Costo = 0;
+            mantenimiento.CostoBaterias = 0;
             mantenimiento.AgenciaIdRegistro = ups.AgenciaId;
             mantenimiento.AgenciaNombreRegistro = ups.Agencia?.Nombre ?? string.Empty;
 
@@ -111,11 +113,10 @@ namespace InventarioUPS.API.Services
             existente.FechaMantenimiento = mantenimiento.FechaMantenimiento;
             existente.Descripcion = mantenimiento.Descripcion;
             existente.TecnicoProveedor = mantenimiento.TecnicoProveedor;
-            existente.Costo = mantenimiento.Costo;
+            // Los importes históricos se conservan al editar datos operativos.
             existente.Observaciones = mantenimiento.Observaciones;
             existente.IncluyeCambioBaterias = mantenimiento.IncluyeCambioBaterias;
             existente.CantidadBateriasReemplazadas = mantenimiento.CantidadBateriasReemplazadas;
-            existente.CostoBaterias = mantenimiento.CostoBaterias;
             existente.AgenciaIdRegistro = mantenimiento.AgenciaIdRegistro;
             existente.AgenciaNombreRegistro = mantenimiento.AgenciaNombreRegistro;
             existente.EstadoUPSAnteriorId = mantenimiento.EstadoUPSAnteriorId;
@@ -330,8 +331,6 @@ namespace InventarioUPS.API.Services
                 throw new ArgumentException("La descripción del mantenimiento es obligatoria.");
             if (string.IsNullOrWhiteSpace(m.TecnicoProveedor))
                 throw new ArgumentException("El técnico o proveedor es obligatorio.");
-            if (m.Costo < 0)
-                throw new ArgumentException("El costo del mantenimiento no puede ser negativo.");
         }
 
         private static void ValidarFecha(DateTime fecha, string estado)
@@ -346,7 +345,6 @@ namespace InventarioUPS.API.Services
             if (!m.IncluyeCambioBaterias)
             {
                 m.CantidadBateriasReemplazadas = 0;
-                m.CostoBaterias = 0;
                 return;
             }
 
@@ -355,9 +353,6 @@ namespace InventarioUPS.API.Services
                     "El UPS no tiene una cantidad válida de baterías registrada.");
 
             m.CantidadBateriasReemplazadas = ups.CantidadBaterias;
-
-            if (m.CostoBaterias < 0)
-                throw new ArgumentException("El costo de las baterías no puede ser negativo.");
         }
 
         private static void LimpiarTextos(Mantenimiento m)
@@ -386,11 +381,9 @@ namespace InventarioUPS.API.Services
             FechaMantenimiento = m.FechaMantenimiento,
             Descripcion = m.Descripcion,
             TecnicoProveedor = m.TecnicoProveedor,
-            Costo = m.Costo,
             Observaciones = m.Observaciones,
             IncluyeCambioBaterias = m.IncluyeCambioBaterias,
             CantidadBateriasReemplazadas = m.CantidadBateriasReemplazadas,
-            CostoBaterias = m.CostoBaterias,
             AgenciaIdRegistro = m.AgenciaIdRegistro,
             NumeroInventarioUPS = m.UPS?.NumeroInventario,
             NumeroSerieUPS = m.UPS?.NumeroSerie,

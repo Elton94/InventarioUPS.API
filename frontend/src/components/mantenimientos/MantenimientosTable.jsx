@@ -18,16 +18,6 @@ import EditIcon
 import BatteryChargingFullIcon
     from "@mui/icons-material/BatteryChargingFull";
 
-const moneda = (valor) =>
-    Number(valor || 0)
-        .toLocaleString(
-            "es-HN",
-            {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }
-        );
-
 const fecha = (valor) =>
     valor
         ? new Date(
@@ -92,7 +82,6 @@ export default function MantenimientosTable({
                         <TableCell><strong>Tipo</strong></TableCell>
                         <TableCell><strong>Fecha</strong></TableCell>
                         <TableCell><strong>Técnico / proveedor</strong></TableCell>
-                        <TableCell><strong>Costos</strong></TableCell>
                         <TableCell><strong>Baterías</strong></TableCell>
                         <TableCell><strong>Estado</strong></TableCell>
                         <TableCell align="center"><strong>Acciones</strong></TableCell>
@@ -102,19 +91,6 @@ export default function MantenimientosTable({
                 <TableBody>
                     {mantenimientos.map(
                         (m) => {
-                            const servicio =
-                                Number(
-                                    m.costo ||
-                                    0
-                                );
-                            const baterias =
-                                m.incluyeCambioBaterias
-                                    ? Number(
-                                        m.costoBaterias ||
-                                        0
-                                    )
-                                    : 0;
-
                             return (
                                 <TableRow
                                     key={m.id}
@@ -156,34 +132,6 @@ export default function MantenimientosTable({
                                             m.tecnicoProveedor ||
                                             "—"
                                         }
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography variant="body2">
-                                            Servicio:{" "}
-                                            <strong>
-                                                L {moneda(servicio)}
-                                            </strong>
-                                        </Typography>
-                                        {m.incluyeCambioBaterias && (
-                                            <Typography variant="body2">
-                                                Baterías:{" "}
-                                                <strong>
-                                                    L {moneda(baterias)}
-                                                </strong>
-                                            </Typography>
-                                        )}
-                                        <Typography
-                                            variant="body2"
-                                            fontWeight="bold"
-                                        >
-                                            Total: L{" "}
-                                            {
-                                                moneda(
-                                                    servicio +
-                                                    baterias
-                                                )
-                                            }
-                                        </Typography>
                                     </TableCell>
                                     <TableCell>
                                         {m.incluyeCambioBaterias ? (
@@ -250,7 +198,7 @@ export default function MantenimientosTable({
                     {mantenimientos.length === 0 && (
                         <TableRow>
                             <TableCell
-                                colSpan={10}
+                                colSpan={9}
                                 align="center"
                             >
                                 No se encontraron mantenimientos.

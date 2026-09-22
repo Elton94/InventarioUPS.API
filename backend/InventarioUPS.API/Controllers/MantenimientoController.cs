@@ -106,11 +106,9 @@ namespace InventarioUPS.API.Controllers
             FechaMantenimiento = dto.FechaMantenimiento,
             Descripcion = dto.Descripcion?.Trim() ?? string.Empty,
             TecnicoProveedor = dto.TecnicoProveedor?.Trim() ?? string.Empty,
-            Costo = dto.Costo,
             Observaciones = dto.Observaciones?.Trim() ?? string.Empty,
             IncluyeCambioBaterias = dto.IncluyeCambioBaterias,
-            CantidadBateriasReemplazadas = dto.CantidadBateriasReemplazadas,
-            CostoBaterias = dto.CostoBaterias
+            CantidadBateriasReemplazadas = dto.CantidadBateriasReemplazadas
         };
     }
 }

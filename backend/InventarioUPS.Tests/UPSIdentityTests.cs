@@ -196,6 +196,50 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.ActualizarAsync(editar));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MantenimientoSinCostosConservaImportesHistoricos(bool cambioBaterias)
+    {
+        var ups = Equipo("INV-COSTOS");
+        await service.CrearAsync(ups);
+        var tipo = new TipoMantenimiento { Nombre = "Preventivo" };
+        var programado = new EstadoMantenimiento { Nombre = "Programado" };
+        var completado = new EstadoMantenimiento { Nombre = "Completado" };
+        context.AddRange(tipo, programado, completado);
+        await context.SaveChangesAsync();
+        var mantenimientos = new MantenimientoService(new MantenimientoRepository(context), context);
+        var nuevo = new Mantenimiento
+        {
+            UPSId = ups.Id, TipoMantenimientoId = tipo.Id,
+            EstadoMantenimientoId = programado.Id, FechaMantenimiento = DateTime.Today,
+            Descripcion = "Revisión", TecnicoProveedor = "Técnico", IncluyeCambioBaterias = true
+        };
+        await mantenimientos.CrearAsync(nuevo);
+        Assert.Equal(0m, nuevo.Costo);
+        Assert.Equal(0m, nuevo.CostoBaterias);
+        Assert.Equal(2, nuevo.CantidadBateriasReemplazadas);
+
+        nuevo.Costo = 500m;
+        nuevo.CostoBaterias = 1200m;
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        await mantenimientos.ActualizarAsync(new Mantenimiento
+        {
+            Id = nuevo.Id, UPSId = ups.Id, TipoMantenimientoId = tipo.Id,
+            EstadoMantenimientoId = completado.Id, FechaMantenimiento = DateTime.Today,
+            Descripcion = "Revisión completada", TecnicoProveedor = "Técnico",
+            IncluyeCambioBaterias = cambioBaterias
+        });
+        context.ChangeTracker.Clear();
+        var guardado = await context.Mantenimientos.SingleAsync();
+        Assert.Equal(500m, guardado.Costo);
+        Assert.Equal(1200m, guardado.CostoBaterias);
+        Assert.Equal(cambioBaterias ? 2 : 0, guardado.CantidadBateriasReemplazadas);
+        if (cambioBaterias)
+            Assert.Equal(DateTime.Today, (await context.UPSs.SingleAsync()).FechaUltimoCambioBaterias);
+    }
+
     [Fact]
     public void ScriptDeMigracionTieneSintaxisTSQLValida()
     {

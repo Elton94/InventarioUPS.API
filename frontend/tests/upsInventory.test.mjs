@@ -39,12 +39,17 @@ test('editar usa Id interno y permite corregir inventario sin perder ceros ni ca
 });
 
 test('mantenimientos usan UPSId estable al crear, editar y consultar', async () => {
-  const datos = { upsId: 7 };
+  const datos = { upsId: 7, costo: 500, costoBaterias: 1200, incluyeCambioBaterias: true, cantidadBateriasReemplazadas: 2 };
   await mantenimientos.crearMantenimiento(datos);
   assert.equal(JSON.parse(lastRequest().data).upsId, 7);
+  assert.equal('costo' in JSON.parse(lastRequest().data), false);
+  assert.equal('costoBaterias' in JSON.parse(lastRequest().data), false);
+  assert.equal(JSON.parse(lastRequest().data).cantidadBateriasReemplazadas, 2);
   assert.equal('numeroInventarioUPS' in JSON.parse(lastRequest().data), false);
   await mantenimientos.actualizarMantenimiento(12, datos);
   assert.equal(JSON.parse(lastRequest().data).upsId, 7);
+  assert.equal('costo' in JSON.parse(lastRequest().data), false);
+  assert.equal('costoBaterias' in JSON.parse(lastRequest().data), false);
   await mantenimientos.obtenerMantenimientosPorUPS(7);
   assert.equal(lastRequest().url, '/Mantenimiento/ups/7');
 });

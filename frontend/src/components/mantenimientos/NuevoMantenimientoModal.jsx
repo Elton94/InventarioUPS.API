@@ -40,27 +40,15 @@ const inicial = {
     fechaMantenimiento: "",
     descripcion: "",
     tecnicoProveedor: "",
-    costo: "",
     estadoMantenimientoId: "",
     observaciones: "",
-    incluyeCambioBaterias: false,
-    costoUnitarioBateria: ""
+    incluyeCambioBaterias: false
 };
 
 const fechaActual = () =>
     new Date()
         .toISOString()
         .substring(0, 10);
-
-const moneda = (valor) =>
-    Number(valor || 0)
-        .toLocaleString(
-            "es-HN",
-            {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }
-        );
 
 export default function NuevoMantenimientoModal({
     open,
@@ -153,20 +141,6 @@ export default function NuevoMantenimientoModal({
                         equipo || null
                     );
 
-                    const cantidad =
-                        Number(
-                            mantenimientoEditar
-                                .cantidadBateriasReemplazadas ||
-                            0
-                        );
-
-                    const totalBaterias =
-                        Number(
-                            mantenimientoEditar
-                                .costoBaterias ||
-                            0
-                        );
-
                     setFormulario({
                         tipoMantenimientoId:
                             mantenimientoEditar
@@ -188,10 +162,6 @@ export default function NuevoMantenimientoModal({
                             mantenimientoEditar
                                 .tecnicoProveedor ||
                             "",
-                        costo:
-                            mantenimientoEditar
-                                .costo ??
-                            "",
                         estadoMantenimientoId:
                             mantenimientoEditar
                                 .estadoMantenimientoId ||
@@ -203,12 +173,7 @@ export default function NuevoMantenimientoModal({
                         incluyeCambioBaterias:
                             mantenimientoEditar
                                 .incluyeCambioBaterias ===
-                            true,
-                        costoUnitarioBateria:
-                            cantidad > 0
-                                ? totalBaterias /
-                                  cantidad
-                                : ""
+                            true
                     });
                 } else {
                     setUpsSeleccionado(
@@ -268,17 +233,6 @@ export default function NuevoMantenimientoModal({
                 ?.cantidadBaterias ||
             0
         );
-
-    const costoUnitario =
-        Number(
-            formulario
-                .costoUnitarioBateria ||
-            0
-        );
-
-    const totalBaterias =
-        cantidadBaterias *
-        costoUnitario;
 
     const guardar = async () => {
         setError("");
@@ -357,34 +311,12 @@ export default function NuevoMantenimientoModal({
         }
 
         if (
-            formulario.costo === "" ||
-            Number(formulario.costo) < 0
-        ) {
-            setError(
-                "Ingrese un costo de mantenimiento válido."
-            );
-            return;
-        }
-
-        if (
             formulario
                 .incluyeCambioBaterias
         ) {
             if (cantidadBaterias <= 0) {
                 setError(
                     "El UPS no tiene una cantidad válida de baterías."
-                );
-                return;
-            }
-
-            if (
-                formulario
-                    .costoUnitarioBateria ===
-                    "" ||
-                costoUnitario < 0
-            ) {
-                setError(
-                    "Ingrese un costo unitario válido para las baterías."
                 );
                 return;
             }
@@ -418,10 +350,6 @@ export default function NuevoMantenimientoModal({
                 formulario
                     .tecnicoProveedor
                     .trim(),
-            costo:
-                Number(
-                    formulario.costo
-                ),
             observaciones:
                 formulario
                     .observaciones
@@ -433,11 +361,6 @@ export default function NuevoMantenimientoModal({
                 formulario
                     .incluyeCambioBaterias
                     ? cantidadBaterias
-                    : 0,
-            costoBaterias:
-                formulario
-                    .incluyeCambioBaterias
-                    ? totalBaterias
                     : 0
         };
 
@@ -710,22 +633,6 @@ export default function NuevoMantenimientoModal({
                         }
                     />
 
-                    <TextField
-                        type="number"
-                        label="Costo del mantenimiento"
-                        value={
-                            formulario.costo
-                        }
-                        onChange={(e) =>
-                            cambiar(
-                                "costo",
-                                e.target.value
-                            )
-                        }
-                    />
-
-                    <Box />
-
                     <Paper
                         variant="outlined"
                         sx={{
@@ -768,7 +675,7 @@ export default function NuevoMantenimientoModal({
                                 sx={{
                                     display: "grid",
                                     gridTemplateColumns:
-                                        "1fr 1fr",
+                                        "1fr",
                                     gap: 2,
                                     mt: 1
                                 }}
@@ -782,34 +689,6 @@ export default function NuevoMantenimientoModal({
                                     disabled
                                     helperText="Se reemplaza el banco completo."
                                 />
-                                <TextField
-                                    required
-                                    type="number"
-                                    label="Costo unitario por batería"
-                                    value={
-                                        formulario
-                                            .costoUnitarioBateria
-                                    }
-                                    onChange={(e) =>
-                                        cambiar(
-                                            "costoUnitarioBateria",
-                                            e.target.value
-                                        )
-                                    }
-                                />
-
-                                <Typography
-                                    sx={{
-                                        gridColumn:
-                                            "1 / -1"
-                                    }}
-                                >
-                                    {cantidadBaterias} baterías × L {moneda(costoUnitario)}
-                                    {" = "}
-                                    <strong>
-                                        L {moneda(totalBaterias)}
-                                    </strong>
-                                </Typography>
                             </Box>
                         )}
                     </Paper>

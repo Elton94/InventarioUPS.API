@@ -221,22 +221,6 @@ export default function Home() {
                 )
         ).length;
 
-    const costoMantenimiento =
-        mantenimientos.reduce(
-            (total, m) =>
-                total +
-                Number(m.costo || 0) +
-                (
-                    m.incluyeCambioBaterias
-                        ? Number(
-                            m.costoBaterias ||
-                            0
-                        )
-                        : 0
-                ),
-            0
-        );
-
     const presupuesto =
         detalleProyeccion.reduce(
             (total, item) =>
@@ -321,14 +305,6 @@ export default function Home() {
             valor:
                 numero.format(
                     mantenimientos.length
-                )
-        },
-        puedeMantenimiento && {
-            titulo:
-                "Costo de mantenimiento",
-            valor:
-                moneda.format(
-                    costoMantenimiento
                 )
         },
         puedePresupuesto && {
@@ -441,11 +417,6 @@ export default function Home() {
                                         <TableCell>
                                             Estado
                                         </TableCell>
-                                        <TableCell
-                                            align="right"
-                                        >
-                                            Total
-                                        </TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -483,26 +454,6 @@ export default function Home() {
                                                         m.estado
                                                     }
                                                 </TableCell>
-                                                <TableCell
-                                                    align="right"
-                                                >
-                                                    {
-                                                        moneda.format(
-                                                            Number(
-                                                                m.costo ||
-                                                                0
-                                                            ) +
-                                                            (
-                                                                m.incluyeCambioBaterias
-                                                                    ? Number(
-                                                                        m.costoBaterias ||
-                                                                        0
-                                                                    )
-                                                                    : 0
-                                                            )
-                                                        )
-                                                    }
-                                                </TableCell>
                                             </TableRow>
                                         )
                                     )}
@@ -511,7 +462,7 @@ export default function Home() {
                                         0 && (
                                         <TableRow>
                                             <TableCell
-                                                colSpan={6}
+                                                colSpan={5}
                                                 align="center"
                                             >
                                                 No hay mantenimientos registrados.

@@ -73,12 +73,6 @@ export const crearMantenimiento =
                     ?.trim() ||
                 "",
 
-            costo:
-                Number(
-                    mantenimiento.costo ||
-                    0
-                ),
-
             observaciones:
                 mantenimiento
                     .observaciones
@@ -97,16 +91,6 @@ export const crearMantenimiento =
                     ? Number(
                         mantenimiento
                             .cantidadBateriasReemplazadas ||
-                        0
-                    )
-                    : 0,
-
-            costoBaterias:
-                mantenimiento
-                    .incluyeCambioBaterias
-                    ? Number(
-                        mantenimiento
-                            .costoBaterias ||
                         0
                     )
                     : 0
@@ -166,12 +150,6 @@ export const actualizarMantenimiento =
                     ?.trim() ||
                 "",
 
-            costo:
-                Number(
-                    mantenimiento.costo ||
-                    0
-                ),
-
             observaciones:
                 mantenimiento
                     .observaciones
@@ -190,16 +168,6 @@ export const actualizarMantenimiento =
                     ? Number(
                         mantenimiento
                             .cantidadBateriasReemplazadas ||
-                        0
-                    )
-                    : 0,
-
-            costoBaterias:
-                mantenimiento
-                    .incluyeCambioBaterias
-                    ? Number(
-                        mantenimiento
-                            .costoBaterias ||
                         0
                     )
                     : 0

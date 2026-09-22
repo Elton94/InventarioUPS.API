@@ -538,6 +538,8 @@ export default function NuevoMantenimientoModal({
                                     u.numeroSerie,
                                     u.marca,
                                     u.modelo,
+                                    u.agenciaCodigo,
+                                    u.agenciaNombre,
                                     u.estado
                                 ]
                                     .filter(Boolean)
@@ -565,6 +567,7 @@ export default function NuevoMantenimientoModal({
                                     {...params}
                                     required
                                     label="UPS"
+                                    placeholder="Inventario, serie o agencia"
                                     helperText={
                                         mantenimientoEditar
                                             ? "No se puede cambiar el UPS al editar."

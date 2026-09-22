@@ -39,14 +39,14 @@ namespace InventarioUPS.API.Controllers
             return Ok(resultado);
         }
 
-        [HttpGet("ups")]
+        [HttpGet("ups/{upsId:int}")]
         [PermisoAuthorize("VER_MANTENIMIENTO")]
-        public async Task<ActionResult<List<MantenimientoDTO>>> ObtenerPorUPS([FromQuery] string numeroInventarioUPS)
+        public async Task<ActionResult<List<MantenimientoDTO>>> ObtenerPorUPS(int upsId)
         {
-            if (string.IsNullOrWhiteSpace(numeroInventarioUPS))
+            if (upsId <= 0)
                 return BadRequest(new { mensaje = "El identificador del UPS no es válido." });
 
-            return Ok(await _service.ObtenerPorUPSAsync(numeroInventarioUPS));
+            return Ok(await _service.ObtenerPorUPSAsync(upsId));
         }
 
         [HttpPost]
@@ -100,7 +100,7 @@ namespace InventarioUPS.API.Controllers
         private static Mantenimiento ConvertirEntidad(MantenimientoDTO dto) => new()
         {
             Id = dto.Id,
-            NumeroInventarioUPS = dto.NumeroInventarioUPS,
+            UPSId = dto.UPSId,
             TipoMantenimientoId = dto.TipoMantenimientoId,
             EstadoMantenimientoId = dto.EstadoMantenimientoId,
             FechaMantenimiento = dto.FechaMantenimiento,

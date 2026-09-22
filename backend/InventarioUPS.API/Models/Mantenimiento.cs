@@ -2,7 +2,7 @@ namespace InventarioUPS.API.Models
 {
     public class Mantenimiento : BaseEntity
     {
-        public string NumeroInventarioUPS { get; set; } = string.Empty;
+        public int UPSId { get; set; }
         public int TipoMantenimientoId { get; set; }
         public int EstadoMantenimientoId { get; set; }
         public DateTime FechaMantenimiento { get; set; }

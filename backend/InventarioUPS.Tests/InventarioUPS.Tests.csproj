@@ -13,6 +13,6 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.26" />
     <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="161.8901.0" />
-    <None Include="../Database/20260922_InventarioClavePrimariaUPS.sql" Link="MigracionUPS.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../Database/20260922_UPSIdInterno.sql" Link="MigracionUPS.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

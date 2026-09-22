@@ -17,7 +17,7 @@ namespace InventarioUPS.API.Services
         }
 
         public Task<List<UPS>> ObtenerTodasAsync() => _repository.ObtenerTodasAsync();
-        public Task<UPS?> ObtenerPorInventarioAsync(string numeroInventario) => _repository.ObtenerPorInventarioAsync(numeroInventario);
+        public Task<UPS?> ObtenerPorIdAsync(int id) => _repository.ObtenerPorIdAsync(id);
 
         public async Task CrearAsync(UPS ups)
         {
@@ -36,17 +36,18 @@ namespace InventarioUPS.API.Services
                 throw new InvalidOperationException("El estado de UPS seleccionado no existe o está inactivo.");
 
             ups.FechaUltimoCambioBateriasBase = ups.FechaUltimoCambioBaterias;
+            ups.Id = 0;
             await _repository.CrearAsync(ups);
         }
 
         public async Task ActualizarAsync(UPS ups)
         {
-            if (ups == null || string.IsNullOrWhiteSpace(ups.NumeroInventario))
-                throw new ArgumentException("El inventario del UPS no es válido.");
+            if (ups == null || ups.Id <= 0)
+                throw new ArgumentException("El ID del UPS no es válido.");
 
             ValidarYLimpia(ups);
 
-            var existente = await _repository.ObtenerPorInventarioAsync(ups.NumeroInventario);
+            var existente = await _repository.ObtenerPorIdAsync(ups.Id);
 
             if (existente == null)
                 throw new InvalidOperationException("El UPS no existe.");
@@ -65,10 +66,13 @@ namespace InventarioUPS.API.Services
             if (EsEstado(estadoDestino.Nombre, "De baja") &&
                 !EsEstado(existente.EstadoUPS?.Nombre, "De baja"))
             {
-                await ValidarSinMantenimientoPendienteAsync(ups.NumeroInventario);
+                await ValidarSinMantenimientoPendienteAsync(ups.Id);
             }
 
-            if (await _repository.ExisteNumeroSerieExceptoInventarioAsync(ups.NumeroSerie, ups.NumeroInventario))
+            if (await _repository.ExisteNumeroInventarioExceptoIdAsync(ups.NumeroInventario, ups.Id))
+                throw new InvalidOperationException("Ya existe otro UPS con ese número de inventario.");
+
+            if (await _repository.ExisteNumeroSerieExceptoIdAsync(ups.NumeroSerie, ups.Id))
                 throw new InvalidOperationException("Ya existe otro UPS con ese número de serie.");
 
             if (!await _repository.ExisteAgenciaActivaAsync(ups.AgenciaId))
@@ -76,7 +80,7 @@ namespace InventarioUPS.API.Services
 
             var tieneCambiosCompletados = await _context.Mantenimientos.AsNoTracking()
                 .AnyAsync(m =>
-                    m.NumeroInventarioUPS == ups.NumeroInventario &&
+                    m.UPSId == ups.Id &&
                     m.IncluyeCambioBaterias &&
                     m.EstadoMantenimiento != null &&
                     m.EstadoMantenimiento.Nombre == "Completado");
@@ -93,7 +97,7 @@ namespace InventarioUPS.API.Services
 
                 var ultima = await _context.Mantenimientos.AsNoTracking()
                     .Where(m =>
-                        m.NumeroInventarioUPS == ups.NumeroInventario &&
+                        m.UPSId == ups.Id &&
                         m.IncluyeCambioBaterias &&
                         m.EstadoMantenimiento != null &&
                         m.EstadoMantenimiento.Nombre == "Completado")
@@ -107,15 +111,15 @@ namespace InventarioUPS.API.Services
             await _repository.ActualizarAsync(ups);
         }
 
-        public async Task CambiarEstadoAsync(string numeroInventario, string estado)
+        public async Task CambiarEstadoAsync(int id, string estado)
         {
-            if (string.IsNullOrWhiteSpace(numeroInventario))
+            if (id <= 0)
                 throw new ArgumentException("El identificador del UPS no es válido.");
 
             if (string.IsNullOrWhiteSpace(estado))
                 throw new ArgumentException("El estado es obligatorio.");
 
-            var ups = await _repository.ObtenerPorInventarioAsync(numeroInventario);
+            var ups = await _repository.ObtenerPorIdAsync(id);
 
             if (ups == null)
                 throw new InvalidOperationException("El UPS no existe.");
@@ -135,18 +139,18 @@ namespace InventarioUPS.API.Services
 
             if (EsEstado(destino.Nombre, "De baja"))
             {
-                await ValidarSinMantenimientoPendienteAsync(numeroInventario);
+                await ValidarSinMantenimientoPendienteAsync(id);
             }
 
-            await _repository.CambiarEstadoAsync(numeroInventario, destino.Nombre);
+            await _repository.CambiarEstadoAsync(id, destino.Nombre);
         }
 
-        private async Task ValidarSinMantenimientoPendienteAsync(string numeroInventarioUPS)
+        private async Task ValidarSinMantenimientoPendienteAsync(int upsId)
         {
             var pendiente = await _context.Mantenimientos
                 .AsNoTracking()
                 .AnyAsync(m =>
-                    m.NumeroInventarioUPS == numeroInventarioUPS &&
+                    m.UPSId == upsId &&
                     m.EstadoMantenimiento != null &&
                     (m.EstadoMantenimiento.Nombre == "Programado" ||
                      m.EstadoMantenimiento.Nombre == "En proceso"));

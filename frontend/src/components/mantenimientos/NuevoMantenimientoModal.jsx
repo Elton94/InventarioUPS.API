@@ -142,7 +142,11 @@ export default function NuevoMantenimientoModal({
                         (upsData || [])
                             .find(
                                 (u) =>
-                                    u.numeroInventario === mantenimientoEditar.numeroInventarioUPS
+                                    Number(u.id) ===
+                                    Number(
+                                        mantenimientoEditar
+                                            .upsId
+                                    )
                             );
 
                     setUpsSeleccionado(
@@ -288,7 +292,13 @@ export default function NuevoMantenimientoModal({
 
         if (
             mantenimientoEditar &&
-            upsSeleccionado.numeroInventario !== mantenimientoEditar.numeroInventarioUPS
+            Number(
+                upsSeleccionado.id
+            ) !==
+            Number(
+                mantenimientoEditar
+                    .upsId
+            )
         ) {
             setError(
                 "No se puede cambiar el UPS de un mantenimiento existente."
@@ -384,7 +394,10 @@ export default function NuevoMantenimientoModal({
             id:
                 mantenimientoEditar?.id ||
                 0,
-            numeroInventarioUPS: upsSeleccionado.numeroInventario,
+            upsId:
+                Number(
+                    upsSeleccionado.id
+                ),
             tipoMantenimientoId:
                 Number(
                     formulario
@@ -534,7 +547,8 @@ export default function NuevoMantenimientoModal({
                                 a,
                                 b
                             ) =>
-                                a.numeroInventario === b.numeroInventario
+                                Number(a.id) ===
+                                Number(b.id)
                             }
                             onChange={(
                                 _,

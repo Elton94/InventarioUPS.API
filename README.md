@@ -1,12 +1,12 @@
 # Inventario UPS
 
-## Actualización: inventario como clave primaria
+## Actualización: Id interno de UPS
 
-Antes de iniciar esta versión sobre una base existente, siga
-[las instrucciones de actualización](backend/Database/README.md).
-El script vigente es `backend/Database/20260922_InventarioClavePrimariaUPS.sql`.
-Retira Codigo e Id de UPS y conserva las relaciones de mantenimiento usando
-NumeroInventario. El inventario queda fijo después del registro.
+Antes de iniciar esta versión, siga [las instrucciones de base de datos](backend/Database/README.md).
+Ejecute `backend/Database/20260922_UPSIdInterno.sql`; reemplaza la propuesta anterior
+de usar inventario como clave primaria. Id es la clave interna automática,
+inventario y serie son únicos y editables, y Codigo se elimina de UPS.
+La migración admite ambas versiones anteriores y conserva los mantenimientos.
 
 ## Ejecutar en desarrollo
 

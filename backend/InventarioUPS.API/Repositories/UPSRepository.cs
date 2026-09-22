@@ -29,7 +29,7 @@ namespace InventarioUPS.API.Repositories
                 .ToListAsync();
         }
 
-        public async Task<UPS?> ObtenerPorInventarioAsync(string numeroInventario)
+        public async Task<UPS?> ObtenerPorIdAsync(int id)
         {
             return await _context.UPSs
                 .AsNoTracking()
@@ -39,7 +39,7 @@ namespace InventarioUPS.API.Repositories
                 .Include(u => u.Agencia)
                     .ThenInclude(a => a!.TipoAgencia)
                 .Include(u => u.EstadoUPS)
-                .FirstOrDefaultAsync(u => u.NumeroInventario == numeroInventario.Trim());
+                .FirstOrDefaultAsync(u => u.Id == id);
         }
 
         public async Task CrearAsync(UPS ups)
@@ -50,11 +50,12 @@ namespace InventarioUPS.API.Repositories
 
         public async Task ActualizarAsync(UPS ups)
         {
-            var existente = await _context.UPSs.FirstOrDefaultAsync(u => u.NumeroInventario == ups.NumeroInventario);
+            var existente = await _context.UPSs.FirstOrDefaultAsync(u => u.Id == ups.Id);
 
             if (existente == null)
                 throw new InvalidOperationException("El UPS no existe.");
 
+            existente.NumeroInventario = ups.NumeroInventario;
             existente.Marca = ups.Marca;
             existente.Modelo = ups.Modelo;
             existente.NumeroSerie = ups.NumeroSerie;
@@ -70,9 +71,9 @@ namespace InventarioUPS.API.Repositories
             await GuardarCambiosAsync();
         }
 
-        public async Task CambiarEstadoAsync(string numeroInventario, string estado)
+        public async Task CambiarEstadoAsync(int id, string estado)
         {
-            var ups = await _context.UPSs.FirstOrDefaultAsync(u => u.NumeroInventario == numeroInventario.Trim());
+            var ups = await _context.UPSs.FirstOrDefaultAsync(u => u.Id == id);
 
             if (ups == null)
                 throw new InvalidOperationException("El UPS no existe.");
@@ -110,6 +111,16 @@ namespace InventarioUPS.API.Repositories
                 EF.Functions.Collate(u.NumeroInventario.Trim(), ComparacionIdentificadores) == valor);
         }
 
+        public Task<bool> ExisteNumeroInventarioExceptoIdAsync(
+            string numeroInventario,
+            int upsId)
+        {
+            var valor = numeroInventario.Trim();
+            return _context.UPSs.AnyAsync(u =>
+                u.Id != upsId &&
+                EF.Functions.Collate(u.NumeroInventario.Trim(), ComparacionIdentificadores) == valor);
+        }
+
         public Task<bool> ExisteNumeroSerieAsync(string numeroSerie)
         {
             var valor = numeroSerie.Trim();
@@ -117,11 +128,11 @@ namespace InventarioUPS.API.Repositories
                 EF.Functions.Collate(u.NumeroSerie.Trim(), ComparacionIdentificadores) == valor);
         }
 
-        public Task<bool> ExisteNumeroSerieExceptoInventarioAsync(string numeroSerie, string numeroInventarioUPS)
+        public Task<bool> ExisteNumeroSerieExceptoIdAsync(string numeroSerie, int upsId)
         {
             var valor = numeroSerie.Trim();
             return _context.UPSs.AnyAsync(u =>
-                u.NumeroInventario != numeroInventarioUPS &&
+                u.Id != upsId &&
                 EF.Functions.Collate(u.NumeroSerie.Trim(), ComparacionIdentificadores) == valor);
         }
 

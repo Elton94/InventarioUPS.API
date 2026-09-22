@@ -3,7 +3,7 @@ namespace InventarioUPS.API.DTOs
     public class MantenimientoDTO
     {
         public int Id { get; set; }
-        public string NumeroInventarioUPS { get; set; } = string.Empty;
+        public int UPSId { get; set; }
         public int TipoMantenimientoId { get; set; }
         public int EstadoMantenimientoId { get; set; }
         public DateTime FechaMantenimiento { get; set; }
@@ -17,6 +17,7 @@ namespace InventarioUPS.API.DTOs
         public decimal CostoBaterias { get; set; }
 
         public int? AgenciaIdRegistro { get; set; }
+        public string? NumeroInventarioUPS { get; set; }
         public string? NumeroSerieUPS { get; set; }
         public string? MarcaUPS { get; set; }
         public string? ModeloUPS { get; set; }

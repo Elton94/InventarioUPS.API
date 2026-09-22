@@ -1,9 +1,7 @@
 namespace InventarioUPS.API.Models
 {
-    public class UPS
+    public class UPS : BaseEntity
     {
-        public DateTime FechaCreacion { get; set; } = DateTime.Now;
-        public DateTime? FechaModificacion { get; set; }
         public string NumeroInventario { get; set; } = string.Empty;
         public string Marca { get; set; } = string.Empty;
         public string Modelo { get; set; } = string.Empty;

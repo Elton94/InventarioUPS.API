@@ -22,6 +22,7 @@ namespace InventarioUPS.API.DTOs.Presupuesto
 
     public class PresupuestoUpsDetalleDto
     {
+        public int UPSId { get; set; }
         public string NumeroInventario { get; set; } = string.Empty;
         public string NumeroSerie { get; set; } = string.Empty;
         public string Marca { get; set; } = string.Empty;

@@ -27,14 +27,14 @@ namespace InventarioUPS.API.Controllers
             return Ok(equipos.Select(MapearDTO).ToList());
         }
 
-        [HttpGet("detalle")]
+        [HttpGet("{id:int}")]
         [PermisoAuthorize("VER_UPS")]
-        public async Task<ActionResult<UPSDTO>> ObtenerPorInventario([FromQuery] string numeroInventario)
+        public async Task<ActionResult<UPSDTO>> ObtenerPorId(int id)
         {
-            if (string.IsNullOrWhiteSpace(numeroInventario))
+            if (id <= 0)
                 return BadRequest(new { mensaje = "El identificador del UPS no es válido." });
 
-            var ups = await _service.ObtenerPorInventarioAsync(numeroInventario);
+            var ups = await _service.ObtenerPorIdAsync(id);
 
             if (ups == null)
                 return NotFound(new { mensaje = "El UPS no existe." });
@@ -49,7 +49,7 @@ namespace InventarioUPS.API.Controllers
             try
             {
                 await _service.CrearAsync(ups);
-                return Ok(new { mensaje = "UPS creado correctamente.", numeroInventario = ups.NumeroInventario });
+                return Ok(new { mensaje = "UPS creado correctamente.", upsId = ups.Id });
             }
             catch (ArgumentException ex)
             {
@@ -61,13 +61,12 @@ namespace InventarioUPS.API.Controllers
             }
         }
 
-        [HttpPut]
+        [HttpPut("{id:int}")]
         [PermisoAuthorize("EDITAR_UPS")]
-        public async Task<ActionResult> Actualizar([FromQuery] string numeroInventario, [FromBody] UPS ups)
+        public async Task<ActionResult> Actualizar(int id, [FromBody] UPS ups)
         {
-            if (ups == null || string.IsNullOrWhiteSpace(numeroInventario) ||
-                !string.Equals(numeroInventario.Trim(), ups.NumeroInventario?.Trim(), StringComparison.OrdinalIgnoreCase))
-                return BadRequest(new { mensaje = "El número de inventario es la clave primaria y no puede cambiarse al editar." });
+            if (ups == null || id <= 0 || id != ups.Id)
+                return BadRequest(new { mensaje = "El identificador del UPS no es válido." });
 
             try
             {
@@ -84,13 +83,13 @@ namespace InventarioUPS.API.Controllers
             }
         }
 
-        [HttpPatch("estado")]
+        [HttpPatch("{id:int}/estado")]
         [PermisoAuthorize("EDITAR_UPS")]
-        public async Task<ActionResult> CambiarEstado([FromQuery] string numeroInventario, [FromQuery] string estado)
+        public async Task<ActionResult> CambiarEstado(int id, [FromQuery] string estado)
         {
             try
             {
-                await _service.CambiarEstadoAsync(numeroInventario, estado);
+                await _service.CambiarEstadoAsync(id, estado);
                 return Ok(new { mensaje = "Estado del UPS actualizado correctamente." });
             }
             catch (ArgumentException ex)
@@ -105,6 +104,7 @@ namespace InventarioUPS.API.Controllers
 
         private static UPSDTO MapearDTO(UPS equipo) => new()
         {
+            Id = equipo.Id,
             NumeroInventario = equipo.NumeroInventario,
             Marca = equipo.Marca,
             Modelo = equipo.Modelo,

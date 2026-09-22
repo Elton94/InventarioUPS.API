@@ -23,32 +23,28 @@ const mantenimientos = await loadService('mantenimientoService');
 const inventario = '0001/A +#&';
 
 function lastRequest() { return requests.at(-1); }
-function assertQuery(name, value) {
-  const url = new URL(api.getUri(lastRequest()));
-  assert.equal(url.searchParams.get(name), value);
-}
-
-test('consultar, editar y cambiar estado conservan inventario con caracteres especiales', async () => {
-  await ups.obtenerUPSPorInventario(inventario);
-  assertQuery('numeroInventario', inventario);
-  await ups.actualizarUPS(inventario, { numeroInventario: inventario, numeroSerie: 'SERIE-1' });
-  assertQuery('numeroInventario', inventario);
+test('editar usa Id interno y permite corregir inventario sin perder ceros ni caracteres', async () => {
+  await ups.obtenerUPSPorId(7);
+  assert.equal(lastRequest().url, '/UPS/7');
+  await ups.actualizarUPS(7, { numeroInventario: inventario, numeroSerie: 'SERIE-1' });
+  assert.equal(lastRequest().url, '/UPS/7');
   const data = JSON.parse(lastRequest().data);
+  assert.equal(data.id, 7);
   assert.equal(data.numeroInventario, inventario);
-  assert.equal('id' in data, false);
   assert.equal('codigo' in data, false);
-  await ups.cambiarEstadoUPS(inventario, 'En resguardo');
-  assertQuery('numeroInventario', inventario);
-  assertQuery('estado', 'En resguardo');
+  await ups.cambiarEstadoUPS(7, 'En resguardo');
+  assert.equal(lastRequest().url, '/UPS/7/estado');
+  const url = new URL(api.getUri(lastRequest()));
+  assert.equal(url.searchParams.get('estado'), 'En resguardo');
 });
 
-test('mantenimientos transmiten la clave de inventario como texto al crear y editar', async () => {
-  const datos = { numeroInventarioUPS: inventario };
+test('mantenimientos usan UPSId estable al crear, editar y consultar', async () => {
+  const datos = { upsId: 7 };
   await mantenimientos.crearMantenimiento(datos);
-  assert.equal(JSON.parse(lastRequest().data).numeroInventarioUPS, inventario);
-  assert.equal('upsId' in JSON.parse(lastRequest().data), false);
-  await mantenimientos.actualizarMantenimiento(7, datos);
-  assert.equal(JSON.parse(lastRequest().data).numeroInventarioUPS, inventario);
-  await mantenimientos.obtenerMantenimientosPorUPS(inventario);
-  assertQuery('numeroInventarioUPS', inventario);
+  assert.equal(JSON.parse(lastRequest().data).upsId, 7);
+  assert.equal('numeroInventarioUPS' in JSON.parse(lastRequest().data), false);
+  await mantenimientos.actualizarMantenimiento(12, datos);
+  assert.equal(JSON.parse(lastRequest().data).upsId, 7);
+  await mantenimientos.obtenerMantenimientosPorUPS(7);
+  assert.equal(lastRequest().url, '/Mantenimiento/ups/7');
 });

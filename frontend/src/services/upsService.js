@@ -5,16 +5,16 @@ const API_URL = "/UPS";
 export const obtenerUPS = async () =>
     (await api.get(API_URL)).data;
 
-export const obtenerUPSPorInventario =
-    async (numeroInventario) =>
+export const obtenerUPSPorId =
+    async (id) =>
         (
             await api.get(
-                `${API_URL}/detalle`,
-                { params: { numeroInventario } }
+                `${API_URL}/${id}`
             )
         ).data;
 
-const mapear = (ups) => ({
+const mapear = (ups, id = 0) => ({
+    id: Number(id || ups.id || 0),
     numeroInventario:
         ups.numeroInventario?.trim(),
     marca: ups.marca?.trim(),
@@ -45,24 +45,22 @@ export const crearUPS = async (ups) =>
     ).data;
 
 export const actualizarUPS =
-    async (numeroInventario, ups) =>
+    async (id, ups) =>
         (
             await api.put(
-                API_URL,
-                mapear(ups),
-                { params: { numeroInventario } }
+                `${API_URL}/${id}`,
+                mapear(ups, id)
             )
         ).data;
 
 export const cambiarEstadoUPS =
-    async (numeroInventario, estado) =>
+    async (id, estado) =>
         (
             await api.patch(
-                `${API_URL}/estado`,
+                `${API_URL}/${id}/estado`,
                 null,
                 {
                     params: {
-                        numeroInventario,
                         estado
                     }
                 }

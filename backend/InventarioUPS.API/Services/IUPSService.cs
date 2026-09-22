@@ -6,12 +6,12 @@ namespace InventarioUPS.API.Services
     {
         Task<List<UPS>> ObtenerTodasAsync();
 
-        Task<UPS?> ObtenerPorInventarioAsync(string numeroInventario);
+        Task<UPS?> ObtenerPorIdAsync(int id);
 
         Task CrearAsync(UPS ups);
 
         Task ActualizarAsync(UPS ups);
 
-        Task CambiarEstadoAsync(string numeroInventario, string estado);
+        Task CambiarEstadoAsync(int id, string estado);
     }
 }

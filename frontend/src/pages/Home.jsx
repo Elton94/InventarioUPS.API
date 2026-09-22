@@ -571,7 +571,7 @@ export default function Home() {
                                             (item) => (
                                                 <TableRow
                                                     key={
-                                                        item.numeroInventario
+                                                        item.upsId
                                                     }
                                                 >
                                                     <TableCell>

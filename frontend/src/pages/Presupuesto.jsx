@@ -726,7 +726,7 @@ export default function Presupuesto() {
                                                     (equipo) => (
                                                         <TableRow
                                                             key={
-                                                                equipo.numeroInventario
+                                                                equipo.upsId
                                                             }
                                                         >
                                                             <TableCell>
@@ -834,7 +834,7 @@ export default function Presupuesto() {
                                                 (equipo) => (
                                                     <TableRow
                                                         key={
-                                                            equipo.numeroInventario
+                                                            equipo.upsId
                                                         }
                                                     >
                                                         <TableCell>

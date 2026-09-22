@@ -11,7 +11,7 @@ using Xunit;
 
 namespace InventarioUPS.Tests;
 
-public sealed class InventarioPrimaryKeyTests : IAsyncLifetime
+public sealed class UPSIdentityTests : IAsyncLifetime
 {
     private readonly SqliteConnection connection = new("Data Source=:memory:");
     private InventarioUPSDbContext context = null!;
@@ -48,15 +48,16 @@ public sealed class InventarioPrimaryKeyTests : IAsyncLifetime
     };
 
     [Fact]
-    public void ModeloUsaInventarioComoClaveYSinCodigoNiId()
+    public void ModeloUsaIdInternoSinCodigoEIdentificadoresUnicos()
     {
         var entidad = context.Model.FindEntityType(typeof(UPS))!;
-        Assert.Equal("NumeroInventario", Assert.Single(entidad.FindPrimaryKey()!.Properties).Name);
-        Assert.Null(entidad.FindProperty("Id"));
+        Assert.Equal("Id", Assert.Single(entidad.FindPrimaryKey()!.Properties).Name);
+        Assert.Contains(entidad.GetIndexes(), i => i.IsUnique && i.Properties.Single().Name == "NumeroInventario");
+        Assert.Contains(entidad.GetIndexes(), i => i.IsUnique && i.Properties.Single().Name == "NumeroSerie");
         Assert.Null(entidad.FindProperty("Codigo"));
         var relacion = context.Model.FindEntityType(typeof(Mantenimiento))!.GetForeignKeys()
             .Single(f => f.PrincipalEntityType.ClrType == typeof(UPS));
-        Assert.Equal("NumeroInventarioUPS", Assert.Single(relacion.Properties).Name);
+        Assert.Equal("UPSId", Assert.Single(relacion.Properties).Name);
     }
 
     [Theory]
@@ -64,15 +65,16 @@ public sealed class InventarioPrimaryKeyTests : IAsyncLifetime
     [InlineData("INV/001 #A+&")]
     public async Task CrearConsultarYEditarConservaClaveDeTexto(string inventario)
     {
-        await service.CrearAsync(Equipo(inventario));
+        var nuevo = Equipo(inventario);
+        await service.CrearAsync(nuevo);
         context.ChangeTracker.Clear();
-        var equipo = await service.ObtenerPorInventarioAsync(inventario);
+        var equipo = await service.ObtenerPorIdAsync(nuevo.Id);
         Assert.NotNull(equipo);
         Assert.Equal(inventario, equipo.NumeroInventario);
         equipo.Modelo = "Modelo editado";
         await service.ActualizarAsync(equipo);
         context.ChangeTracker.Clear();
-        Assert.Equal("Modelo editado", (await service.ObtenerPorInventarioAsync(inventario))!.Modelo);
+        Assert.Equal("Modelo editado", (await service.ObtenerPorIdAsync(nuevo.Id))!.Modelo);
     }
 
     [Fact]
@@ -90,16 +92,16 @@ public sealed class InventarioPrimaryKeyTests : IAsyncLifetime
         await service.CrearAsync(Equipo("INV-A"));
         await service.CrearAsync(Equipo("INV-B", "SERIE-2"));
         context.ChangeTracker.Clear();
-        var equipo = await service.ObtenerPorInventarioAsync("INV-B");
+        var equipo = await context.UPSs.AsNoTracking().SingleAsync(u => u.NumeroInventario == "INV-B");
         equipo!.NumeroSerie = "SERIE-1";
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.ActualizarAsync(equipo));
     }
 
     [Fact]
-    public async Task ControladorRechazaCambioDeClave()
+    public async Task ControladorRechazaIdDiferenteAlDeLaRuta()
     {
         var controller = new UPSController(service);
-        var result = await controller.Actualizar("INV-A", Equipo("INV-B"));
+        var result = await controller.Actualizar(7, Equipo("INV-B"));
         Assert.IsType<BadRequestObjectResult>(result);
         Assert.Empty(await context.UPSs.ToListAsync());
     }
@@ -107,23 +109,24 @@ public sealed class InventarioPrimaryKeyTests : IAsyncLifetime
     [Fact]
     public async Task MantenimientoSeRelacionaConInventarioYBloqueaBajaPendiente()
     {
-        await service.CrearAsync(Equipo("0001/A"));
+        var ups = Equipo("0001/A");
+        await service.CrearAsync(ups);
         var tipo = new TipoMantenimiento { Nombre = "Preventivo" };
         var programado = new EstadoMantenimiento { Nombre = "Programado" };
         context.AddRange(tipo, programado, new EstadoUPS { Nombre = "De baja" });
         await context.SaveChangesAsync();
         var mantenimiento = new Mantenimiento
         {
-            NumeroInventarioUPS = "0001/A", TipoMantenimientoId = tipo.Id,
+            UPSId = ups.Id, TipoMantenimientoId = tipo.Id,
             EstadoMantenimientoId = programado.Id, Descripcion = "Revisión",
             TecnicoProveedor = "Prueba", FechaMantenimiento = DateTime.Today.AddDays(1)
         };
         var mantenimientos = new MantenimientoService(new MantenimientoRepository(context), context);
         await mantenimientos.CrearAsync(mantenimiento);
         context.ChangeTracker.Clear();
-        var listado = await mantenimientos.ObtenerPorUPSAsync("0001/A");
+        var listado = await mantenimientos.ObtenerPorUPSAsync(ups.Id);
         Assert.Equal("0001/A", Assert.Single(listado).NumeroInventarioUPS);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CambiarEstadoAsync("0001/A", "De baja"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CambiarEstadoAsync(ups.Id, "De baja"));
     }
 
     [Fact]
@@ -137,7 +140,7 @@ public sealed class InventarioPrimaryKeyTests : IAsyncLifetime
             new PoliticaReemplazoBaterias { MesesReemplazoLocal = 12, MesesReemplazoForanea = 12 });
         context.Mantenimientos.Add(new Mantenimiento
         {
-            NumeroInventarioUPS = "0002/B", IncluyeCambioBaterias = true,
+            UPSId = equipo.Id, IncluyeCambioBaterias = true,
             FechaMantenimiento = new DateTime(DateTime.Today.Year, 12, 31),
             Tipo = new TipoMantenimiento { Nombre = "Cambio de baterías" },
             EstadoMantenimiento = new EstadoMantenimiento { Nombre = "Programado" }
@@ -151,6 +154,46 @@ public sealed class InventarioPrimaryKeyTests : IAsyncLifetime
         var detalle = Assert.Single(Assert.Single(resumen.Agencias).UPS);
         Assert.Equal("0002/B", detalle.NumeroInventario);
         Assert.True(detalle.TieneMantenimientoProgramado);
+    }
+
+    [Fact]
+    public async Task CorregirInventarioYSerieConservaMantenimientoEId()
+    {
+        var ups = Equipo("INV-PEND-1");
+        await service.CrearAsync(ups);
+        var mantenimiento = new Mantenimiento
+        {
+            UPSId = ups.Id,
+            Tipo = new TipoMantenimiento { Nombre = "Preventivo" },
+            EstadoMantenimiento = new EstadoMantenimiento { Nombre = "Programado" },
+            FechaMantenimiento = DateTime.Today.AddDays(1)
+        };
+        context.Add(mantenimiento);
+        await context.SaveChangesAsync();
+        var id = ups.Id;
+        context.ChangeTracker.Clear();
+        var editar = (await service.ObtenerPorIdAsync(id))!;
+        editar.NumeroInventario = "0007/A #+";
+        editar.NumeroSerie = "SERIE-CORREGIDA";
+        await service.ActualizarAsync(editar);
+        context.ChangeTracker.Clear();
+        var guardado = await context.Mantenimientos.Include(m => m.UPS).SingleAsync();
+        Assert.Equal(id, guardado.UPSId);
+        Assert.Equal("0007/A #+", guardado.UPS!.NumeroInventario);
+        Assert.Equal("SERIE-CORREGIDA", guardado.UPS.NumeroSerie);
+    }
+
+    [Fact]
+    public async Task EditarNoPermiteInventarioDeOtroUPS()
+    {
+        var a = Equipo("INV-A");
+        var b = Equipo("INV-B", "SERIE-2");
+        await service.CrearAsync(a);
+        await service.CrearAsync(b);
+        context.ChangeTracker.Clear();
+        var editar = (await service.ObtenerPorIdAsync(b.Id))!;
+        editar.NumeroInventario = " inv-a ";
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ActualizarAsync(editar));
     }
 
     [Fact]

@@ -48,7 +48,7 @@ export default function UPSTable({
 
                         return (
                             <TableRow
-                                key={equipo.numeroInventario}
+                                key={equipo.id}
                                 hover
                             >
                                 <TableCell>{equipo.numeroInventario || "—"}</TableCell>

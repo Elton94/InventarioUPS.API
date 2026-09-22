@@ -208,7 +208,7 @@ namespace InventarioUPS.API.Controllers
                     m.EstadoMantenimiento.Nombre == "Programado")
                 .Select(m => new
                 {
-                    m.NumeroInventarioUPS,
+                    m.UPSId,
                     m.FechaMantenimiento
                 })
                 .ToListAsync();
@@ -296,7 +296,7 @@ namespace InventarioUPS.API.Controllers
 
                 var mantenimientoProgramado = programados
                     .Where(m =>
-                        m.NumeroInventarioUPS == equipo.NumeroInventario &&
+                        m.UPSId == equipo.Id &&
                         m.FechaMantenimiento.Year == anio)
                     .OrderBy(m => m.FechaMantenimiento)
                     .FirstOrDefault();
@@ -387,6 +387,7 @@ namespace InventarioUPS.API.Controllers
         {
             return new PresupuestoUpsDetalleDto
             {
+                UPSId = equipo.Id,
                 NumeroInventario = equipo.NumeroInventario,
                 NumeroSerie = equipo.NumeroSerie,
                 Marca = equipo.Marca,

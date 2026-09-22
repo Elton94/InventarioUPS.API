@@ -319,7 +319,7 @@ export default function NuevoUPSModal({
 
             if (ups) {
                 await actualizarUPS(
-                    ups.numeroInventario,
+                    ups.id,
                     datos
                 );
             } else {
@@ -414,7 +414,6 @@ export default function NuevoUPSModal({
                     <TextField
                         required
                         label="Número de inventario"
-                        disabled={Boolean(ups)}
                         value={
                             formulario.numeroInventario
                         }
@@ -424,7 +423,7 @@ export default function NuevoUPSModal({
                                 e.target.value
                             )
                         }
-                        helperText={ups ? "Clave primaria: no se modifica después de registrar el UPS." : "Número de inventario real y único del equipo."}
+                        helperText="Identificador patrimonial o número de inventario asignado al equipo."
                     />
 
                     <TextField

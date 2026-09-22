@@ -121,7 +121,7 @@ export default function UPS() {
         try {
             const respuesta =
                 await cambiarEstadoUPS(
-                    equipo.numeroInventario,
+                    equipo.id,
                     estado
                 );
 

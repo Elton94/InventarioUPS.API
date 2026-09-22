@@ -166,8 +166,14 @@ namespace InventarioUPS.API.Data
             // =================================================
 
             modelBuilder.Entity<UPS>()
+                .HasKey(u => u.Id);
+
+            modelBuilder.Entity<UPS>()
+                .Property(u => u.Id)
+                .ValueGeneratedOnAdd();
+
+            modelBuilder.Entity<UPS>()
                 .Property(u => u.NumeroInventario)
-                .ValueGeneratedNever()
                 .UseCollation("Latin1_General_100_CI_AS")
                 .HasMaxLength(100)
                 .IsRequired();
@@ -189,7 +195,8 @@ namespace InventarioUPS.API.Data
                 .IsRequired();
 
             modelBuilder.Entity<UPS>()
-                .HasKey(u => u.NumeroInventario);
+                .HasIndex(u => u.NumeroInventario)
+                .IsUnique();
 
             modelBuilder.Entity<UPS>()
                 .HasIndex(u => u.NumeroSerie)
@@ -266,18 +273,12 @@ namespace InventarioUPS.API.Data
                 .HasMaxLength(150);
 
 
-            modelBuilder.Entity<Mantenimiento>()
-                .Property(m => m.NumeroInventarioUPS)
-                .HasMaxLength(100)
-                .UseCollation("Latin1_General_100_CI_AS")
-                .IsRequired();
-
             // UPS → Mantenimientos
 
             modelBuilder.Entity<Mantenimiento>()
                 .HasOne(m => m.UPS)
                 .WithMany(u => u.Mantenimientos)
-                .HasForeignKey(m => m.NumeroInventarioUPS)
+                .HasForeignKey(m => m.UPSId)
                 .OnDelete(DeleteBehavior.Restrict);
 
 

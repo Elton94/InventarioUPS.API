@@ -57,8 +57,6 @@ namespace InventarioUPS.API.Services
             PrepararBaterias(mantenimiento, ups);
             LimpiarTextos(mantenimiento);
 
-            mantenimiento.Costo = 0;
-            mantenimiento.CostoBaterias = 0;
             mantenimiento.AgenciaIdRegistro = ups.AgenciaId;
             mantenimiento.AgenciaNombreRegistro = ups.Agencia?.Nombre ?? string.Empty;
 
@@ -113,7 +111,6 @@ namespace InventarioUPS.API.Services
             existente.FechaMantenimiento = mantenimiento.FechaMantenimiento;
             existente.Descripcion = mantenimiento.Descripcion;
             existente.TecnicoProveedor = mantenimiento.TecnicoProveedor;
-            // Los importes históricos se conservan al editar datos operativos.
             existente.Observaciones = mantenimiento.Observaciones;
             existente.IncluyeCambioBaterias = mantenimiento.IncluyeCambioBaterias;
             existente.CantidadBateriasReemplazadas = mantenimiento.CantidadBateriasReemplazadas;

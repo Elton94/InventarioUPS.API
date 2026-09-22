@@ -218,14 +218,6 @@ namespace InventarioUPS.API.Data
                 .HasMaxLength(1000);
 
             modelBuilder.Entity<Mantenimiento>()
-                .Property(m => m.Costo)
-                .HasColumnType("decimal(18,2)");
-
-            modelBuilder.Entity<Mantenimiento>()
-                .Property(m => m.CostoBaterias)
-                .HasColumnType("decimal(18,2)");
-
-            modelBuilder.Entity<Mantenimiento>()
                 .Property(m => m.AgenciaNombreRegistro)
                 .HasMaxLength(150);
 

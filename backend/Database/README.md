@@ -22,7 +22,8 @@ Corregir inventario o serie no cambia la identidad del equipo ni sus mantenimien
 5. Al terminar mostrará los conteos de UPS y mantenimientos conservados.
 6. Compile/reinicie la API y el frontend y recargue la página.
 
-Este script es el único paso nuevo. NO ejecute el script anterior
+Para retirar los costos de mantenimiento, aplique también el script de la sección siguiente.
+NO ejecute el script anterior
 `20260922_InventarioClavePrimariaUPS.sql`: esa decisión fue reemplazada.
 Tampoco vuelva a ejecutar `20260922_IdentificadoresUnicosUPS.sql`, que contemplaba Codigo.
 
@@ -47,6 +48,27 @@ SQL Server protege contra duplicados incluso en escrituras simultáneas.
 Los archivos de migración históricos describen el esquema inicial; la actualización
 local se aplica con estos scripts. No use `Add-Migration` ni `Update-Database` para
 este cambio. El DbContext contiene el modelo utilizado por la aplicación.
+
+## Eliminar costos de mantenimientos
+
+Si ya aplicó `20260922_UPSIdInterno.sql`, el único paso nuevo es:
+
+1. Detenga la API y respalde `InventarioUPSDB` en SSMS.
+2. Descargue la rama `desarrollo` y ejecute completo
+   `backend/Database/20260922_MantenimientosSinCostos.sql`.
+3. Confirme el mensaje de éxito y el conteo de mantenimientos conservados.
+4. Reinicie la API y el frontend. Pruebe crear y editar un mantenimiento y completar
+   un cambio de baterías; revise también las proyecciones.
+
+El script elimina `Costo` y `CostoBaterias` de `dbo.Mantenimientos`, incluidos sus
+importes históricos. Recuperarlos requiere el respaldo anterior. No elimina filas,
+fechas, cantidades de baterías ni relaciones con los UPS. Los costos de Proyecciones
+permanecen en su configuración independiente.
+
+Puede ejecutarse de nuevo: omite las columnas que ya no existen. Retira sus valores
+predeterminados; si otra dependencia impide eliminarlas, revierte toda la operación
+y muestra el error. No vuelva a iniciar una versión anterior de la API que espere
+esas columnas. No vuelva a ejecutar scripts históricos para recrearlas.
 
 ## Contrato de la API
 

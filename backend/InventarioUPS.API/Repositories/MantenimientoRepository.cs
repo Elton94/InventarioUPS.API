@@ -107,9 +107,6 @@ namespace InventarioUPS.API.Repositories
             existente.TecnicoProveedor =
                 mantenimiento.TecnicoProveedor;
 
-            existente.Costo =
-                mantenimiento.Costo;
-
             existente.Observaciones =
                 mantenimiento.Observaciones;
 
@@ -119,9 +116,6 @@ namespace InventarioUPS.API.Repositories
 
             existente.CantidadBateriasReemplazadas =
                 mantenimiento.CantidadBateriasReemplazadas;
-
-            existente.CostoBaterias =
-                mantenimiento.CostoBaterias;
 
             existente.AgenciaIdRegistro =
                 mantenimiento.AgenciaIdRegistro;

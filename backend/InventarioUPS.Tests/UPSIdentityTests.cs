@@ -199,8 +199,11 @@ public sealed class UPSIdentityTests : IAsyncLifetime
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task MantenimientoSinCostosConservaImportesHistoricos(bool cambioBaterias)
+    public async Task MantenimientoSinColumnasDeCostosConservaCambioDeBaterias(bool cambioBaterias)
     {
+        var entidad = context.Model.FindEntityType(typeof(Mantenimiento))!;
+        Assert.Null(entidad.FindProperty("Costo"));
+        Assert.Null(entidad.FindProperty("CostoBaterias"));
         var ups = Equipo("INV-COSTOS");
         await service.CrearAsync(ups);
         var tipo = new TipoMantenimiento { Nombre = "Preventivo" };
@@ -216,12 +219,8 @@ public sealed class UPSIdentityTests : IAsyncLifetime
             Descripcion = "Revisión", TecnicoProveedor = "Técnico", IncluyeCambioBaterias = true
         };
         await mantenimientos.CrearAsync(nuevo);
-        Assert.Equal(0m, nuevo.Costo);
-        Assert.Equal(0m, nuevo.CostoBaterias);
         Assert.Equal(2, nuevo.CantidadBateriasReemplazadas);
 
-        nuevo.Costo = 500m;
-        nuevo.CostoBaterias = 1200m;
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
         await mantenimientos.ActualizarAsync(new Mantenimiento
@@ -233,18 +232,18 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         });
         context.ChangeTracker.Clear();
         var guardado = await context.Mantenimientos.SingleAsync();
-        Assert.Equal(500m, guardado.Costo);
-        Assert.Equal(1200m, guardado.CostoBaterias);
         Assert.Equal(cambioBaterias ? 2 : 0, guardado.CantidadBateriasReemplazadas);
         if (cambioBaterias)
             Assert.Equal(DateTime.Today, (await context.UPSs.SingleAsync()).FechaUltimoCambioBaterias);
     }
 
-    [Fact]
-    public void ScriptDeMigracionTieneSintaxisTSQLValida()
+    [Theory]
+    [InlineData("MigracionUPS.sql")]
+    [InlineData("MantenimientosSinCostos.sql")]
+    public void ScriptDeMigracionTieneSintaxisTSQLValida(string archivo)
     {
         var parser = new TSql160Parser(true);
-        var fragment = parser.Parse(new StringReader(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "MigracionUPS.sql"))), out var errors);
+        var fragment = parser.Parse(new StringReader(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, archivo))), out var errors);
         Assert.Empty(errors);
         var visitor = new SqlDinamicoVisitor(parser);
         fragment.Accept(visitor);

@@ -8,12 +8,10 @@ namespace InventarioUPS.API.Models
         public DateTime FechaMantenimiento { get; set; }
         public string Descripcion { get; set; } = string.Empty;
         public string TecnicoProveedor { get; set; } = string.Empty;
-        public decimal Costo { get; set; }
         public string Observaciones { get; set; } = string.Empty;
 
         public bool IncluyeCambioBaterias { get; set; }
         public int CantidadBateriasReemplazadas { get; set; }
-        public decimal CostoBaterias { get; set; }
 
         public int? AgenciaIdRegistro { get; set; }
         public string AgenciaNombreRegistro { get; set; } = string.Empty;

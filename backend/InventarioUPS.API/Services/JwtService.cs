@@ -49,11 +49,7 @@ namespace InventarioUPS.API.Services
                 );
             }
 
-            /*
-             * =====================================================
-             * OBTENER PERMISOS DEL ROL DESDE SQL SERVER
-             * =====================================================
-             */
+            // OBTENER PERMISOS DEL ROL DESDE SQL SERVER
 
             var permisos = _context.RolPermisos
                 .AsNoTracking()
@@ -65,11 +61,7 @@ namespace InventarioUPS.API.Services
                 .Distinct()
                 .ToList();
 
-            /*
-             * =====================================================
-             * CLAIMS DEL USUARIO
-             * =====================================================
-             */
+            // CLAIMS DEL USUARIO
 
             var claims = new List<Claim>
             {
@@ -94,12 +86,7 @@ namespace InventarioUPS.API.Services
                 )
             };
 
-            
-             //* =====================================================
-             //* AGREGAR PERMISOS AL JWT
-            // * =====================================================
-           
-
+             // Permisos del JWT
             foreach (var permiso in permisos)
             {
                 claims.Add(

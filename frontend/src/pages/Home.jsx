@@ -354,14 +354,9 @@ export default function Home() {
             <Typography
                 variant="h4"
                 fontWeight="bold"
-            >
-                Inicio
-            </Typography>
-            <Typography
-                color="text.secondary"
                 sx={{ mb: 3 }}
             >
-                Resumen de los módulos a los que tiene acceso.
+                Inicio
             </Typography>
 
             {error && (

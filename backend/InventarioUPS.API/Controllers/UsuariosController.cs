@@ -35,10 +35,7 @@ namespace InventarioUPS.API.Controllers
             _context = context;
         }
 
-        // =====================================================
         // USUARIOS
-        // =====================================================
-
         [HttpGet]
         [PermisoAuthorize("GESTIONAR_USUARIOS")]
         public async Task<ActionResult<List<UsuarioDTO>>>
@@ -64,10 +61,6 @@ namespace InventarioUPS.API.Controllers
 
             return Ok(resultado);
         }
-
-        // =====================================================
-        // OBTENER USUARIO POR ID
-        // =====================================================
 
         [HttpGet("{id:int}")]
         [PermisoAuthorize("GESTIONAR_USUARIOS")]
@@ -102,10 +95,7 @@ namespace InventarioUPS.API.Controllers
             });
         }
 
-        // =====================================================
         // ROLES
-        // =====================================================
-
         [HttpGet("roles")]
         [PermisoAuthorize("GESTIONAR_USUARIOS", "GESTIONAR_ROLES_PERMISOS")]
         public async Task<ActionResult<List<Rol>>>
@@ -117,12 +107,9 @@ namespace InventarioUPS.API.Controllers
             return Ok(roles);
         }
 
-        // =====================================================
         // RESPONSABLES DE MANTENIMIENTO
         // Usuarios activos cuyo rol puede crear o editar mantenimiento.
         // Control Total también se incluye.
-        // =====================================================
-
         [HttpGet("responsables-mantenimiento")]
         [PermisoAuthorize("CREAR_MANTENIMIENTO", "EDITAR_MANTENIMIENTO")]
         public async Task<ActionResult> ObtenerResponsablesMantenimiento()
@@ -160,10 +147,6 @@ namespace InventarioUPS.API.Controllers
             return Ok(usuarios);
         }
 
-        // =====================================================
-        // OBTENER ROL POR ID
-        // =====================================================
-
         [HttpGet("roles/{id:int}")]
         [PermisoAuthorize("GESTIONAR_ROLES_PERMISOS")]
         public async Task<ActionResult<Rol>>
@@ -186,10 +169,6 @@ namespace InventarioUPS.API.Controllers
 
             return Ok(rol);
         }
-
-        // =====================================================
-        // CREAR USUARIO
-        // =====================================================
 
         [HttpPost]
         [PermisoAuthorize("GESTIONAR_USUARIOS")]
@@ -292,10 +271,7 @@ namespace InventarioUPS.API.Controllers
                     "El rol seleccionado no existe o está inactivo.");
             }
 
-            // -------------------------------------------------
             // PROTEGER ASIGNACIÓN DE CONTROL TOTAL
-            // -------------------------------------------------
-
             if (EsControlTotal(rol.Nombre) &&
                 !await TienePermisoGestionarRolesAsync())
             {
@@ -333,10 +309,6 @@ namespace InventarioUPS.API.Controllers
                     usuario.Id
             });
         }
-
-        // =====================================================
-        // ACTUALIZAR USUARIO
-        // =====================================================
 
         [HttpPut("{id:int}")]
         [PermisoAuthorize("GESTIONAR_USUARIOS")]
@@ -455,10 +427,7 @@ namespace InventarioUPS.API.Controllers
             var nuevoEsControlTotal =
                 EsControlTotal(rol.Nombre);
 
-            // -------------------------------------------------
             // PROTEGER ASIGNACIÓN DE CONTROL TOTAL
-            // -------------------------------------------------
-
             if (nuevoEsControlTotal &&
                 !esActualmenteControlTotal &&
                 !await TienePermisoGestionarRolesAsync())
@@ -472,10 +441,7 @@ namespace InventarioUPS.API.Controllers
                     });
             }
 
-            // -------------------------------------------------
             // PROTEGER ÚLTIMO CONTROL TOTAL
-            // -------------------------------------------------
-
             if (esActualmenteControlTotal &&
                 usuario.Activo &&
                 (!request.Activo ||
@@ -527,10 +493,6 @@ namespace InventarioUPS.API.Controllers
             return Ok(
                 "Usuario actualizado correctamente.");
         }
-
-        // =====================================================
-        // ACTIVAR / DESACTIVAR USUARIO
-        // =====================================================
 
         [HttpPatch("{id:int}/estado")]
         [PermisoAuthorize("GESTIONAR_USUARIOS")]
@@ -615,10 +577,6 @@ namespace InventarioUPS.API.Controllers
             });
         }
 
-        // =====================================================
-        // CREAR ROL
-        // =====================================================
-
         [HttpPost("roles")]
         [PermisoAuthorize("GESTIONAR_ROLES_PERMISOS")]
         public async Task<ActionResult>
@@ -680,10 +638,6 @@ namespace InventarioUPS.API.Controllers
                     rol.Id
             });
         }
-
-        // =====================================================
-        // ACTUALIZAR ROL
-        // =====================================================
 
         [HttpPut("roles/{id:int}")]
         [PermisoAuthorize("GESTIONAR_ROLES_PERMISOS")]
@@ -756,10 +710,7 @@ namespace InventarioUPS.API.Controllers
                     "El rol Control Total no puede ser renombrado.");
             }
 
-            // -------------------------------------------------
             // NO DESACTIVAR NINGÚN ROL CON USUARIOS ACTIVOS
-            // -------------------------------------------------
-
             if (!request.Activo &&
                 rol.Activo)
             {
@@ -801,10 +752,6 @@ namespace InventarioUPS.API.Controllers
                 "Rol actualizado correctamente.");
         }
 
-        // =====================================================
-        // ACTIVAR / DESACTIVAR ROL
-        // =====================================================
-
         [HttpPatch("roles/{id:int}/estado")]
         [PermisoAuthorize("GESTIONAR_ROLES_PERMISOS")]
         public async Task<ActionResult>
@@ -828,10 +775,7 @@ namespace InventarioUPS.API.Controllers
                     "El rol no existe.");
             }
 
-            // -------------------------------------------------
             // NO DESACTIVAR NINGÚN ROL CON USUARIOS ACTIVOS
-            // -------------------------------------------------
-
             if (!activo && rol.Activo)
             {
                 var usuariosActivos =
@@ -868,10 +812,7 @@ namespace InventarioUPS.API.Controllers
             });
         }
 
-        // =====================================================
         // PERMISOS
-        // =====================================================
-
         [HttpGet("permisos")]
         [PermisoAuthorize("GESTIONAR_ROLES_PERMISOS")]
         public async Task<ActionResult>
@@ -893,10 +834,6 @@ namespace InventarioUPS.API.Controllers
 
             return Ok(permisos);
         }
-
-        // =====================================================
-        // OBTENER PERMISOS DE UN ROL
-        // =====================================================
 
         [HttpGet("roles/{id:int}/permisos")]
         [PermisoAuthorize("GESTIONAR_ROLES_PERMISOS")]
@@ -937,10 +874,6 @@ namespace InventarioUPS.API.Controllers
 
             return Ok(permisos);
         }
-
-        // =====================================================
-        // ACTUALIZAR PERMISOS DE UN ROL
-        // =====================================================
 
         [HttpPut("roles/{id:int}/permisos")]
         [PermisoAuthorize("GESTIONAR_ROLES_PERMISOS")]
@@ -1059,10 +992,7 @@ namespace InventarioUPS.API.Controllers
             });
         }
 
-        // =====================================================
         // MÉTODOS AUXILIARES
-        // =====================================================
-
         private static bool EsControlTotal(
             string? nombreRol)
         {
@@ -1160,10 +1090,6 @@ namespace InventarioUPS.API.Controllers
                    tieneEspecial;
         }
     }
-
-    // =========================================================
-    // REQUEST PARA ACTUALIZAR PERMISOS
-    // =========================================================
 
     public class ActualizarPermisosRolRequest
     {

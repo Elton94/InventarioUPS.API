@@ -2,10 +2,7 @@ import api from "./api";
 
 const API_URL = "/Usuarios";
 
-// =====================================================
 // USUARIOS
-// =====================================================
-
 export const obtenerUsuarios = async () => {
     const response = await api.get(API_URL);
 
@@ -50,10 +47,7 @@ export const cambiarEstadoUsuario = async (
     return response.data;
 };
 
-// =====================================================
 // ROLES
-// =====================================================
-
 export const obtenerRoles = async () => {
     const response = await api.get(
         `${API_URL}/roles`
@@ -112,10 +106,7 @@ export const cambiarEstadoRol = async (
     return response.data;
 };
 
-// =====================================================
 // PERMISOS
-// =====================================================
-
 export const obtenerPermisos = async () => {
     const response = await api.get(
         `${API_URL}/permisos`
@@ -148,10 +139,7 @@ export const actualizarPermisosRol = async (
     return response.data;
 };
 
-// =====================================================
 // RESPONSABLES DE MANTENIMIENTO
-// =====================================================
-
 export const obtenerResponsablesMantenimiento =
     async () => {
         const response = await api.get(

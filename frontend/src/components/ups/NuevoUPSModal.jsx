@@ -398,7 +398,7 @@ export default function NuevoUPSModal({
                         severity="warning"
                         sx={{ mt: 1, mb: 2 }}
                     >
-                        La agencia actual está inactiva. Para guardar cambios, traslade el UPS a una agencia activa.
+                        Agencia inactiva. Seleccione una agencia activa para guardar.
                     </Alert>
                 )}
 
@@ -423,7 +423,6 @@ export default function NuevoUPSModal({
                                 e.target.value
                             )
                         }
-                        helperText="Identificador patrimonial o número de inventario asignado al equipo."
                     />
 
                     <TextField
@@ -465,7 +464,7 @@ export default function NuevoUPSModal({
                                 {...params}
                                 required
                                 label="Marca"
-                                helperText="Puede escribir una marca nueva. Quedará disponible en el catálogo al guardar el UPS."
+                                helperText="Seleccione o escriba una marca."
                             />
                         )}
                     />
@@ -488,7 +487,7 @@ export default function NuevoUPSModal({
                                 {...params}
                                 required
                                 label="Modelo"
-                                helperText="Puede escribir un modelo nuevo para la marca seleccionada."
+                                helperText="Seleccione o escriba un modelo."
                             />
                         )}
                     />
@@ -603,7 +602,7 @@ export default function NuevoUPSModal({
                                 e.target.value
                             )
                         }
-                        helperText="Si existen cambios de batería completados en Mantenimiento, el sistema conservará la fecha real más reciente."
+                        helperText="Se conserva el último cambio de baterías completado."
                         slotProps={{
                             inputLabel: {
                                 shrink: true

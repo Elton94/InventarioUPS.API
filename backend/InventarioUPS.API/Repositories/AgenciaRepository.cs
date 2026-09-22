@@ -15,10 +15,6 @@ namespace InventarioUPS.API.Repositories
             _context = context;
         }
 
-        // =====================================================
-        // OBTENER TODAS LAS AGENCIAS
-        // =====================================================
-
         public async Task<List<Agencia>> ObtenerTodasAsync()
         {
             return await _context.Agencias
@@ -28,10 +24,6 @@ namespace InventarioUPS.API.Repositories
                 .OrderBy(a => a.Codigo)
                 .ToListAsync();
         }
-
-        // =====================================================
-        // OBTENER AGENCIA POR ID
-        // =====================================================
 
         public async Task<Agencia?> ObtenerPorIdAsync(
             int id)
@@ -44,10 +36,6 @@ namespace InventarioUPS.API.Repositories
                     a => a.Id == id);
         }
 
-        // =====================================================
-        // CREAR AGENCIA
-        // =====================================================
-
         public async Task CrearAsync(
             Agencia agencia)
         {
@@ -56,10 +44,6 @@ namespace InventarioUPS.API.Repositories
 
             await _context.SaveChangesAsync();
         }
-
-        // =====================================================
-        // ACTUALIZAR AGENCIA
-        // =====================================================
 
         public async Task ActualizarAsync(
             Agencia agencia)
@@ -99,15 +83,8 @@ namespace InventarioUPS.API.Repositories
             await _context.SaveChangesAsync();
         }
 
-        // =====================================================
         // DESACTIVAR AGENCIA
-        // =====================================================
-        //
-        // NO se elimina físicamente de SQL Server.
-        // Se conserva el registro y se establece Activa = false.
-        //
-        // =====================================================
-
+        // La baja lógica conserva el historial de la agencia.
         public async Task EliminarAsync(
             Agencia agencia)
         {

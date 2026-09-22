@@ -11,10 +11,7 @@ namespace InventarioUPS.API.Data
         {
         }
 
-        // =====================================================
         // TABLAS
-        // =====================================================
-
         public DbSet<Permiso> Permisos { get; set; }
 
         public DbSet<RolPermiso> RolPermisos { get; set; }
@@ -49,21 +46,13 @@ namespace InventarioUPS.API.Data
             PoliticaReemplazoBaterias
         { get; set; }
 
-
-        // =====================================================
         // CONFIGURACIÓN
-        // =====================================================
-
         protected override void OnModelCreating(
             ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-
-            // =================================================
             // DEPARTAMENTOS
-            // =================================================
-
             modelBuilder.Entity<Departamento>()
                 .Property(d => d.Nombre)
                 .HasMaxLength(100)
@@ -73,11 +62,7 @@ namespace InventarioUPS.API.Data
                 .HasIndex(d => d.Nombre)
                 .IsUnique();
 
-
-            // =================================================
             // CIUDADES
-            // =================================================
-
             modelBuilder.Entity<Ciudad>()
                 .Property(c => c.Nombre)
                 .HasMaxLength(100)
@@ -97,11 +82,7 @@ namespace InventarioUPS.API.Data
                 })
                 .IsUnique();
 
-
-            // =================================================
             // TIPOS DE AGENCIA
-            // =================================================
-
             modelBuilder.Entity<TipoAgencia>()
                 .Property(t => t.Nombre)
                 .HasMaxLength(100)
@@ -111,11 +92,7 @@ namespace InventarioUPS.API.Data
                 .HasIndex(t => t.Nombre)
                 .IsUnique();
 
-
-            // =================================================
             // AGENCIAS
-            // =================================================
-
             modelBuilder.Entity<Agencia>()
                 .Property(a => a.Codigo)
                 .HasMaxLength(50)
@@ -146,11 +123,7 @@ namespace InventarioUPS.API.Data
                 .HasForeignKey(a => a.TipoAgenciaId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-
-            // =================================================
             // ESTADOS DE UPS
-            // =================================================
-
             modelBuilder.Entity<EstadoUPS>()
                 .Property(e => e.Nombre)
                 .HasMaxLength(50)
@@ -160,11 +133,7 @@ namespace InventarioUPS.API.Data
                 .HasIndex(e => e.Nombre)
                 .IsUnique();
 
-
-            // =================================================
             // UPS
-            // =================================================
-
             modelBuilder.Entity<UPS>()
                 .HasKey(u => u.Id);
 
@@ -214,11 +183,7 @@ namespace InventarioUPS.API.Data
                 .HasForeignKey(u => u.EstadoUPSId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-
-            // =================================================
             // TIPOS DE MANTENIMIENTO
-            // =================================================
-
             modelBuilder.Entity<TipoMantenimiento>()
                 .Property(t => t.Nombre)
                 .HasMaxLength(100)
@@ -228,11 +193,7 @@ namespace InventarioUPS.API.Data
                 .HasIndex(t => t.Nombre)
                 .IsUnique();
 
-
-            // =================================================
             // ESTADOS DE MANTENIMIENTO
-            // =================================================
-
             modelBuilder.Entity<EstadoMantenimiento>()
                 .Property(e => e.Nombre)
                 .HasMaxLength(50)
@@ -242,11 +203,7 @@ namespace InventarioUPS.API.Data
                 .HasIndex(e => e.Nombre)
                 .IsUnique();
 
-
-            // =================================================
             // MANTENIMIENTOS
-            // =================================================
-
             modelBuilder.Entity<Mantenimiento>()
                 .Property(m => m.Descripcion)
                 .HasMaxLength(1000)
@@ -272,17 +229,11 @@ namespace InventarioUPS.API.Data
                 .Property(m => m.AgenciaNombreRegistro)
                 .HasMaxLength(150);
 
-
-            // UPS → Mantenimientos
-
             modelBuilder.Entity<Mantenimiento>()
                 .HasOne(m => m.UPS)
                 .WithMany(u => u.Mantenimientos)
                 .HasForeignKey(m => m.UPSId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-
-            // Tipo → Mantenimientos
 
             modelBuilder.Entity<Mantenimiento>()
                 .HasOne(m => m.Tipo)
@@ -290,20 +241,13 @@ namespace InventarioUPS.API.Data
                 .HasForeignKey(m => m.TipoMantenimientoId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-
-            // Estado → Mantenimientos
-
             modelBuilder.Entity<Mantenimiento>()
                 .HasOne(m => m.EstadoMantenimiento)
                 .WithMany(e => e.Mantenimientos)
                 .HasForeignKey(m => m.EstadoMantenimientoId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-
-            // =================================================
             // ROLES
-            // =================================================
-
             modelBuilder.Entity<Rol>()
                 .Property(r => r.Nombre)
                 .HasMaxLength(100)
@@ -317,11 +261,7 @@ namespace InventarioUPS.API.Data
                 .HasIndex(r => r.Nombre)
                 .IsUnique();
 
-
-            // =================================================
             // USUARIOS
-            // =================================================
-
             modelBuilder.Entity<Usuario>()
                 .Property(u => u.NombreUsuario)
                 .HasMaxLength(100)
@@ -355,11 +295,7 @@ namespace InventarioUPS.API.Data
                 .HasForeignKey(u => u.RolId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-
-            // =================================================
             // PERMISOS
-            // =================================================
-
             modelBuilder.Entity<Permiso>()
                 .Property(p => p.Nombre)
                 .HasMaxLength(150)
@@ -378,11 +314,7 @@ namespace InventarioUPS.API.Data
                 .HasIndex(p => p.Codigo)
                 .IsUnique();
 
-
-            // =================================================
             // ROL - PERMISO
-            // =================================================
-
             modelBuilder.Entity<RolPermiso>()
                 .HasOne(rp => rp.Rol)
                 .WithMany(r => r.RolPermisos)
@@ -403,11 +335,7 @@ namespace InventarioUPS.API.Data
                 })
                 .IsUnique();
 
-
-            // =================================================
             // CONFIGURACIÓN DE PRESUPUESTO
-            // =================================================
-
             modelBuilder.Entity<ConfiguracionPresupuestoBaterias>()
                 .ToTable("ConfiguracionPresupuestoBaterias");
 
@@ -443,10 +371,7 @@ namespace InventarioUPS.API.Data
                 .HasIndex(x => x.Anio)
                 .IsUnique();
 
-            // =================================================
             // POLÍTICA GLOBAL DE REEMPLAZO DE BATERÍAS
-            // =================================================
-
             modelBuilder.Entity<PoliticaReemplazoBaterias>()
                 .ToTable("PoliticaReemplazoBaterias");
 

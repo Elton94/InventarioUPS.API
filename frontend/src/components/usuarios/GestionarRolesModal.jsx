@@ -75,10 +75,6 @@ export default function GestionarRolesModal({
     const [mensaje, setMensaje] =
         useState("");
 
-    // =====================================================
-    // CARGAR ROLES
-    // =====================================================
-
     const cargarRoles = async () => {
         setCargando(true);
         setError("");
@@ -108,10 +104,6 @@ export default function GestionarRolesModal({
             setCargando(false);
         }
     };
-
-    // =====================================================
-    // CARGAR PERMISOS
-    // =====================================================
 
     const cargarPermisos = async () => {
         setCargandoPermisos(true);
@@ -145,10 +137,6 @@ export default function GestionarRolesModal({
         }
     };
 
-    // =====================================================
-    // CARGAR INFORMACIÓN AL ABRIR
-    // =====================================================
-
     useEffect(() => {
         if (!open) {
             return;
@@ -161,10 +149,6 @@ export default function GestionarRolesModal({
         cargarPermisos();
     }, [open]);
 
-    // =====================================================
-    // LIMPIAR FORMULARIO
-    // =====================================================
-
     const limpiarFormulario = () => {
         setEditando(null);
         setNombre("");
@@ -173,10 +157,6 @@ export default function GestionarRolesModal({
         setError("");
         setMensaje("");
     };
-
-    // =====================================================
-    // EDITAR ROL
-    // =====================================================
 
     const editar = async (rol) => {
         setEditando(rol);
@@ -228,10 +208,6 @@ export default function GestionarRolesModal({
         }
     };
 
-    // =====================================================
-    // CAMBIAR PERMISO
-    // =====================================================
-
     const cambiarPermiso = (
         permisoId
     ) => {
@@ -259,10 +235,6 @@ export default function GestionarRolesModal({
         );
     };
 
-    // =====================================================
-    // SELECCIONAR TODOS
-    // =====================================================
-
     const seleccionarTodos = () => {
         if (esControlTotal()) {
             return;
@@ -276,10 +248,6 @@ export default function GestionarRolesModal({
         );
     };
 
-    // =====================================================
-    // QUITAR TODOS
-    // =====================================================
-
     const quitarTodos = () => {
         if (esControlTotal()) {
             return;
@@ -288,10 +256,6 @@ export default function GestionarRolesModal({
         setPermisosSeleccionados([]);
     };
 
-    // =====================================================
-    // CONTROL TOTAL
-    // =====================================================
-
     const esControlTotal = () => {
         return (
             editando &&
@@ -299,10 +263,6 @@ export default function GestionarRolesModal({
                 "control total"
         );
     };
-
-    // =====================================================
-    // GUARDAR ROL
-    // =====================================================
 
     const guardarRol = async () => {
         setError("");
@@ -329,10 +289,6 @@ export default function GestionarRolesModal({
         try {
             let rolId;
 
-            // -------------------------------------------------
-            // ACTUALIZAR ROL
-            // -------------------------------------------------
-
             if (editando) {
                 await actualizarRol(
                     editando.id,
@@ -352,10 +308,6 @@ export default function GestionarRolesModal({
                     editando.id;
             }
 
-            // -------------------------------------------------
-            // CREAR ROL
-            // -------------------------------------------------
-
             else {
                 const resultado =
                     await crearRol({
@@ -369,10 +321,6 @@ export default function GestionarRolesModal({
                 rolId =
                     resultado?.rolId;
             }
-
-            // -------------------------------------------------
-            // GUARDAR PERMISOS
-            // -------------------------------------------------
 
             if (!rolId) {
                 throw new Error(
@@ -390,10 +338,6 @@ export default function GestionarRolesModal({
             );
 
             await cargarRoles();
-
-            // -------------------------------------------------
-            // VOLVER A CARGAR LOS PERMISOS DEL ROL
-            // -------------------------------------------------
 
             const rolActualizado =
                 await obtenerRoles();
@@ -426,10 +370,6 @@ export default function GestionarRolesModal({
             setGuardando(false);
         }
     };
-
-    // =====================================================
-    // CAMBIAR ESTADO
-    // =====================================================
 
     const cambiarEstado = async (
         rol
@@ -483,10 +423,6 @@ export default function GestionarRolesModal({
             );
         }
     };
-
-    // =====================================================
-    // MENSAJE DE ERROR
-    // =====================================================
 
     const obtenerMensajeError = (
         error,
@@ -548,9 +484,7 @@ export default function GestionarRolesModal({
 
             <DialogContent>
 
-                {/* =================================================
-                    MENSAJES
-                    ================================================= */}
+                {/* MENSAJES */}
 
                 {error && (
                     <Alert
@@ -570,9 +504,7 @@ export default function GestionarRolesModal({
                     </Alert>
                 )}
 
-                {/* =================================================
-                    FORMULARIO
-                    ================================================= */}
+                {/* FORMULARIO */}
 
                 <Paper
                     variant="outlined"
@@ -695,9 +627,7 @@ export default function GestionarRolesModal({
                     )}
                 </Paper>
 
-                {/* =================================================
-                    PERMISOS
-                    ================================================= */}
+                {/* PERMISOS */}
 
                 {editando && (
                     <Paper
@@ -767,9 +697,7 @@ export default function GestionarRolesModal({
                                 severity="info"
                                 sx={{ mb: 2 }}
                             >
-                                El rol Control Total tiene
-                                automáticamente todos los
-                                permisos activos del sistema.
+                                Control Total incluye todos los permisos.
                             </Alert>
                         )}
 
@@ -852,14 +780,6 @@ export default function GestionarRolesModal({
                                                                     }
                                                                 </Typography>
 
-                                                                <Typography
-                                                                    variant="caption"
-                                                                    color="text.secondary"
-                                                                >
-                                                                    {
-                                                                        permiso.codigo
-                                                                    }
-                                                                </Typography>
                                                             </Box>
                                                         }
                                                     />
@@ -890,9 +810,7 @@ export default function GestionarRolesModal({
                     </Paper>
                 )}
 
-                {/* =================================================
-                    TABLA DE ROLES
-                    ================================================= */}
+                {/* TABLA DE ROLES */}
 
                 <Typography
                     variant="subtitle1"

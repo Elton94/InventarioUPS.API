@@ -152,13 +152,6 @@ export default function Login() {
                         >
                             UPS Asset Manager
                         </Typography>
-                        <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ mt: 1 }}
-                        >
-                            Gestión Corporativa
-                        </Typography>
                     </Box>
 
                     <Typography

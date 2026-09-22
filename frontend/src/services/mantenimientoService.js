@@ -2,11 +2,6 @@ import api from "./api";
 
 const API_URL = "/Mantenimiento";
 
-
-// =====================================================
-// OBTENER TODOS
-// =====================================================
-
 export const obtenerMantenimientos =
     async () => {
 
@@ -17,11 +12,6 @@ export const obtenerMantenimientos =
 
         return response.data;
     };
-
-
-// =====================================================
-// OBTENER POR ID
-// =====================================================
 
 export const obtenerMantenimientoPorId =
     async (id) => {
@@ -34,11 +24,6 @@ export const obtenerMantenimientoPorId =
         return response.data;
     };
 
-
-// =====================================================
-// OBTENER POR UPS
-// =====================================================
-
 export const obtenerMantenimientosPorUPS =
     async (upsId) => {
 
@@ -49,11 +34,6 @@ export const obtenerMantenimientosPorUPS =
 
         return response.data;
     };
-
-
-// =====================================================
-// CREAR
-// =====================================================
 
 export const crearMantenimiento =
     async (mantenimiento) => {
@@ -105,11 +85,7 @@ export const crearMantenimiento =
                     ?.trim() ||
                 "",
 
-
-            // =================================================
             // CAMBIO DE BATERÍAS
-            // =================================================
-
             incluyeCambioBaterias:
                 mantenimiento
                     .incluyeCambioBaterias ===
@@ -137,21 +113,14 @@ export const crearMantenimiento =
 
         };
 
-
         const response =
             await api.post(
                 API_URL,
                 datos
             );
 
-
         return response.data;
     };
-
-
-// =====================================================
-// ACTUALIZAR
-// =====================================================
 
 export const actualizarMantenimiento =
     async (
@@ -209,11 +178,7 @@ export const actualizarMantenimiento =
                     ?.trim() ||
                 "",
 
-
-            // =================================================
             // CAMBIO DE BATERÍAS
-            // =================================================
-
             incluyeCambioBaterias:
                 mantenimiento
                     .incluyeCambioBaterias ===
@@ -241,13 +206,11 @@ export const actualizarMantenimiento =
 
         };
 
-
         const response =
             await api.put(
                 `${API_URL}/${id}`,
                 datos
             );
-
 
         return response.data;
     };

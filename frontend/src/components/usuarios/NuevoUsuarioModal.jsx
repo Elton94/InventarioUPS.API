@@ -386,7 +386,7 @@ export default function NuevoUsuarioModal({
                                 e.target.value
                             )
                         }
-                        helperText="Déjela vacía si no desea cambiarla."
+                        helperText="Vacía para conservar la actual."
                     />
                 )}
 

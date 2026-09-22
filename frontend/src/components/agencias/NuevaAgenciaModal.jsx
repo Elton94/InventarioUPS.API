@@ -484,7 +484,7 @@ export default function NuevaAgenciaModal({
                         label="Tipo de Agencia"
                         value={tipoNombre}
                         disabled
-                        helperText="Se determina automáticamente según la ciudad."
+                        helperText="Automático según la ciudad."
                     />
                 </Box>
             </DialogContent>

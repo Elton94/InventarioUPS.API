@@ -360,14 +360,9 @@ export default function Presupuesto() {
             <Typography
                 variant="h4"
                 fontWeight="bold"
-            >
-                Presupuesto de Baterías
-            </Typography>
-            <Typography
-                color="text.secondary"
                 sx={{ mb: 3 }}
             >
-                La política define cada cuánto se reemplaza el banco de baterías y el costo anual permite estimar el presupuesto.
+                Presupuesto de Baterías
             </Typography>
 
             {error && (

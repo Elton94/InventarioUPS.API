@@ -76,9 +76,7 @@ namespace InventarioUPS.API.Controllers
                 .Select(e => new { id = e.Id, nombre = e.Nombre })
                 .ToListAsync());
 
-        // El catálogo de marcas y modelos nace de los UPS reales.
-        // Así no se requiere una tabla adicional: al guardar una nueva
-        // marca/modelo, aparecerá automáticamente en el catálogo.
+        // El catálogo se obtiene de las marcas y modelos de los UPS registrados.
         [HttpGet("marcas-ups")]
         public async Task<IActionResult> ObtenerMarcasUPS()
         {

@@ -1,10 +1,6 @@
 import api from "./api";
 
-
-// =====================================================
 // CONFIGURACIÓN ANUAL DE PRESUPUESTO
-// =====================================================
-
 export const obtenerConfiguracionesPresupuesto =
     async () => {
 
@@ -15,7 +11,6 @@ export const obtenerConfiguracionesPresupuesto =
 
         return response.data;
     };
-
 
 export const obtenerConfiguracionPresupuesto =
     async (anio) => {
@@ -28,7 +23,6 @@ export const obtenerConfiguracionPresupuesto =
         return response.data;
     };
 
-
 export const crearConfiguracionPresupuesto =
     async (configuracion) => {
 
@@ -40,7 +34,6 @@ export const crearConfiguracionPresupuesto =
 
         return response.data;
     };
-
 
 export const actualizarConfiguracionPresupuesto =
     async (
@@ -57,11 +50,7 @@ export const actualizarConfiguracionPresupuesto =
         return response.data;
     };
 
-
-// =====================================================
 // POLÍTICA GLOBAL DE REEMPLAZO
-// =====================================================
-
 export const obtenerPoliticaReemplazo =
     async () => {
 
@@ -72,7 +61,6 @@ export const obtenerPoliticaReemplazo =
 
         return response.data;
     };
-
 
 export const actualizarPoliticaReemplazo =
     async (politica) => {
@@ -98,11 +86,7 @@ export const actualizarPoliticaReemplazo =
         return response.data;
     };
 
-
-// =====================================================
 // PROYECCIÓN
-// =====================================================
-
 export const obtenerProyeccionPresupuesto =
     async (anio) => {
 

@@ -7,10 +7,7 @@ namespace InventarioUPS.API.Data
     {
         public static async Task SeedAsync(InventarioUPSDbContext context)
         {
-            // =====================================================
             // TIPOS DE AGENCIA
-            // =====================================================
-
             var tipoLocal = await ObtenerOCrearTipoAgencia(
                 context,
                 "Local");
@@ -19,44 +16,29 @@ namespace InventarioUPS.API.Data
                 context,
                 "Foránea");
 
-            // =====================================================
             // ESTADOS DE UPS
-            // =====================================================
-
             await ObtenerOCrearEstadoUPS(context, "Operativo");
             await ObtenerOCrearEstadoUPS(context, "En mantenimiento");
             await ObtenerOCrearEstadoUPS(context, "Fuera de servicio");
             await ObtenerOCrearEstadoUPS(context, "De baja");
             await ObtenerOCrearEstadoUPS(context, "En resguardo");
 
-            // =====================================================
             // TIPOS DE MANTENIMIENTO
-            // =====================================================
-
             await ObtenerOCrearTipoMantenimiento(context, "Preventivo");
             await ObtenerOCrearTipoMantenimiento(context, "Correctivo");
             await ObtenerOCrearTipoMantenimiento(context, "Emergencia");
 
-            // =====================================================
             // ESTADOS DE MANTENIMIENTO
-            // =====================================================
-
             await ObtenerOCrearEstadoMantenimiento(context, "Programado");
             await ObtenerOCrearEstadoMantenimiento(context, "En proceso");
             await ObtenerOCrearEstadoMantenimiento(context, "Completado");
             await ObtenerOCrearEstadoMantenimiento(context, "Cancelado");
 
-            // =====================================================
             // ROLES, PERMISOS Y POLÍTICA DE PRESUPUESTO
-            // =====================================================
-
             await SembrarRolesPermisosAsync(context);
             await AsegurarPoliticaPresupuestoAsync(context);
 
-            // =====================================================
             // DEPARTAMENTOS Y CIUDADES
-            // =====================================================
-
             var departamentos = new Dictionary<string, string[]>
             {
                 ["Atlántida"] = new[]
@@ -450,10 +432,7 @@ namespace InventarioUPS.API.Data
                 await context.SaveChangesAsync();
             }
 
-            // =====================================================
             // ELIMINAR "SIN ESPECIFICAR" SI QUEDÓ COMO DATO INICIAL
-            // =====================================================
-
             var departamentosSinEspecificar =
                 await context.Departamentos
                     .Where(d => d.Nombre == "Sin especificar")
@@ -484,18 +463,14 @@ namespace InventarioUPS.API.Data
 
             await context.SaveChangesAsync();
 
-            // Mantener consistente la regla Local / Foránea también
-            // para agencias creadas antes de esta versión.
+            // Aplica la clasificación por ciudad también a las agencias existentes.
             await NormalizarTiposAgenciaAsync(
                 context,
                 tipoLocal.Id,
                 tipoForanea.Id);
         }
 
-        // =====================================================
         // MÉTODOS AUXILIARES
-        // =====================================================
-
         private static async Task NormalizarTiposAgenciaAsync(
             InventarioUPSDbContext context,
             int tipoLocalId,
@@ -621,10 +596,7 @@ namespace InventarioUPS.API.Data
             return nuevo;
         }
 
-        // =====================================================
         // ROLES Y PERMISOS BASE
-        // =====================================================
-
         private static async Task SembrarRolesPermisosAsync(
             InventarioUPSDbContext context)
         {
@@ -678,13 +650,8 @@ namespace InventarioUPS.API.Data
 
             await context.SaveChangesAsync();
 
-            // =================================================
             // PERMISOS OBSOLETOS
-            // Reportes fue eliminado del MVP. Si el permiso quedó
-            // de una versión anterior, se desactiva para que no
-            // aparezca en la administración de roles.
-            // =================================================
-
+            // Desactiva el permiso heredado del módulo Reportes, ya retirado.
             var permisosObsoletos = await context.Permisos
                 .Where(p => p.Codigo == "VER_REPORTES")
                 .ToListAsync();
@@ -703,9 +670,7 @@ namespace InventarioUPS.API.Data
             var sistemaSinAsignaciones =
                 !await context.RolPermisos.AnyAsync();
 
-            // Control Total es el único rol reservado del sistema.
-            // Siempre debe existir y siempre conserva todos los
-            // permisos activos.
+            // Control Total es reservado y conserva todos los permisos activos.
             var controlTotal = await ObtenerOCrearRol(
                 context,
                 "Control Total",
@@ -717,10 +682,7 @@ namespace InventarioUPS.API.Data
                 permisos.Values.Select(p => p.Id),
                 forzarSincronizacion: true);
 
-            // Los demás roles se crean solamente en una base nueva.
-            // Si luego el usuario los renombra, elimina permisos o
-            // crea roles propios desde el frontend, el Seeder NO
-            // deshace esa configuración al reiniciar la API.
+            // Inicializa los demás roles solo una vez para respetar cambios del administrador.
             if (sistemaSinRoles || sistemaSinAsignaciones)
             {
                 await ObtenerOCrearRol(
@@ -873,10 +835,7 @@ namespace InventarioUPS.API.Data
             await context.SaveChangesAsync();
         }
 
-        // =====================================================
         // POLÍTICA GLOBAL ÚNICA
-        // =====================================================
-
         private static async Task AsegurarPoliticaPresupuestoAsync(
             InventarioUPSDbContext context)
         {

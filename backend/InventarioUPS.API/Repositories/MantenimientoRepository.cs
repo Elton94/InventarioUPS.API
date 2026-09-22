@@ -14,10 +14,6 @@ namespace InventarioUPS.API.Repositories
             _context = context;
         }
 
-        // =====================================================
-        // OBTENER TODOS
-        // =====================================================
-
         public async Task<List<Mantenimiento>> ObtenerTodosAsync()
         {
             return await _context.Mantenimientos
@@ -35,10 +31,6 @@ namespace InventarioUPS.API.Repositories
                 .ToListAsync();
         }
 
-        // =====================================================
-        // OBTENER POR ID
-        // =====================================================
-
         public async Task<Mantenimiento?> ObtenerPorIdAsync(
             int id)
         {
@@ -52,10 +44,6 @@ namespace InventarioUPS.API.Repositories
                 .FirstOrDefaultAsync(
                     m => m.Id == id);
         }
-
-        // =====================================================
-        // OBTENER POR UPS
-        // =====================================================
 
         public async Task<List<Mantenimiento>> ObtenerPorUPSAsync(
             int upsId)
@@ -76,10 +64,6 @@ namespace InventarioUPS.API.Repositories
                 .ToListAsync();
         }
 
-        // =====================================================
-        // CREAR
-        // =====================================================
-
         public async Task CrearAsync(
             Mantenimiento mantenimiento)
         {
@@ -88,10 +72,6 @@ namespace InventarioUPS.API.Repositories
 
             await _context.SaveChangesAsync();
         }
-
-        // =====================================================
-        // ACTUALIZAR
-        // =====================================================
 
         public async Task ActualizarAsync(
             Mantenimiento mantenimiento)
@@ -133,10 +113,7 @@ namespace InventarioUPS.API.Repositories
             existente.Observaciones =
                 mantenimiento.Observaciones;
 
-            // =================================================
             // CAMBIO DE BATERÍAS
-            // =================================================
-
             existente.IncluyeCambioBaterias =
                 mantenimiento.IncluyeCambioBaterias;
 

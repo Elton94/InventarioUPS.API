@@ -567,8 +567,8 @@ export default function NuevoMantenimientoModal({
                                     label="UPS"
                                     helperText={
                                         mantenimientoEditar
-                                            ? "El UPS no puede cambiarse en un mantenimiento existente."
-                                            : "Los UPS De baja no aparecen disponibles."
+                                            ? "No se puede cambiar el UPS al editar."
+                                            : "Solo UPS que no estén de baja."
                                     }
                                 />
                             )}
@@ -682,7 +682,7 @@ export default function NuevoMantenimientoModal({
                                 {...params}
                                 required
                                 label="Técnico / proveedor"
-                                helperText="Seleccione un usuario técnico o escriba un proveedor externo."
+                                helperText="Seleccione un técnico o escriba un proveedor."
                             />
                         )}
                     />

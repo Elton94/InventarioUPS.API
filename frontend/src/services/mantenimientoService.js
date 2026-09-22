@@ -40,11 +40,12 @@ export const obtenerMantenimientoPorId =
 // =====================================================
 
 export const obtenerMantenimientosPorUPS =
-    async (upsId) => {
+    async (numeroInventarioUPS) => {
 
         const response =
             await api.get(
-                `${API_URL}/ups/${upsId}`
+                `${API_URL}/ups`,
+                { params: { numeroInventarioUPS } }
             );
 
         return response.data;
@@ -60,10 +61,7 @@ export const crearMantenimiento =
 
         const datos = {
 
-            upsId:
-                Number(
-                    mantenimiento.upsId
-                ),
+            numeroInventarioUPS: mantenimiento.numeroInventarioUPS?.trim(),
 
             tipoMantenimientoId:
                 Number(
@@ -164,10 +162,7 @@ export const actualizarMantenimiento =
             id:
                 Number(id),
 
-            upsId:
-                Number(
-                    mantenimiento.upsId
-                ),
+            numeroInventarioUPS: mantenimiento.numeroInventarioUPS?.trim(),
 
             tipoMantenimientoId:
                 Number(

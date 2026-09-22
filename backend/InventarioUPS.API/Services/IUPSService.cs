@@ -1,4 +1,4 @@
-﻿using InventarioUPS.API.Models;
+using InventarioUPS.API.Models;
 
 namespace InventarioUPS.API.Services
 {
@@ -6,12 +6,12 @@ namespace InventarioUPS.API.Services
     {
         Task<List<UPS>> ObtenerTodasAsync();
 
-        Task<UPS?> ObtenerPorIdAsync(int id);
+        Task<UPS?> ObtenerPorInventarioAsync(string numeroInventario);
 
         Task CrearAsync(UPS ups);
 
         Task ActualizarAsync(UPS ups);
 
-        Task CambiarEstadoAsync(int id, string estado);
+        Task CambiarEstadoAsync(string numeroInventario, string estado);
     }
 }

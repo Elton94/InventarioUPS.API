@@ -1,4 +1,4 @@
-﻿using InventarioUPS.API.Models;
+using InventarioUPS.API.Models;
 
 namespace InventarioUPS.API.Repositories
 {
@@ -6,29 +6,21 @@ namespace InventarioUPS.API.Repositories
     {
         Task<List<UPS>> ObtenerTodasAsync();
 
-        Task<UPS?> ObtenerPorIdAsync(int id);
+        Task<UPS?> ObtenerPorInventarioAsync(string numeroInventario);
 
         Task CrearAsync(UPS ups);
 
         Task ActualizarAsync(UPS ups);
 
-        Task CambiarEstadoAsync(int id, string estado);
-
-        Task<bool> ExisteCodigoAsync(string codigo);
-
-        Task<bool> ExisteCodigoExceptoIdAsync(string codigo, int upsId);
+        Task CambiarEstadoAsync(string numeroInventario, string estado);
 
         Task<bool> ExisteNumeroInventarioAsync(string numeroInventario);
 
-        Task<bool> ExisteNumeroInventarioExceptoIdAsync(
-            string numeroInventario,
-            int upsId);
-
         Task<bool> ExisteNumeroSerieAsync(string numeroSerie);
 
-        Task<bool> ExisteNumeroSerieExceptoIdAsync(
+        Task<bool> ExisteNumeroSerieExceptoInventarioAsync(
             string numeroSerie,
-            int upsId);
+            string numeroInventarioUPS);
 
         Task<bool> ExisteAgenciaActivaAsync(int agenciaId);
 

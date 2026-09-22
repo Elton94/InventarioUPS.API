@@ -30,7 +30,6 @@ import {
 } from "../../services/catalogosService";
 
 const inicial = {
-    codigo: "",
     numeroInventario: "",
     marca: "",
     modelo: "",
@@ -123,8 +122,6 @@ export default function NuevoUPSModal({
 
                 if (ups) {
                     setFormulario({
-                        codigo:
-                            ups.codigo || "",
                         numeroInventario:
                             ups.numeroInventario || "",
                         marca:
@@ -188,13 +185,6 @@ export default function NuevoUPSModal({
 
     const guardar = async () => {
         setError("");
-
-        if (!formulario.codigo.trim()) {
-            setError(
-                "El código es obligatorio."
-            );
-            return;
-        }
 
         if (!formulario.numeroInventario.trim()) {
             setError(
@@ -329,7 +319,7 @@ export default function NuevoUPSModal({
 
             if (ups) {
                 await actualizarUPS(
-                    ups.id,
+                    ups.numeroInventario,
                     datos
                 );
             } else {
@@ -423,19 +413,8 @@ export default function NuevoUPSModal({
                 >
                     <TextField
                         required
-                        label="Código"
-                        value={formulario.codigo}
-                        onChange={(e) =>
-                            cambiar(
-                                "codigo",
-                                e.target.value
-                            )
-                        }
-                    />
-
-                    <TextField
-                        required
                         label="Número de inventario"
+                        disabled={Boolean(ups)}
                         value={
                             formulario.numeroInventario
                         }
@@ -445,7 +424,7 @@ export default function NuevoUPSModal({
                                 e.target.value
                             )
                         }
-                        helperText="Identificador patrimonial o número de inventario asignado al equipo."
+                        helperText={ups ? "Clave primaria: no se modifica después de registrar el UPS." : "Número de inventario real y único del equipo."}
                     />
 
                     <TextField

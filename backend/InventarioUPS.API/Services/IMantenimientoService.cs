@@ -1,4 +1,4 @@
-﻿using InventarioUPS.API.DTOs;
+using InventarioUPS.API.DTOs;
 using InventarioUPS.API.Models;
 
 namespace InventarioUPS.API.Services
@@ -9,7 +9,7 @@ namespace InventarioUPS.API.Services
 
         Task<MantenimientoDTO?> ObtenerPorIdAsync(int id);
 
-        Task<List<MantenimientoDTO>> ObtenerPorUPSAsync(int upsId);
+        Task<List<MantenimientoDTO>> ObtenerPorUPSAsync(string numeroInventarioUPS);
 
         Task CrearAsync(Mantenimiento mantenimiento);
 

@@ -1,4 +1,4 @@
-﻿using InventarioUPS.API.Models;
+using InventarioUPS.API.Models;
 
 namespace InventarioUPS.API.Repositories
 {
@@ -8,7 +8,7 @@ namespace InventarioUPS.API.Repositories
 
         Task<Mantenimiento?> ObtenerPorIdAsync(int id);
 
-        Task<List<Mantenimiento>> ObtenerPorUPSAsync(int upsId);
+        Task<List<Mantenimiento>> ObtenerPorUPSAsync(string numeroInventarioUPS);
 
         Task CrearAsync(Mantenimiento mantenimiento);
 

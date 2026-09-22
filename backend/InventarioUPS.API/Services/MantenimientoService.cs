@@ -29,12 +29,12 @@ namespace InventarioUPS.API.Services
             return mantenimiento == null ? null : ConvertirDTO(mantenimiento);
         }
 
-        public async Task<List<MantenimientoDTO>> ObtenerPorUPSAsync(int upsId)
+        public async Task<List<MantenimientoDTO>> ObtenerPorUPSAsync(string numeroInventarioUPS)
         {
-            if (upsId <= 0)
+            if (string.IsNullOrWhiteSpace(numeroInventarioUPS))
                 throw new ArgumentException("El UPS seleccionado no es válido.");
 
-            return (await _repository.ObtenerPorUPSAsync(upsId))
+            return (await _repository.ObtenerPorUPSAsync(numeroInventarioUPS))
                 .Select(ConvertirDTO)
                 .ToList();
         }
@@ -42,14 +42,16 @@ namespace InventarioUPS.API.Services
         public async Task CrearAsync(Mantenimiento mantenimiento)
         {
             ValidarDatosBasicos(mantenimiento);
+            mantenimiento.NumeroInventarioUPS = mantenimiento.NumeroInventarioUPS.Trim();
 
-            var ups = await ObtenerUPSAsync(mantenimiento.UPSId);
+            var ups = await ObtenerUPSAsync(mantenimiento.NumeroInventarioUPS);
+            mantenimiento.NumeroInventarioUPS = ups.NumeroInventario;
             ValidarUPS(ups);
             _ = await ObtenerTipoAsync(mantenimiento.TipoMantenimientoId);
             var estado = await ObtenerEstadoAsync(mantenimiento.EstadoMantenimientoId);
 
             await ValidarMantenimientoActivoDuplicadoAsync(
-                mantenimiento.UPSId,
+                mantenimiento.NumeroInventarioUPS,
                 mantenimiento.Id,
                 estado.Nombre);
 
@@ -70,6 +72,7 @@ namespace InventarioUPS.API.Services
         public async Task ActualizarAsync(Mantenimiento mantenimiento)
         {
             ValidarDatosBasicos(mantenimiento);
+            mantenimiento.NumeroInventarioUPS = mantenimiento.NumeroInventarioUPS.Trim();
 
             var existente = await _context.Mantenimientos
                 .Include(m => m.EstadoMantenimiento)
@@ -78,17 +81,18 @@ namespace InventarioUPS.API.Services
             if (existente == null)
                 throw new InvalidOperationException("El mantenimiento no existe.");
 
-            if (mantenimiento.UPSId != existente.UPSId)
+            if (!string.Equals(mantenimiento.NumeroInventarioUPS, existente.NumeroInventarioUPS, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException(
                     "No se puede cambiar el UPS de un mantenimiento ya registrado.");
 
-            var ups = await ObtenerUPSAsync(existente.UPSId);
+            var ups = await ObtenerUPSAsync(existente.NumeroInventarioUPS);
+            mantenimiento.NumeroInventarioUPS = ups.NumeroInventario;
             ValidarUPS(ups);
             _ = await ObtenerTipoAsync(mantenimiento.TipoMantenimientoId);
             var estado = await ObtenerEstadoAsync(mantenimiento.EstadoMantenimientoId);
 
             await ValidarMantenimientoActivoDuplicadoAsync(
-                mantenimiento.UPSId,
+                mantenimiento.NumeroInventarioUPS,
                 mantenimiento.Id,
                 estado.Nombre);
 
@@ -124,12 +128,12 @@ namespace InventarioUPS.API.Services
             await _context.SaveChangesAsync();
         }
 
-        private async Task<UPS> ObtenerUPSAsync(int id)
+        private async Task<UPS> ObtenerUPSAsync(string numeroInventario)
         {
             var ups = await _context.UPSs
                 .Include(u => u.Agencia)
                 .Include(u => u.EstadoUPS)
-                .FirstOrDefaultAsync(u => u.Id == id);
+                .FirstOrDefaultAsync(u => u.NumeroInventario == numeroInventario.Trim());
 
             if (ups == null)
                 throw new ArgumentException("El UPS seleccionado no existe.");
@@ -254,7 +258,7 @@ namespace InventarioUPS.API.Services
         }
 
         private async Task ValidarMantenimientoActivoDuplicadoAsync(
-            int upsId,
+            string numeroInventarioUPS,
             int mantenimientoId,
             string estado)
         {
@@ -264,7 +268,7 @@ namespace InventarioUPS.API.Services
             var existe = await _context.Mantenimientos
                 .AsNoTracking()
                 .AnyAsync(m =>
-                    m.UPSId == upsId &&
+                    m.NumeroInventarioUPS == numeroInventarioUPS &&
                     m.Id != mantenimientoId &&
                     m.EstadoMantenimiento != null &&
                     m.EstadoMantenimiento.Nombre == "En proceso");
@@ -294,7 +298,7 @@ namespace InventarioUPS.API.Services
 
             var ultimaOtra = await _context.Mantenimientos.AsNoTracking()
                 .Where(m =>
-                    m.UPSId == ups.Id &&
+                    m.NumeroInventarioUPS == ups.NumeroInventario &&
                     m.Id != actual.Id &&
                     m.IncluyeCambioBaterias &&
                     m.EstadoMantenimiento != null &&
@@ -318,7 +322,7 @@ namespace InventarioUPS.API.Services
         {
             if (m == null)
                 throw new ArgumentException("Los datos del mantenimiento son obligatorios.");
-            if (m.UPSId <= 0)
+            if (string.IsNullOrWhiteSpace(m.NumeroInventarioUPS))
                 throw new ArgumentException("Debe seleccionar un UPS.");
             if (m.TipoMantenimientoId <= 0)
                 throw new ArgumentException("Debe seleccionar un tipo de mantenimiento.");
@@ -380,7 +384,7 @@ namespace InventarioUPS.API.Services
         private static MantenimientoDTO ConvertirDTO(Mantenimiento m) => new()
         {
             Id = m.Id,
-            UPSId = m.UPSId,
+            NumeroInventarioUPS = m.NumeroInventarioUPS,
             TipoMantenimientoId = m.TipoMantenimientoId,
             EstadoMantenimientoId = m.EstadoMantenimientoId,
             FechaMantenimiento = m.FechaMantenimiento,
@@ -392,8 +396,6 @@ namespace InventarioUPS.API.Services
             CantidadBateriasReemplazadas = m.CantidadBateriasReemplazadas,
             CostoBaterias = m.CostoBaterias,
             AgenciaIdRegistro = m.AgenciaIdRegistro,
-            CodigoUPS = m.UPS?.Codigo,
-            NumeroInventarioUPS = m.UPS?.NumeroInventario,
             NumeroSerieUPS = m.UPS?.NumeroSerie,
             MarcaUPS = m.UPS?.Marca,
             ModeloUPS = m.UPS?.Modelo,

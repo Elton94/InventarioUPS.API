@@ -1,5 +1,13 @@
 # Inventario UPS
 
+## Actualización: inventario como clave primaria
+
+Antes de iniciar esta versión sobre una base existente, siga
+[las instrucciones de actualización](backend/Database/README.md).
+El script vigente es `backend/Database/20260922_InventarioClavePrimariaUPS.sql`.
+Retira Codigo e Id de UPS y conserva las relaciones de mantenimiento usando
+NumeroInventario. El inventario queda fijo después del registro.
+
 ## Ejecutar en desarrollo
 
 Requisitos: .NET 8, Node.js y la base de datos SQL Server configurada.

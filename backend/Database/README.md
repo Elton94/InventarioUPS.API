@@ -1,97 +1,83 @@
-# Actualización de lógica de negocio
+# Base de datos: inventario como clave primaria de UPS
 
-Esta versión usa la misma tecnología del proyecto: ASP.NET Core, Entity Framework Core, SQL Server, React, Vite y MUI.
+## Actualización vigente
 
-## Importante: no usar migraciones para esta actualización
+La versión actual elimina `Codigo` e `Id` de `dbo.UPSs`. Su clave primaria es
+`NumeroInventario` (texto obligatorio de hasta 100 caracteres). `NumeroSerie`
+continúa siendo único. El código de agencia permanece, pues identifica otra entidad.
 
-Antes de ejecutar por primera vez la API de la rama `desarrollo`, abrir SQL Server Management Studio y ejecutar:
+`dbo.Mantenimientos.NumeroInventarioUPS` reemplaza a `UPSId` y referencia el
+inventario del UPS. El script obtiene esa correspondencia a partir del Id anterior;
+no cambia el Id propio del mantenimiento ni sus fechas, costos o historial.
 
-`backend/Database/20260919_LogicaNegocio.sql`
+### Aplicar sobre una instalación existente
 
-El script agrega únicamente los campos que necesita la lógica nueva para:
+1. Antes de actualizar, sustituya los inventarios temporales `INV-PEND-...` por los
+   números reales y corrija series o inventarios repetidos con la aplicación anterior.
+2. Respalde `InventarioUPSDB` en SSMS y detenga la API. Esta actualización elimina
+   las columnas antiguas de UPS; el respaldo conserva también sus códigos anteriores.
+3. Descargue la rama `desarrollo`.
+4. Abra y ejecute completo `backend/Database/20260922_InventarioClavePrimariaUPS.sql`.
+5. Si muestra conflictos, no aplicó la migración: corrija los datos indicados antes de
+   intentarlo otra vez. No invente identificadores ni elimine equipos para superar el control.
+6. Al terminar mostrará la cantidad de UPS y mantenimientos conservados.
+7. Compile y reinicie la API y el frontend, y recargue la página.
 
-- conservar la agencia histórica de un mantenimiento;
-- recordar el estado anterior del UPS durante un mantenimiento;
-- recalcular correctamente la fecha del último cambio de baterías.
+El script requiere las actualizaciones `20260919_LogicaNegocio.sql` y
+`20260921_NumeroInventarioUPS.sql` que ya usaba la aplicación. No necesita el script
+anterior de unicidad de tres campos. Retira las columnas calculadas auxiliares si
+se llegó a ejecutar esa versión. Si detecta otra relación desconocida hacia UPS,
+se detiene para evitar romperla. Ejecutarlo de nuevo sobre el esquema migrado
+informa que ya está aplicado.
 
-El script está preparado para ejecutarse una vez sobre `InventarioUPSDB`.
+Los scripts y migraciones anteriores describen el esquema histórico: no deben
+volver a ejecutarse después de esta actualización. Este proyecto mantiene las
+actualizaciones locales mediante SQL; no use `Add-Migration` ni `Update-Database`
+para aplicar este cambio. El modelo actual del DbContext es el que utiliza la API.
 
-## Número de inventario de UPS
+### Comportamiento
 
-Después del script anterior, ejecutar también:
+- El inventario conserva letras, ceros iniciales y caracteres especiales.
+- La API limpia espacios exteriores y comprueba inventario y serie antes de guardar.
+- SQL Server usa una clave primaria en inventario y un índice único en serie,
+  sin distinguir mayúsculas/minúsculas. No agrega columnas auxiliares a UPS.
+- El inventario no se modifica al editar un UPS: es su identidad y la referencia
+  de mantenimientos. Corrija los números reales antes de la migración.
+- Se permite editar marca, modelo, serie y demás datos del equipo conservando la clave.
+- No cambia la clasificación Local/Foránea, las reglas de mantenimiento ni los costos
+  y ciclos del presupuesto.
 
-`backend/Database/20260921_NumeroInventarioUPS.sql`
+### Contrato API actualizado
 
-Este script agrega `NumeroInventario` a la tabla `UPSs`, lo deja obligatorio y único, y asigna temporalmente `INV-PEND-{Id}` a los UPS existentes para que luego se reemplace desde la aplicación por el número de inventario real.
+| Operación | Ruta |
+|---|---|
+| Listar UPS | `GET /api/UPS` |
+| Consultar UPS | `GET /api/UPS/detalle?numeroInventario=...` |
+| Crear UPS | `POST /api/UPS` con `numeroInventario`, sin `id` ni `codigo` |
+| Editar UPS | `PUT /api/UPS?numeroInventario=...` |
+| Cambiar estado | `PATCH /api/UPS/estado?numeroInventario=...&estado=...` |
+| Mantenimientos del UPS | `GET /api/Mantenimiento/ups?numeroInventarioUPS=...` |
 
-## Reglas principales agregadas
+En mantenimientos, enviar `numeroInventarioUPS` como texto en lugar de `upsId`.
+Los endpoints de editar/consultar un mantenimiento conservan su Id numérico.
+El frontend utiliza parámetros de Axios para codificar los inventarios en la URL.
 
-- El tipo de agencia se determina por ciudad: San Pedro Sula, La Ceiba y Distrito Central son Locales; las demás son Foráneas.
-- Al desactivar una agencia, sus UPS que no estén De baja pasan a En resguardo.
-- De baja es un estado terminal.
-- Fuera de servicio sí puede recibir mantenimiento.
-- Un mantenimiento En proceso coloca el UPS En mantenimiento.
-- Completado finaliza el trabajo y solamente entonces un cambio de baterías modifica la fecha real del UPS.
-- Cancelado restaura el estado anterior del UPS cuando corresponde.
-- Un mantenimiento histórico no puede cambiarse a otro UPS.
-- La agencia del mantenimiento queda guardada como dato histórico.
-- El reemplazo de baterías siempre usa el banco completo del UPS.
-- Presupuesto usa política global Local/Foránea y costo unitario anual.
-- La proyección calcula ciclos sucesivos, vencidos, programados e información insuficiente.
-- Usuarios, roles y permisos se validan también en backend.
-- Control Total sigue siendo el rol reservado con acceso completo.
-- Los demás roles continúan siendo configurables desde la aplicación.
+### Verificación local
 
-## Orden recomendado para probar
+- Crear un UPS con inventario real único, editarlo y recargar la página.
+- Intentar inventario o serie repetidos: debe impedir guardar.
+- Revisar que los mantenimientos anteriores muestran el inventario correcto.
+- Crear y editar un mantenimiento; comprobar los cambios de estado del mismo UPS.
+- Consultar presupuesto y comprobar el inventario y los trabajos programados.
 
-1. Ejecutar el script SQL.
-2. Iniciar la API.
-3. Iniciar el frontend.
-4. Probar inicio de sesión y permisos.
-5. Probar Agencias.
-6. Probar UPS.
-7. Probar Mantenimiento.
-8. Probar Presupuesto.
-9. Probar Usuarios, Roles y Permisos.
+Pruebas automatizadas desde la raíz:
 
-No pasar esta rama a `master` hasta terminar estas pruebas.
+```powershell
+dotnet test backend/InventarioUPS.Tests
+npm --prefix frontend test
+npm run build
+```
 
-## Código, inventario y serie únicos
-
-Después de los scripts anteriores, ejecutar en SSMS:
-`backend/Database/20260922_IdentificadoresUnicosUPS.sql`.
-
-Cada campo es único por separado en toda la tabla, incluidos UPS De baja o
-En resguardo. Se ignoran mayúsculas/minúsculas y espacios exteriores;
-los espacios interiores y acentos se conservan.
-
-El script primero muestra Id, campo y valor de los duplicados, vacíos o
-valores demasiado largos. Si los encuentra, se detiene y revierte toda la
-operación. Corrija los datos con los identificadores reales, preferiblemente
-editando el UPS desde la aplicación, y vuelva a ejecutarlo. Si un UPS tiene
-varios campos duplicados, corrija todos en la misma edición.
-No elimine equipos ni modifique números al azar para superar la validación.
-
-Al finalizar correctamente, debe mostrar tres índices con EsUnico = 1 y
-Deshabilitado = 0, asociados directamente a Codigo, NumeroInventario y
-NumeroSerie. No agrega columnas. Si ejecutó la versión anterior, este mismo
-script elimina sus columnas calculadas CodigoUnico, NumeroInventarioUnico y
-NumeroSerieUnico, junto con sus índices auxiliares. No cambia Id ni las
-relaciones con mantenimientos. Los índices protegen también escrituras concurrentes.
-Los valores originales conservan su contenido; solo se quitan espacios al
-inicio y al final. SQL Server rechaza nuevas escrituras directas con espacios
-exteriores, y la API los limpia antes de validar. La comparación de las tres
-columnas se configura sin distinguir mayúsculas/minúsculas.
-
-No basta con descargar el código: esta protección requiere ejecutar el script.
-Si ya ejecutó la versión anterior, descargue y vuelva a abrir el archivo actualizado
-en SSMS antes de ejecutarlo. Si hay duplicados, primero debe corregirlos: la
-retirada de las auxiliares y los índices nuevos se aplican en una sola transacción.
-
-Pruebas:
-1. Crear un UPS con código existente y otros identificadores distintos: rechazar.
-2. Repetir para inventario y serie por separado: rechazar.
-3. Repetir con mayúsculas diferentes o espacios exteriores: rechazar.
-4. Editar un UPS usando un identificador de otro equipo: rechazar.
-5. Guardar el mismo UPS conservando sus identificadores únicos: permitir.
-6. Crear con tres identificadores nuevos: permitir.
+Las pruebas relacionales usan SQLite en memoria y validan el contrato de la API,
+las relaciones, la unicidad y la proyección. La prueba de sintaxis SQL usa el parser
+T-SQL de Microsoft; no sustituye ejecutar la migración sobre SQL Server con un respaldo.

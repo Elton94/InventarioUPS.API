@@ -142,11 +142,7 @@ export default function NuevoMantenimientoModal({
                         (upsData || [])
                             .find(
                                 (u) =>
-                                    Number(u.id) ===
-                                    Number(
-                                        mantenimientoEditar
-                                            .upsId
-                                    )
+                                    u.numeroInventario === mantenimientoEditar.numeroInventarioUPS
                             );
 
                     setUpsSeleccionado(
@@ -292,13 +288,7 @@ export default function NuevoMantenimientoModal({
 
         if (
             mantenimientoEditar &&
-            Number(
-                upsSeleccionado.id
-            ) !==
-            Number(
-                mantenimientoEditar
-                    .upsId
-            )
+            upsSeleccionado.numeroInventario !== mantenimientoEditar.numeroInventarioUPS
         ) {
             setError(
                 "No se puede cambiar el UPS de un mantenimiento existente."
@@ -394,10 +384,7 @@ export default function NuevoMantenimientoModal({
             id:
                 mantenimientoEditar?.id ||
                 0,
-            upsId:
-                Number(
-                    upsSeleccionado.id
-                ),
+            numeroInventarioUPS: upsSeleccionado.numeroInventario,
             tipoMantenimientoId:
                 Number(
                     formulario
@@ -534,7 +521,6 @@ export default function NuevoMantenimientoModal({
                             }
                             getOptionLabel={(u) =>
                                 [
-                                    u.codigo,
                                     u.numeroInventario,
                                     u.numeroSerie,
                                     u.marca,
@@ -548,8 +534,7 @@ export default function NuevoMantenimientoModal({
                                 a,
                                 b
                             ) =>
-                                Number(a.id) ===
-                                Number(b.id)
+                                a.numeroInventario === b.numeroInventario
                             }
                             onChange={(
                                 _,

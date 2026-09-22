@@ -111,7 +111,7 @@ export default function UPS() {
         ) {
             if (
                 !window.confirm(
-                    `¿Desea cambiar el UPS "${equipo.codigo}" a "${estado}"?`
+                    `¿Desea cambiar el UPS "${equipo.numeroInventario}" a "${estado}"?`
                 )
             ) {
                 return;
@@ -121,7 +121,7 @@ export default function UPS() {
         try {
             const respuesta =
                 await cambiarEstadoUPS(
-                    equipo.id,
+                    equipo.numeroInventario,
                     estado
                 );
 
@@ -151,7 +151,6 @@ export default function UPS() {
             if (!texto) return true;
 
             return [
-                equipo.codigo,
                 equipo.numeroInventario,
                 equipo.marca,
                 equipo.modelo,
@@ -200,7 +199,7 @@ export default function UPS() {
             <TextField
                 fullWidth
                 sx={{ mb: 3 }}
-                placeholder="Buscar por código, inventario, marca, modelo, serie, agencia o estado..."
+                placeholder="Buscar por inventario, marca, modelo, serie, agencia o estado..."
                 value={busqueda}
                 onChange={(e) =>
                     setBusqueda(

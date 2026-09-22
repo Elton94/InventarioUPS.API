@@ -470,10 +470,8 @@ export default function Home() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <strong>
-                                                        {m.codigoUPS || "—"}
+                                                        {m.numeroInventarioUPS || "—"}
                                                     </strong>
-                                                    <br />
-                                                    Inventario: {m.numeroInventarioUPS || "—"}
                                                 </TableCell>
                                                 <TableCell>
                                                     {
@@ -573,7 +571,7 @@ export default function Home() {
                                             (item) => (
                                                 <TableRow
                                                     key={
-                                                        item.upsId
+                                                        item.numeroInventario
                                                     }
                                                 >
                                                     <TableCell>
@@ -583,10 +581,8 @@ export default function Home() {
                                                     </TableCell>
                                                     <TableCell>
                                                         <strong>
-                                                            {item.codigoUPS || "—"}
+                                                            {item.numeroInventarioUPS || "—"}
                                                         </strong>
-                                                        <br />
-                                                        Inventario: {item.numeroInventario || "—"}
                                                     </TableCell>
                                                     <TableCell>
                                                         {

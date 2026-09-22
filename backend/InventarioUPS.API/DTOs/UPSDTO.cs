@@ -2,8 +2,6 @@ namespace InventarioUPS.API.DTOs
 {
     public class UPSDTO
     {
-        public int Id { get; set; }
-        public string Codigo { get; set; } = string.Empty;
         public string NumeroInventario { get; set; } = string.Empty;
         public string Marca { get; set; } = string.Empty;
         public string Modelo { get; set; } = string.Empty;

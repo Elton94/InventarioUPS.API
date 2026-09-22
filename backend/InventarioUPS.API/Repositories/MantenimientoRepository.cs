@@ -1,4 +1,4 @@
-﻿using InventarioUPS.API.Data;
+using InventarioUPS.API.Data;
 using InventarioUPS.API.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -58,7 +58,7 @@ namespace InventarioUPS.API.Repositories
         // =====================================================
 
         public async Task<List<Mantenimiento>> ObtenerPorUPSAsync(
-            int upsId)
+            string numeroInventarioUPS)
         {
             return await _context.Mantenimientos
                 .AsNoTracking()
@@ -68,7 +68,7 @@ namespace InventarioUPS.API.Repositories
                     .ThenInclude(u => u!.Agencia!.Ciudad)
                 .Include(m => m.Tipo)
                 .Include(m => m.EstadoMantenimiento)
-                .Where(m => m.UPSId == upsId)
+                .Where(m => m.NumeroInventarioUPS == numeroInventarioUPS)
                 .OrderByDescending(
                     m => m.FechaMantenimiento)
                 .ThenByDescending(
@@ -109,8 +109,8 @@ namespace InventarioUPS.API.Repositories
                     "El mantenimiento no existe.");
             }
 
-            existente.UPSId =
-                mantenimiento.UPSId;
+            existente.NumeroInventarioUPS =
+                mantenimiento.NumeroInventarioUPS;
 
             existente.TipoMantenimientoId =
                 mantenimiento.TipoMantenimientoId;

@@ -726,15 +726,13 @@ export default function Presupuesto() {
                                                     (equipo) => (
                                                         <TableRow
                                                             key={
-                                                                equipo.upsId
+                                                                equipo.numeroInventario
                                                             }
                                                         >
                                                             <TableCell>
                                                                 <strong>
-                                                                    {equipo.codigoUPS}
+                                                                    {equipo.numeroInventario}
                                                                 </strong>
-                                                                <br />
-                                                                Inventario: {equipo.numeroInventario || "—"}
                                                                 <br />
                                                                 Serie: {equipo.numeroSerie || "—"}
                                                             </TableCell>
@@ -836,16 +834,14 @@ export default function Presupuesto() {
                                                 (equipo) => (
                                                     <TableRow
                                                         key={
-                                                            equipo.upsId
+                                                            equipo.numeroInventario
                                                         }
                                                     >
                                                         <TableCell>
                                                             {equipo.agencia}
                                                         </TableCell>
                                                         <TableCell>
-                                                            <strong>{equipo.codigoUPS}</strong>
-                                                            <br />
-                                                            Inventario: {equipo.numeroInventario || "—"}
+                                                            <strong>{equipo.numeroInventario}</strong>
                                                         </TableCell>
                                                         <TableCell>
                                                             {equipo.observacion}

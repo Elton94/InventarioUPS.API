@@ -89,7 +89,6 @@ export default function Mantenimientos() {
 
     const campoPorTipo = {
         agencia: "agenciaNombre",
-        codigoUPS: "codigoUPS",
         numeroInventario: "numeroInventarioUPS",
         numeroSerie: "numeroSerieUPS",
         marca: "marcaUPS",
@@ -236,9 +235,6 @@ export default function Mantenimientos() {
                     >
                         <MenuItem value="agencia">
                             Agencia
-                        </MenuItem>
-                        <MenuItem value="codigoUPS">
-                            Código UPS
                         </MenuItem>
                         <MenuItem value="numeroInventario">
                             Número de inventario

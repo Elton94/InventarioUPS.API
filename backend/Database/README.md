@@ -73,10 +73,20 @@ varios campos duplicados, corrija todos en la misma edición.
 No elimine equipos ni modifique números al azar para superar la validación.
 
 Al finalizar correctamente, debe mostrar tres índices con EsUnico = 1 y
-Deshabilitado = 0. Las columnas calculadas auxiliares son exclusivas de SQL
-Server: no sustituyen los campos originales ni cambian Id o las relaciones
-con mantenimientos. Los índices protegen también escrituras concurrentes.
+Deshabilitado = 0, asociados directamente a Codigo, NumeroInventario y
+NumeroSerie. No agrega columnas. Si ejecutó la versión anterior, este mismo
+script elimina sus columnas calculadas CodigoUnico, NumeroInventarioUnico y
+NumeroSerieUnico, junto con sus índices auxiliares. No cambia Id ni las
+relaciones con mantenimientos. Los índices protegen también escrituras concurrentes.
+Los valores originales conservan su contenido; solo se quitan espacios al
+inicio y al final. SQL Server rechaza nuevas escrituras directas con espacios
+exteriores, y la API los limpia antes de validar. La comparación de las tres
+columnas se configura sin distinguir mayúsculas/minúsculas.
+
 No basta con descargar el código: esta protección requiere ejecutar el script.
+Si ya ejecutó la versión anterior, descargue y vuelva a abrir el archivo actualizado
+en SSMS antes de ejecutarlo. Si hay duplicados, primero debe corregirlos: la
+retirada de las auxiliares y los índices nuevos se aplican en una sola transacción.
 
 Pruebas:
 1. Crear un UPS con código existente y otros identificadores distintos: rechazar.

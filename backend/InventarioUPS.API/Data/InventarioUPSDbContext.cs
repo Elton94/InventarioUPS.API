@@ -167,11 +167,13 @@ namespace InventarioUPS.API.Data
 
             modelBuilder.Entity<UPS>()
                 .Property(u => u.Codigo)
+                .UseCollation("Latin1_General_100_CI_AS")
                 .HasMaxLength(50)
                 .IsRequired();
 
             modelBuilder.Entity<UPS>()
                 .Property(u => u.NumeroInventario)
+                .UseCollation("Latin1_General_100_CI_AS")
                 .HasMaxLength(100)
                 .IsRequired();
 
@@ -187,6 +189,7 @@ namespace InventarioUPS.API.Data
 
             modelBuilder.Entity<UPS>()
                 .Property(u => u.NumeroSerie)
+                .UseCollation("Latin1_General_100_CI_AS")
                 .HasMaxLength(100)
                 .IsRequired();
 

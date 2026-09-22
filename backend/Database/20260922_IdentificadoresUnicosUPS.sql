@@ -15,7 +15,9 @@ SET NUMERIC_ROUNDABORT OFF;
     No elimina UPS ni inventa identificadores.
     Si existen datos inválidos o repetidos, muestra sus Id y revierte
     toda la operación. Corrija los valores reales y vuelva a ejecutar.
-    Las columnas calculadas son auxiliares de SQL Server, no campos de la API.
+    Usa únicamente las columnas originales. Retira las columnas calculadas
+    de la versión anterior si llegaron a crearse.
+    Normaliza solo espacios exteriores; no inventa códigos ni números.
 */
 BEGIN TRY
     BEGIN TRANSACTION;
@@ -57,97 +59,168 @@ BEGIN TRY
         THROW 51000, N'Corrija los identificadores indicados con sus valores reales y vuelva a ejecutar. No se modificó ningún UPS.', 1;
     END;
 
-    IF COL_LENGTH('dbo.UPSs', 'CodigoUnico') IS NULL
-        EXEC(N'ALTER TABLE dbo.UPSs ADD CodigoUnico AS
-            (CONVERT(nvarchar(50), LTRIM(RTRIM(Codigo))) COLLATE Latin1_General_100_CI_AS) PERSISTED;');
-
-    IF NOT EXISTS (
-        SELECT 1 FROM sys.check_constraints
-        WHERE parent_object_id = OBJECT_ID('dbo.UPSs')
-          AND name = 'CK_UPSs_Codigo_Valido'
+    -- Retirar únicamente la columna calculada auxiliar de la versión anterior.
+    IF EXISTS (
+        SELECT 1 FROM sys.columns
+        WHERE object_id = OBJECT_ID('dbo.UPSs')
+          AND name = 'CodigoUnico' AND is_computed = 0
     )
-        EXEC(N'ALTER TABLE dbo.UPSs WITH CHECK ADD CONSTRAINT CK_UPSs_Codigo_Valido
-            CHECK (Codigo IS NOT NULL AND LEN(LTRIM(RTRIM(Codigo))) > 0
-                AND DATALENGTH(LTRIM(RTRIM(Codigo))) / 2 <= 50);');
+        THROW 51001, N'CodigoUnico no es una columna calculada; revise su contenido antes de eliminarla.', 1;
 
-    -- Rehabilita y verifica también una restricción existente.
-    ALTER TABLE dbo.UPSs WITH CHECK CHECK CONSTRAINT CK_UPSs_Codigo_Valido;
-
-    -- Recrear en la misma transacción garantiza que no quede un índice
-    -- previo no único, filtrado o deshabilitado con este nombre.
     IF EXISTS (
         SELECT 1 FROM sys.indexes
         WHERE object_id = OBJECT_ID('dbo.UPSs')
           AND name = 'UX_UPSs_CodigoUnico'
     )
-        DROP INDEX UX_UPSs_CodigoUnico ON dbo.UPSs;
+        EXEC(N'DROP INDEX UX_UPSs_CodigoUnico ON dbo.UPSs;');
 
-    EXEC(N'CREATE UNIQUE INDEX UX_UPSs_CodigoUnico ON dbo.UPSs (CodigoUnico);');
-
-    IF COL_LENGTH('dbo.UPSs', 'NumeroInventarioUnico') IS NULL
-        EXEC(N'ALTER TABLE dbo.UPSs ADD NumeroInventarioUnico AS
-            (CONVERT(nvarchar(100), LTRIM(RTRIM(NumeroInventario))) COLLATE Latin1_General_100_CI_AS) PERSISTED;');
-
-    IF NOT EXISTS (
-        SELECT 1 FROM sys.check_constraints
-        WHERE parent_object_id = OBJECT_ID('dbo.UPSs')
-          AND name = 'CK_UPSs_NumeroInventario_Valido'
+    IF EXISTS (
+        SELECT 1 FROM sys.columns
+        WHERE object_id = OBJECT_ID('dbo.UPSs')
+          AND name = 'CodigoUnico' AND is_computed = 1
     )
-        EXEC(N'ALTER TABLE dbo.UPSs WITH CHECK ADD CONSTRAINT CK_UPSs_NumeroInventario_Valido
-            CHECK (NumeroInventario IS NOT NULL AND LEN(LTRIM(RTRIM(NumeroInventario))) > 0
-                AND DATALENGTH(LTRIM(RTRIM(NumeroInventario))) / 2 <= 100);');
+        EXEC(N'ALTER TABLE dbo.UPSs DROP COLUMN CodigoUnico;');
 
-    -- Rehabilita y verifica también una restricción existente.
-    ALTER TABLE dbo.UPSs WITH CHECK CHECK CONSTRAINT CK_UPSs_NumeroInventario_Valido;
+    -- Retirar únicamente la columna calculada auxiliar de la versión anterior.
+    IF EXISTS (
+        SELECT 1 FROM sys.columns
+        WHERE object_id = OBJECT_ID('dbo.UPSs')
+          AND name = 'NumeroInventarioUnico' AND is_computed = 0
+    )
+        THROW 51001, N'NumeroInventarioUnico no es una columna calculada; revise su contenido antes de eliminarla.', 1;
 
-    -- Recrear en la misma transacción garantiza que no quede un índice
-    -- previo no único, filtrado o deshabilitado con este nombre.
     IF EXISTS (
         SELECT 1 FROM sys.indexes
         WHERE object_id = OBJECT_ID('dbo.UPSs')
           AND name = 'UX_UPSs_NumeroInventarioUnico'
     )
-        DROP INDEX UX_UPSs_NumeroInventarioUnico ON dbo.UPSs;
+        EXEC(N'DROP INDEX UX_UPSs_NumeroInventarioUnico ON dbo.UPSs;');
 
-    EXEC(N'CREATE UNIQUE INDEX UX_UPSs_NumeroInventarioUnico ON dbo.UPSs (NumeroInventarioUnico);');
-
-    IF COL_LENGTH('dbo.UPSs', 'NumeroSerieUnico') IS NULL
-        EXEC(N'ALTER TABLE dbo.UPSs ADD NumeroSerieUnico AS
-            (CONVERT(nvarchar(100), LTRIM(RTRIM(NumeroSerie))) COLLATE Latin1_General_100_CI_AS) PERSISTED;');
-
-    IF NOT EXISTS (
-        SELECT 1 FROM sys.check_constraints
-        WHERE parent_object_id = OBJECT_ID('dbo.UPSs')
-          AND name = 'CK_UPSs_NumeroSerie_Valido'
+    IF EXISTS (
+        SELECT 1 FROM sys.columns
+        WHERE object_id = OBJECT_ID('dbo.UPSs')
+          AND name = 'NumeroInventarioUnico' AND is_computed = 1
     )
-        EXEC(N'ALTER TABLE dbo.UPSs WITH CHECK ADD CONSTRAINT CK_UPSs_NumeroSerie_Valido
-            CHECK (NumeroSerie IS NOT NULL AND LEN(LTRIM(RTRIM(NumeroSerie))) > 0
-                AND DATALENGTH(LTRIM(RTRIM(NumeroSerie))) / 2 <= 100);');
+        EXEC(N'ALTER TABLE dbo.UPSs DROP COLUMN NumeroInventarioUnico;');
 
-    -- Rehabilita y verifica también una restricción existente.
-    ALTER TABLE dbo.UPSs WITH CHECK CHECK CONSTRAINT CK_UPSs_NumeroSerie_Valido;
+    -- Retirar únicamente la columna calculada auxiliar de la versión anterior.
+    IF EXISTS (
+        SELECT 1 FROM sys.columns
+        WHERE object_id = OBJECT_ID('dbo.UPSs')
+          AND name = 'NumeroSerieUnico' AND is_computed = 0
+    )
+        THROW 51001, N'NumeroSerieUnico no es una columna calculada; revise su contenido antes de eliminarla.', 1;
 
-    -- Recrear en la misma transacción garantiza que no quede un índice
-    -- previo no único, filtrado o deshabilitado con este nombre.
     IF EXISTS (
         SELECT 1 FROM sys.indexes
         WHERE object_id = OBJECT_ID('dbo.UPSs')
           AND name = 'UX_UPSs_NumeroSerieUnico'
     )
-        DROP INDEX UX_UPSs_NumeroSerieUnico ON dbo.UPSs;
+        EXEC(N'DROP INDEX UX_UPSs_NumeroSerieUnico ON dbo.UPSs;');
 
-    EXEC(N'CREATE UNIQUE INDEX UX_UPSs_NumeroSerieUnico ON dbo.UPSs (NumeroSerieUnico);');
+    IF EXISTS (
+        SELECT 1 FROM sys.columns
+        WHERE object_id = OBJECT_ID('dbo.UPSs')
+          AND name = 'NumeroSerieUnico' AND is_computed = 1
+    )
+        EXEC(N'ALTER TABLE dbo.UPSs DROP COLUMN NumeroSerieUnico;');
+
+    -- Unicidad directamente sobre Codigo.
+    IF EXISTS (
+        SELECT 1 FROM sys.indexes
+        WHERE object_id = OBJECT_ID('dbo.UPSs')
+          AND name = 'IX_UPSs_Codigo'
+    )
+        EXEC(N'DROP INDEX IX_UPSs_Codigo ON dbo.UPSs;');
+
+    IF EXISTS (
+        SELECT 1 FROM sys.check_constraints
+        WHERE parent_object_id = OBJECT_ID('dbo.UPSs')
+          AND name = 'CK_UPSs_Codigo_Valido'
+    )
+        EXEC(N'ALTER TABLE dbo.UPSs DROP CONSTRAINT CK_UPSs_Codigo_Valido;');
+
+    UPDATE dbo.UPSs SET Codigo = LTRIM(RTRIM(Codigo))
+    WHERE DATALENGTH(Codigo) <> DATALENGTH(LTRIM(RTRIM(Codigo)));
+
+    EXEC(N'ALTER TABLE dbo.UPSs ALTER COLUMN Codigo
+        nvarchar(50) COLLATE Latin1_General_100_CI_AS NOT NULL;');
+
+    EXEC(N'ALTER TABLE dbo.UPSs WITH CHECK ADD CONSTRAINT CK_UPSs_Codigo_Valido
+        CHECK (LEN(Codigo) > 0
+            AND DATALENGTH(Codigo) = DATALENGTH(LTRIM(RTRIM(Codigo))));');
+
+    EXEC(N'CREATE UNIQUE INDEX IX_UPSs_Codigo ON dbo.UPSs (Codigo);');
+
+    -- Unicidad directamente sobre NumeroInventario.
+    IF EXISTS (
+        SELECT 1 FROM sys.indexes
+        WHERE object_id = OBJECT_ID('dbo.UPSs')
+          AND name = 'IX_UPSs_NumeroInventario'
+    )
+        EXEC(N'DROP INDEX IX_UPSs_NumeroInventario ON dbo.UPSs;');
+
+    IF EXISTS (
+        SELECT 1 FROM sys.check_constraints
+        WHERE parent_object_id = OBJECT_ID('dbo.UPSs')
+          AND name = 'CK_UPSs_NumeroInventario_Valido'
+    )
+        EXEC(N'ALTER TABLE dbo.UPSs DROP CONSTRAINT CK_UPSs_NumeroInventario_Valido;');
+
+    UPDATE dbo.UPSs SET NumeroInventario = LTRIM(RTRIM(NumeroInventario))
+    WHERE DATALENGTH(NumeroInventario) <> DATALENGTH(LTRIM(RTRIM(NumeroInventario)));
+
+    EXEC(N'ALTER TABLE dbo.UPSs ALTER COLUMN NumeroInventario
+        nvarchar(100) COLLATE Latin1_General_100_CI_AS NOT NULL;');
+
+    EXEC(N'ALTER TABLE dbo.UPSs WITH CHECK ADD CONSTRAINT CK_UPSs_NumeroInventario_Valido
+        CHECK (LEN(NumeroInventario) > 0
+            AND DATALENGTH(NumeroInventario) = DATALENGTH(LTRIM(RTRIM(NumeroInventario))));');
+
+    EXEC(N'CREATE UNIQUE INDEX IX_UPSs_NumeroInventario ON dbo.UPSs (NumeroInventario);');
+
+    -- Unicidad directamente sobre NumeroSerie.
+    IF EXISTS (
+        SELECT 1 FROM sys.indexes
+        WHERE object_id = OBJECT_ID('dbo.UPSs')
+          AND name = 'IX_UPSs_NumeroSerie'
+    )
+        EXEC(N'DROP INDEX IX_UPSs_NumeroSerie ON dbo.UPSs;');
+
+    IF EXISTS (
+        SELECT 1 FROM sys.check_constraints
+        WHERE parent_object_id = OBJECT_ID('dbo.UPSs')
+          AND name = 'CK_UPSs_NumeroSerie_Valido'
+    )
+        EXEC(N'ALTER TABLE dbo.UPSs DROP CONSTRAINT CK_UPSs_NumeroSerie_Valido;');
+
+    UPDATE dbo.UPSs SET NumeroSerie = LTRIM(RTRIM(NumeroSerie))
+    WHERE DATALENGTH(NumeroSerie) <> DATALENGTH(LTRIM(RTRIM(NumeroSerie)));
+
+    EXEC(N'ALTER TABLE dbo.UPSs ALTER COLUMN NumeroSerie
+        nvarchar(100) COLLATE Latin1_General_100_CI_AS NOT NULL;');
+
+    EXEC(N'ALTER TABLE dbo.UPSs WITH CHECK ADD CONSTRAINT CK_UPSs_NumeroSerie_Valido
+        CHECK (LEN(NumeroSerie) > 0
+            AND DATALENGTH(NumeroSerie) = DATALENGTH(LTRIM(RTRIM(NumeroSerie))));');
+
+    EXEC(N'CREATE UNIQUE INDEX IX_UPSs_NumeroSerie ON dbo.UPSs (NumeroSerie);');
 
     DROP TABLE #IdentificadoresUPS;
     COMMIT TRANSACTION;
 
-    SELECT name AS Indice, is_unique AS EsUnico, is_disabled AS Deshabilitado
-    FROM sys.indexes
-    WHERE object_id = OBJECT_ID('dbo.UPSs')
-      AND name IN (
-          'UX_UPSs_CodigoUnico',
-          'UX_UPSs_NumeroInventarioUnico',
-          'UX_UPSs_NumeroSerieUnico'
+    SELECT i.name AS Indice, c.name AS Columna,
+           i.is_unique AS EsUnico, i.is_disabled AS Deshabilitado
+    FROM sys.indexes AS i
+    INNER JOIN sys.index_columns AS ic
+        ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+    INNER JOIN sys.columns AS c
+        ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+    WHERE i.object_id = OBJECT_ID('dbo.UPSs')
+      AND i.name IN (
+          'IX_UPSs_Codigo',
+          'IX_UPSs_NumeroInventario',
+          'IX_UPSs_NumeroSerie'
       );
 END TRY
 BEGIN CATCH

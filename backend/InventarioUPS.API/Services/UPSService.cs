@@ -178,6 +178,8 @@ namespace InventarioUPS.API.Services
 
             if (string.IsNullOrWhiteSpace(ups.Codigo))
                 throw new ArgumentException("El código del UPS es obligatorio.");
+            if (ups.Codigo.Length > 50)
+                throw new ArgumentException("El código no puede superar 50 caracteres.");
             if (string.IsNullOrWhiteSpace(ups.NumeroInventario))
                 throw new ArgumentException("El número de inventario del UPS es obligatorio.");
             if (ups.NumeroInventario.Length > 100)
@@ -188,6 +190,8 @@ namespace InventarioUPS.API.Services
                 throw new ArgumentException("El modelo del UPS es obligatorio.");
             if (string.IsNullOrWhiteSpace(ups.NumeroSerie))
                 throw new ArgumentException("El número de serie es obligatorio.");
+            if (ups.NumeroSerie.Length > 100)
+                throw new ArgumentException("El número de serie no puede superar 100 caracteres.");
             if (ups.CapacidadVA <= 0)
                 throw new ArgumentException("La capacidad VA debe ser mayor que cero.");
             if (ups.AgenciaId <= 0)

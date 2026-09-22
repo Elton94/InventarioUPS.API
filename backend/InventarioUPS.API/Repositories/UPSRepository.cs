@@ -1,11 +1,13 @@
 using InventarioUPS.API.Data;
 using InventarioUPS.API.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 namespace InventarioUPS.API.Repositories
 {
     public class UPSRepository : IUPSRepository
     {
+        private const string ComparacionIdentificadores = "Latin1_General_100_CI_AS";
         private readonly InventarioUPSDbContext _context;
 
         public UPSRepository(InventarioUPSDbContext context)
@@ -43,7 +45,7 @@ namespace InventarioUPS.API.Repositories
         public async Task CrearAsync(UPS ups)
         {
             await _context.UPSs.AddAsync(ups);
-            await _context.SaveChangesAsync();
+            await GuardarCambiosAsync();
         }
 
         public async Task ActualizarAsync(UPS ups)
@@ -67,7 +69,7 @@ namespace InventarioUPS.API.Repositories
             existente.FechaUltimoCambioBateriasBase = ups.FechaUltimoCambioBateriasBase;
             existente.FechaModificacion = DateTime.Now;
 
-            await _context.SaveChangesAsync();
+            await GuardarCambiosAsync();
         }
 
         public async Task CambiarEstadoAsync(int id, string estado)
@@ -85,47 +87,69 @@ namespace InventarioUPS.API.Repositories
 
             ups.EstadoUPSId = estadoUPS.Id;
             ups.FechaModificacion = DateTime.Now;
-            await _context.SaveChangesAsync();
+            await GuardarCambiosAsync();
+        }
+
+        private async Task GuardarCambiosAsync()
+        {
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (
+                ex.InnerException is SqlException { Number: 2601 or 2627 })
+            {
+                throw new InvalidOperationException(
+                    "No se pudo guardar: el código, el número de inventario o el número de serie ya pertenece a otro UPS.",
+                    ex);
+            }
         }
 
         public Task<bool> ExisteCodigoAsync(string codigo)
         {
-            var valor = codigo.Trim().ToUpper();
-            return _context.UPSs.AnyAsync(u => u.Codigo.ToUpper() == valor);
+            var valor = codigo.Trim();
+            return _context.UPSs.AnyAsync(u =>
+                EF.Functions.Collate(u.Codigo.Trim(), ComparacionIdentificadores) == valor);
         }
 
         public Task<bool> ExisteCodigoExceptoIdAsync(string codigo, int upsId)
         {
-            var valor = codigo.Trim().ToUpper();
-            return _context.UPSs.AnyAsync(u => u.Id != upsId && u.Codigo.ToUpper() == valor);
+            var valor = codigo.Trim();
+            return _context.UPSs.AnyAsync(u =>
+                u.Id != upsId &&
+                EF.Functions.Collate(u.Codigo.Trim(), ComparacionIdentificadores) == valor);
         }
 
         public Task<bool> ExisteNumeroInventarioAsync(string numeroInventario)
         {
-            var valor = numeroInventario.Trim().ToUpper();
-            return _context.UPSs.AnyAsync(u => u.NumeroInventario.ToUpper() == valor);
+            var valor = numeroInventario.Trim();
+            return _context.UPSs.AnyAsync(u =>
+                EF.Functions.Collate(u.NumeroInventario.Trim(), ComparacionIdentificadores) == valor);
         }
 
         public Task<bool> ExisteNumeroInventarioExceptoIdAsync(
             string numeroInventario,
             int upsId)
         {
-            var valor = numeroInventario.Trim().ToUpper();
+            var valor = numeroInventario.Trim();
             return _context.UPSs.AnyAsync(u =>
                 u.Id != upsId &&
-                u.NumeroInventario.ToUpper() == valor);
+                EF.Functions.Collate(u.NumeroInventario.Trim(), ComparacionIdentificadores) == valor);
         }
 
         public Task<bool> ExisteNumeroSerieAsync(string numeroSerie)
         {
-            var valor = numeroSerie.Trim().ToUpper();
-            return _context.UPSs.AnyAsync(u => u.NumeroSerie.ToUpper() == valor);
+            var valor = numeroSerie.Trim();
+            return _context.UPSs.AnyAsync(u =>
+                EF.Functions.Collate(u.NumeroSerie.Trim(), ComparacionIdentificadores) == valor);
         }
 
         public Task<bool> ExisteNumeroSerieExceptoIdAsync(string numeroSerie, int upsId)
         {
-            var valor = numeroSerie.Trim().ToUpper();
-            return _context.UPSs.AnyAsync(u => u.Id != upsId && u.NumeroSerie.ToUpper() == valor);
+            var valor = numeroSerie.Trim();
+            return _context.UPSs.AnyAsync(u =>
+                u.Id != upsId &&
+                EF.Functions.Collate(u.NumeroSerie.Trim(), ComparacionIdentificadores) == valor);
         }
 
         public Task<bool> ExisteAgenciaActivaAsync(int agenciaId) =>

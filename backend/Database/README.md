@@ -55,3 +55,33 @@ Este script agrega `NumeroInventario` a la tabla `UPSs`, lo deja obligatorio y �
 9. Probar Usuarios, Roles y Permisos.
 
 No pasar esta rama a `master` hasta terminar estas pruebas.
+
+## Código, inventario y serie únicos
+
+Después de los scripts anteriores, ejecutar en SSMS:
+`backend/Database/20260922_IdentificadoresUnicosUPS.sql`.
+
+Cada campo es único por separado en toda la tabla, incluidos UPS De baja o
+En resguardo. Se ignoran mayúsculas/minúsculas y espacios exteriores;
+los espacios interiores y acentos se conservan.
+
+El script primero muestra Id, campo y valor de los duplicados, vacíos o
+valores demasiado largos. Si los encuentra, se detiene y revierte toda la
+operación. Corrija los datos con los identificadores reales, preferiblemente
+editando el UPS desde la aplicación, y vuelva a ejecutarlo. Si un UPS tiene
+varios campos duplicados, corrija todos en la misma edición.
+No elimine equipos ni modifique números al azar para superar la validación.
+
+Al finalizar correctamente, debe mostrar tres índices con EsUnico = 1 y
+Deshabilitado = 0. Las columnas calculadas auxiliares son exclusivas de SQL
+Server: no sustituyen los campos originales ni cambian Id o las relaciones
+con mantenimientos. Los índices protegen también escrituras concurrentes.
+No basta con descargar el código: esta protección requiere ejecutar el script.
+
+Pruebas:
+1. Crear un UPS con código existente y otros identificadores distintos: rechazar.
+2. Repetir para inventario y serie por separado: rechazar.
+3. Repetir con mayúsculas diferentes o espacios exteriores: rechazar.
+4. Editar un UPS usando un identificador de otro equipo: rechazar.
+5. Guardar el mismo UPS conservando sus identificadores únicos: permitir.
+6. Crear con tres identificadores nuevos: permitir.

@@ -102,3 +102,32 @@ npm run build
 Las pruebas usan SQLite en memoria para los flujos relacionales y el parser T-SQL
 de Microsoft para la sintaxis del script. No sustituyen ejecutar la migración en
 SQL Server sobre una copia respaldada de la base local.
+
+## Cambios de baterías (20260923)
+
+Después de aplicar `20260922_MantenimientosSinCostos.sql`:
+
+1. Detenga la API y respalde `InventarioUPSDB`.
+2. Descargue `desarrollo` y ejecute `backend/Database/20260923_CambiosBaterias.sql` en SSMS.
+3. Confirme el mensaje de éxito. Recompile y reinicie la API y el frontend.
+
+El script retira `TipoMantenimientoId` y su catálogo. Conserva los registros y
+relaciones con los UPS. Es transaccional y puede repetirse; dependencias adicionales
+que impidan eliminar el tipo provocan una reversión, no una eliminación en cascada.
+
+La pantalla y la API operativa muestran únicamente cambios de baterías. Los registros
+antiguos sin reemplazo permanecen en la base, excluidos del módulo y las proyecciones.
+`IncluyeCambioBaterias` se conserva internamente para distinguirlos, pero ya no forma
+parte del formulario ni del contrato de escritura. El servidor asigna siempre `true`
+y determina la cantidad según el banco completo del UPS. No se convierten pruebas
+antiguas en reemplazos ficticios.
+
+Solo un cambio Completado actualiza la última fecha de reemplazo. Programado,
+En proceso y Cancelado no la adelantan. Si se cancela o reprograma uno completado,
+se recupera la fecha anterior usando los demás cambios completados y la fecha base
+del UPS. La proyección utiliza esa fecha y la política vigente. Editar observaciones
+de un cambio completado conserva la cantidad registrada, aunque el UPS haya cambiado.
+
+Los códigos de permisos y las rutas `/api/Mantenimiento` y `/mantenimientos` conservan
+su identidad para mantener los accesos; sus nombres visibles son Cambios de baterías.
+No ejecute migraciones EF ni scripts históricos para recrear las columnas retiradas.

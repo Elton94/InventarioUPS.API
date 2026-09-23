@@ -17,12 +17,12 @@ namespace InventarioUPS.API.Repositories
         public async Task<List<Mantenimiento>> ObtenerTodosAsync()
         {
             return await _context.Mantenimientos
+                .Where(m => m.IncluyeCambioBaterias)
                 .AsNoTracking()
                 .Include(m => m.UPS)
                     .ThenInclude(u => u!.Agencia)
                 .Include(m => m.UPS)
                     .ThenInclude(u => u!.Agencia!.Ciudad)
-                .Include(m => m.Tipo)
                 .Include(m => m.EstadoMantenimiento)
                 .OrderByDescending(
                     m => m.FechaMantenimiento)
@@ -35,11 +35,11 @@ namespace InventarioUPS.API.Repositories
             int id)
         {
             return await _context.Mantenimientos
+                .Where(m => m.IncluyeCambioBaterias)
                 .Include(m => m.UPS)
                     .ThenInclude(u => u!.Agencia)
                 .Include(m => m.UPS)
                     .ThenInclude(u => u!.Agencia!.Ciudad)
-                .Include(m => m.Tipo)
                 .Include(m => m.EstadoMantenimiento)
                 .FirstOrDefaultAsync(
                     m => m.Id == id);
@@ -49,12 +49,12 @@ namespace InventarioUPS.API.Repositories
             int upsId)
         {
             return await _context.Mantenimientos
+                .Where(m => m.IncluyeCambioBaterias)
                 .AsNoTracking()
                 .Include(m => m.UPS)
                     .ThenInclude(u => u!.Agencia)
                 .Include(m => m.UPS)
                     .ThenInclude(u => u!.Agencia!.Ciudad)
-                .Include(m => m.Tipo)
                 .Include(m => m.EstadoMantenimiento)
                 .Where(m => m.UPSId == upsId)
                 .OrderByDescending(
@@ -86,14 +86,11 @@ namespace InventarioUPS.API.Repositories
             if (existente == null)
             {
                 throw new InvalidOperationException(
-                    "El mantenimiento no existe.");
+                    "El cambio de baterías no existe.");
             }
 
             existente.UPSId =
                 mantenimiento.UPSId;
-
-            existente.TipoMantenimientoId =
-                mantenimiento.TipoMantenimientoId;
 
             existente.EstadoMantenimientoId =
                 mantenimiento.EstadoMantenimientoId;

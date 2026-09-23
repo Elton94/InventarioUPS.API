@@ -701,7 +701,7 @@ export default function Presupuesto() {
                                                         Situación
                                                     </TableCell>
                                                     <TableCell>
-                                                        Mantenimiento programado
+                                                        Cambio de baterías programado
                                                     </TableCell>
                                                     <TableCell
                                                         align="right"

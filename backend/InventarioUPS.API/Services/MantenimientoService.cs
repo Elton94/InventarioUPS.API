@@ -23,7 +23,7 @@ namespace InventarioUPS.API.Services
         public async Task<MantenimientoDTO?> ObtenerPorIdAsync(int id)
         {
             if (id <= 0)
-                throw new ArgumentException("El identificador del mantenimiento no es válido.");
+                throw new ArgumentException("El identificador del cambio de baterías no es válido.");
 
             var mantenimiento = await _repository.ObtenerPorIdAsync(id);
             return mantenimiento == null ? null : ConvertirDTO(mantenimiento);
@@ -45,7 +45,6 @@ namespace InventarioUPS.API.Services
 
             var ups = await ObtenerUPSAsync(mantenimiento.UPSId);
             ValidarUPS(ups);
-            _ = await ObtenerTipoAsync(mantenimiento.TipoMantenimientoId);
             var estado = await ObtenerEstadoAsync(mantenimiento.EstadoMantenimientoId);
 
             await ValidarMantenimientoActivoDuplicadoAsync(
@@ -73,18 +72,17 @@ namespace InventarioUPS.API.Services
 
             var existente = await _context.Mantenimientos
                 .Include(m => m.EstadoMantenimiento)
-                .FirstOrDefaultAsync(m => m.Id == mantenimiento.Id);
+                .FirstOrDefaultAsync(m => m.Id == mantenimiento.Id && m.IncluyeCambioBaterias);
 
             if (existente == null)
-                throw new InvalidOperationException("El mantenimiento no existe.");
+                throw new InvalidOperationException("El cambio de baterías no existe.");
 
             if (mantenimiento.UPSId != existente.UPSId)
                 throw new InvalidOperationException(
-                    "No se puede cambiar el UPS de un mantenimiento ya registrado.");
+                    "No se puede cambiar el UPS de un cambio de baterías ya registrado.");
 
             var ups = await ObtenerUPSAsync(existente.UPSId);
             ValidarUPS(ups);
-            _ = await ObtenerTipoAsync(mantenimiento.TipoMantenimientoId);
             var estado = await ObtenerEstadoAsync(mantenimiento.EstadoMantenimientoId);
 
             await ValidarMantenimientoActivoDuplicadoAsync(
@@ -94,6 +92,9 @@ namespace InventarioUPS.API.Services
 
             ValidarFecha(mantenimiento.FechaMantenimiento, estado.Nombre);
             PrepararBaterias(mantenimiento, ups);
+            if (EsEstado(existente.EstadoMantenimiento?.Nombre, "Completado") &&
+                EsEstado(estado.Nombre, "Completado"))
+                mantenimiento.CantidadBateriasReemplazadas = existente.CantidadBateriasReemplazadas;
             LimpiarTextos(mantenimiento);
 
             mantenimiento.AgenciaIdRegistro = existente.AgenciaIdRegistro ?? ups.AgenciaId;
@@ -106,7 +107,6 @@ namespace InventarioUPS.API.Services
             await SincronizarEstadoUPSAsync(ups, mantenimiento, estado.Nombre);
             await RecalcularFechaBateriasAsync(ups, mantenimiento, estado.Nombre);
 
-            existente.TipoMantenimientoId = mantenimiento.TipoMantenimientoId;
             existente.EstadoMantenimientoId = mantenimiento.EstadoMantenimientoId;
             existente.FechaMantenimiento = mantenimiento.FechaMantenimiento;
             existente.Descripcion = mantenimiento.Descripcion;
@@ -139,26 +139,16 @@ namespace InventarioUPS.API.Services
         {
             if (EsEstado(ups.EstadoUPS?.Nombre, "De baja"))
                 throw new InvalidOperationException(
-                    "No se pueden registrar mantenimientos para un UPS dado De baja.");
-        }
-
-        private async Task<TipoMantenimiento> ObtenerTipoAsync(int id)
-        {
-            var tipo = await _context.TiposMantenimiento.FirstOrDefaultAsync(t => t.Id == id);
-            if (tipo == null)
-                throw new ArgumentException("El tipo de mantenimiento seleccionado no existe.");
-            if (!tipo.Activo)
-                throw new InvalidOperationException("El tipo de mantenimiento seleccionado está inactivo.");
-            return tipo;
+                    "No se pueden registrar cambios de baterías para un UPS dado De baja.");
         }
 
         private async Task<EstadoMantenimiento> ObtenerEstadoAsync(int id)
         {
             var estado = await _context.EstadosMantenimiento.FirstOrDefaultAsync(e => e.Id == id);
             if (estado == null)
-                throw new ArgumentException("El estado de mantenimiento seleccionado no existe.");
+                throw new ArgumentException("El estado de cambio de baterías seleccionado no existe.");
             if (!estado.Activo)
-                throw new InvalidOperationException("El estado de mantenimiento seleccionado está inactivo.");
+                throw new InvalidOperationException("El estado de cambio de baterías seleccionado está inactivo.");
             return estado;
         }
 
@@ -263,6 +253,7 @@ namespace InventarioUPS.API.Services
                 .AsNoTracking()
                 .AnyAsync(m =>
                     m.UPSId == upsId &&
+                    m.IncluyeCambioBaterias &&
                     m.Id != mantenimientoId &&
                     m.EstadoMantenimiento != null &&
                     m.EstadoMantenimiento.Nombre == "En proceso");
@@ -270,7 +261,7 @@ namespace InventarioUPS.API.Services
             if (existe)
             {
                 throw new InvalidOperationException(
-                    "El UPS ya tiene un mantenimiento En proceso. Finalice o cancele ese mantenimiento antes de iniciar otro.");
+                    "El UPS ya tiene un cambio de baterías En proceso. Finalice o cancele ese cambio de baterías antes de iniciar otro.");
             }
         }
 
@@ -288,8 +279,6 @@ namespace InventarioUPS.API.Services
             Mantenimiento actual,
             string estadoActual)
         {
-            ups.FechaUltimoCambioBateriasBase ??= ups.FechaUltimoCambioBaterias;
-
             var ultimaOtra = await _context.Mantenimientos.AsNoTracking()
                 .Where(m =>
                     m.UPSId == ups.Id &&
@@ -315,17 +304,15 @@ namespace InventarioUPS.API.Services
         private static void ValidarDatosBasicos(Mantenimiento m)
         {
             if (m == null)
-                throw new ArgumentException("Los datos del mantenimiento son obligatorios.");
+                throw new ArgumentException("Los datos del cambio de baterías son obligatorios.");
             if (m.UPSId <= 0)
                 throw new ArgumentException("Debe seleccionar un UPS.");
-            if (m.TipoMantenimientoId <= 0)
-                throw new ArgumentException("Debe seleccionar un tipo de mantenimiento.");
             if (m.EstadoMantenimientoId <= 0)
-                throw new ArgumentException("Debe seleccionar un estado de mantenimiento.");
+                throw new ArgumentException("Debe seleccionar un estado de cambio de baterías.");
             if (m.FechaMantenimiento == default)
-                throw new ArgumentException("La fecha del mantenimiento es obligatoria.");
+                throw new ArgumentException("La fecha del cambio de baterías es obligatoria.");
             if (string.IsNullOrWhiteSpace(m.Descripcion))
-                throw new ArgumentException("La descripción del mantenimiento es obligatoria.");
+                throw new ArgumentException("La descripción del cambio de baterías es obligatoria.");
             if (string.IsNullOrWhiteSpace(m.TecnicoProveedor))
                 throw new ArgumentException("El técnico o proveedor es obligatorio.");
         }
@@ -334,16 +321,12 @@ namespace InventarioUPS.API.Services
         {
             if (fecha.Date > DateTime.Now.Date && !EsEstado(estado, "Programado"))
                 throw new ArgumentException(
-                    "Una fecha futura solamente puede utilizarse cuando el estado del mantenimiento es Programado.");
+                    "Una fecha futura solamente puede utilizarse cuando el estado del cambio de baterías es Programado.");
         }
 
         private static void PrepararBaterias(Mantenimiento m, UPS ups)
         {
-            if (!m.IncluyeCambioBaterias)
-            {
-                m.CantidadBateriasReemplazadas = 0;
-                return;
-            }
+            m.IncluyeCambioBaterias = true;
 
             if (ups.CantidadBaterias <= 0)
                 throw new InvalidOperationException(
@@ -373,13 +356,11 @@ namespace InventarioUPS.API.Services
         {
             Id = m.Id,
             UPSId = m.UPSId,
-            TipoMantenimientoId = m.TipoMantenimientoId,
             EstadoMantenimientoId = m.EstadoMantenimientoId,
             FechaMantenimiento = m.FechaMantenimiento,
             Descripcion = m.Descripcion,
             TecnicoProveedor = m.TecnicoProveedor,
             Observaciones = m.Observaciones,
-            IncluyeCambioBaterias = m.IncluyeCambioBaterias,
             CantidadBateriasReemplazadas = m.CantidadBateriasReemplazadas,
             AgenciaIdRegistro = m.AgenciaIdRegistro,
             NumeroInventarioUPS = m.UPS?.NumeroInventario,
@@ -390,7 +371,6 @@ namespace InventarioUPS.API.Services
                 !string.IsNullOrWhiteSpace(m.AgenciaNombreRegistro)
                     ? m.AgenciaNombreRegistro
                     : m.UPS?.Agencia?.Nombre,
-            TipoMantenimiento = m.Tipo?.Nombre,
             Estado = m.EstadoMantenimiento?.Nombre
         };
     }

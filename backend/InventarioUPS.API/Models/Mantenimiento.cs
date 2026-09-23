@@ -3,7 +3,6 @@ namespace InventarioUPS.API.Models
     public class Mantenimiento : BaseEntity
     {
         public int UPSId { get; set; }
-        public int TipoMantenimientoId { get; set; }
         public int EstadoMantenimientoId { get; set; }
         public DateTime FechaMantenimiento { get; set; }
         public string Descripcion { get; set; } = string.Empty;
@@ -18,7 +17,6 @@ namespace InventarioUPS.API.Models
         public int? EstadoUPSAnteriorId { get; set; }
 
         public UPS? UPS { get; set; }
-        public TipoMantenimiento? Tipo { get; set; }
         public EstadoMantenimiento? EstadoMantenimiento { get; set; }
     }
 }

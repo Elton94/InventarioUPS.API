@@ -30,8 +30,6 @@ namespace InventarioUPS.API.Data
 
         public DbSet<Mantenimiento> Mantenimientos { get; set; }
 
-        public DbSet<TipoMantenimiento> TiposMantenimiento { get; set; }
-
         public DbSet<EstadoMantenimiento> EstadosMantenimiento { get; set; }
 
         public DbSet<Rol> Roles { get; set; }
@@ -183,16 +181,6 @@ namespace InventarioUPS.API.Data
                 .HasForeignKey(u => u.EstadoUPSId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // TIPOS DE MANTENIMIENTO
-            modelBuilder.Entity<TipoMantenimiento>()
-                .Property(t => t.Nombre)
-                .HasMaxLength(100)
-                .IsRequired();
-
-            modelBuilder.Entity<TipoMantenimiento>()
-                .HasIndex(t => t.Nombre)
-                .IsUnique();
-
             // ESTADOS DE MANTENIMIENTO
             modelBuilder.Entity<EstadoMantenimiento>()
                 .Property(e => e.Nombre)
@@ -225,12 +213,6 @@ namespace InventarioUPS.API.Data
                 .HasOne(m => m.UPS)
                 .WithMany(u => u.Mantenimientos)
                 .HasForeignKey(m => m.UPSId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<Mantenimiento>()
-                .HasOne(m => m.Tipo)
-                .WithMany(t => t.Mantenimientos)
-                .HasForeignKey(m => m.TipoMantenimientoId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Mantenimiento>()

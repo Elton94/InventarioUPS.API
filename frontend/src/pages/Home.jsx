@@ -282,7 +282,7 @@ export default function Home() {
                 numero.format(baterias)
         },
         puedeMantenimiento && {
-            titulo: "Mantenimientos",
+            titulo: "Cambios de baterías",
             valor:
                 numero.format(
                     mantenimientos.length
@@ -368,7 +368,7 @@ export default function Home() {
                             fontWeight="bold"
                             sx={{ mb: 2 }}
                         >
-                            Mantenimientos recientes
+                            Cambios de baterías recientes
                         </Typography>
 
                         <TableContainer>
@@ -385,7 +385,7 @@ export default function Home() {
                                             Agencia histórica
                                         </TableCell>
                                         <TableCell>
-                                            Tipo
+                                            Baterías
                                         </TableCell>
                                         <TableCell>
                                             Estado
@@ -419,7 +419,7 @@ export default function Home() {
                                                 </TableCell>
                                                 <TableCell>
                                                     {
-                                                        m.tipoMantenimiento
+                                                        m.cantidadBateriasReemplazadas
                                                     }
                                                 </TableCell>
                                                 <TableCell>
@@ -438,7 +438,7 @@ export default function Home() {
                                                 colSpan={5}
                                                 align="center"
                                             >
-                                                No hay mantenimientos registrados.
+                                                No hay cambios de baterías registrados.
                                             </TableCell>
                                         </TableRow>
                                     )}

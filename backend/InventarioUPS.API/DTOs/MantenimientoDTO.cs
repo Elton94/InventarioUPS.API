@@ -4,14 +4,12 @@ namespace InventarioUPS.API.DTOs
     {
         public int Id { get; set; }
         public int UPSId { get; set; }
-        public int TipoMantenimientoId { get; set; }
         public int EstadoMantenimientoId { get; set; }
         public DateTime FechaMantenimiento { get; set; }
         public string Descripcion { get; set; } = string.Empty;
         public string TecnicoProveedor { get; set; } = string.Empty;
         public string Observaciones { get; set; } = string.Empty;
 
-        public bool IncluyeCambioBaterias { get; set; }
         public int CantidadBateriasReemplazadas { get; set; }
 
         public int? AgenciaIdRegistro { get; set; }
@@ -20,7 +18,6 @@ namespace InventarioUPS.API.DTOs
         public string? MarcaUPS { get; set; }
         public string? ModeloUPS { get; set; }
         public string? AgenciaNombre { get; set; }
-        public string? TipoMantenimiento { get; set; }
         public string? Estado { get; set; }
     }
 }

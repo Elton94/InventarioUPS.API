@@ -56,7 +56,7 @@ export default function MainLayout() {
         },
         {
             ruta: "/mantenimientos",
-            texto: "Mantenimiento",
+            texto: "Cambios de baterías",
             visible:
                 tienePermiso(
                     "VER_MANTENIMIENTO"

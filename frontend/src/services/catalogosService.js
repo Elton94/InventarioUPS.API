@@ -41,14 +41,6 @@ export const obtenerEstadosUPS =
             )
         ).data;
 
-export const obtenerTiposMantenimiento =
-    async () =>
-        (
-            await api.get(
-                "/Catalogos/tipos-mantenimiento"
-            )
-        ).data;
-
 export const obtenerEstadosMantenimiento =
     async () =>
         (

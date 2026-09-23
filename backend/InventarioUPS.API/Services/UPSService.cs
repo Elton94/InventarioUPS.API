@@ -92,8 +92,7 @@ namespace InventarioUPS.API.Services
             else
             {
                 ups.FechaUltimoCambioBateriasBase =
-                    existente.FechaUltimoCambioBateriasBase ??
-                    existente.FechaUltimoCambioBaterias;
+                    existente.FechaUltimoCambioBateriasBase;
 
                 var ultima = await _context.Mantenimientos.AsNoTracking()
                     .Where(m =>
@@ -151,13 +150,14 @@ namespace InventarioUPS.API.Services
                 .AsNoTracking()
                 .AnyAsync(m =>
                     m.UPSId == upsId &&
+                    m.IncluyeCambioBaterias &&
                     m.EstadoMantenimiento != null &&
                     (m.EstadoMantenimiento.Nombre == "Programado" ||
                      m.EstadoMantenimiento.Nombre == "En proceso"));
 
             if (pendiente)
                 throw new InvalidOperationException(
-                    "No se puede dar de baja el UPS mientras tenga mantenimientos Programados o En proceso.");
+                    "No se puede dar de baja el UPS mientras tenga cambios de baterías Programados o En proceso.");
         }
 
         private static void ValidarYLimpia(UPS ups)

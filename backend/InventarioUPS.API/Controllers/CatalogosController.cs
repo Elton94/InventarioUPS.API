@@ -60,14 +60,6 @@ namespace InventarioUPS.API.Controllers
                 .Select(e => new { id = e.Id, nombre = e.Nombre })
                 .ToListAsync());
 
-        [HttpGet("tipos-mantenimiento")]
-        public async Task<IActionResult> ObtenerTiposMantenimiento() =>
-            Ok(await _context.TiposMantenimiento
-                .Where(t => t.Activo)
-                .OrderBy(t => t.Nombre)
-                .Select(t => new { id = t.Id, nombre = t.Nombre })
-                .ToListAsync());
-
         [HttpGet("estados-mantenimiento")]
         public async Task<IActionResult> ObtenerEstadosMantenimiento() =>
             Ok(await _context.EstadosMantenimiento
@@ -139,12 +131,6 @@ namespace InventarioUPS.API.Controllers
                 .Select(e => new { id = e.Id, nombre = e.Nombre })
                 .ToListAsync();
 
-            var tiposMantenimiento = await _context.TiposMantenimiento
-                .Where(t => t.Activo)
-                .OrderBy(t => t.Nombre)
-                .Select(t => new { id = t.Id, nombre = t.Nombre })
-                .ToListAsync();
-
             var estadosMantenimiento = await _context.EstadosMantenimiento
                 .Where(e => e.Activo)
                 .OrderBy(e => e.Nombre)
@@ -157,7 +143,6 @@ namespace InventarioUPS.API.Controllers
                 ciudades,
                 tiposAgencia,
                 estadosUPS,
-                tiposMantenimiento,
                 estadosMantenimiento
             });
         }

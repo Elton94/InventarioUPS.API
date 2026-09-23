@@ -79,7 +79,6 @@ export default function MantenimientosTable({
                         <TableCell><strong>Agencia</strong></TableCell>
                         <TableCell><strong>Inventario</strong></TableCell>
                         <TableCell><strong>Serie</strong></TableCell>
-                        <TableCell><strong>Tipo</strong></TableCell>
                         <TableCell><strong>Fecha</strong></TableCell>
                         <TableCell><strong>Técnico / proveedor</strong></TableCell>
                         <TableCell><strong>Baterías</strong></TableCell>
@@ -116,12 +115,6 @@ export default function MantenimientosTable({
                                     </TableCell>
                                     <TableCell>
                                         {
-                                            m.tipoMantenimiento ||
-                                            "—"
-                                        }
-                                    </TableCell>
-                                    <TableCell>
-                                        {
                                             fecha(
                                                 m.fechaMantenimiento
                                             )
@@ -134,7 +127,7 @@ export default function MantenimientosTable({
                                         }
                                     </TableCell>
                                     <TableCell>
-                                        {m.incluyeCambioBaterias ? (
+                                        {(
                                             <Box
                                                 sx={{
                                                     display: "flex",
@@ -156,8 +149,6 @@ export default function MantenimientosTable({
                                                     {textoBateria(m)}
                                                 </Typography>
                                             </Box>
-                                        ) : (
-                                            "No"
                                         )}
                                     </TableCell>
                                     <TableCell>
@@ -176,7 +167,7 @@ export default function MantenimientosTable({
                                     </TableCell>
                                     <TableCell align="center">
                                         {puedeEditar && (
-                                            <Tooltip title="Editar mantenimiento">
+                                            <Tooltip title="Editar cambio de baterías">
                                                 <IconButton
                                                     color="primary"
                                                     onClick={() =>
@@ -198,10 +189,10 @@ export default function MantenimientosTable({
                     {mantenimientos.length === 0 && (
                         <TableRow>
                             <TableCell
-                                colSpan={9}
+                                colSpan={8}
                                 align="center"
                             >
-                                No se encontraron mantenimientos.
+                                No se encontraron cambios de baterías.
                             </TableCell>
                         </TableRow>
                     )}

@@ -78,7 +78,7 @@ export default function Mantenimientos() {
         } catch (e) {
             setError(
                 e.response?.data?.mensaje ||
-                "No fue posible cargar los mantenimientos."
+                "No fue posible cargar los cambios de baterías."
             );
         }
     };
@@ -93,7 +93,6 @@ export default function Mantenimientos() {
         numeroSerie: "numeroSerieUPS",
         marca: "marcaUPS",
         modelo: "modeloUPS",
-        tipo: "tipoMantenimiento",
         tecnico: "tecnicoProveedor",
         estado: "estado"
     };
@@ -188,7 +187,7 @@ export default function Mantenimientos() {
                     variant="h4"
                     fontWeight="bold"
                 >
-                    Gestión de Mantenimientos
+                    Cambios de baterías
                 </Typography>
 
                 {puedeCrear && (
@@ -203,7 +202,7 @@ export default function Mantenimientos() {
                             );
                         }}
                     >
-                        + Nuevo mantenimiento
+                        + Nuevo cambio de baterías
                     </Button>
                 )}
             </Box>
@@ -247,9 +246,6 @@ export default function Mantenimientos() {
                         </MenuItem>
                         <MenuItem value="modelo">
                             Modelo
-                        </MenuItem>
-                        <MenuItem value="tipo">
-                            Tipo de mantenimiento
                         </MenuItem>
                         <MenuItem value="tecnico">
                             Técnico / proveedor
@@ -301,7 +297,6 @@ export default function Mantenimientos() {
                     "agencia",
                     "marca",
                     "modelo",
-                    "tipo",
                     "tecnico",
                     "estado"
                 ].includes(tipoBusqueda) ? (
@@ -388,8 +383,8 @@ export default function Mantenimientos() {
 
                     setMensaje(
                         seleccionado
-                            ? "Mantenimiento actualizado correctamente."
-                            : "Mantenimiento registrado correctamente."
+                            ? "Cambio de baterías actualizado correctamente."
+                            : "Cambio de baterías registrado correctamente."
                     );
 
                     setSeleccionado(null);

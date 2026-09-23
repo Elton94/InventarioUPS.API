@@ -111,13 +111,12 @@ public sealed class UPSIdentityTests : IAsyncLifetime
     {
         var ups = Equipo("0001/A");
         await service.CrearAsync(ups);
-        var tipo = new TipoMantenimiento { Nombre = "Preventivo" };
         var programado = new EstadoMantenimiento { Nombre = "Programado" };
-        context.AddRange(tipo, programado, new EstadoUPS { Nombre = "De baja" });
+        context.AddRange(programado, new EstadoUPS { Nombre = "De baja" });
         await context.SaveChangesAsync();
         var mantenimiento = new Mantenimiento
         {
-            UPSId = ups.Id, TipoMantenimientoId = tipo.Id,
+            UPSId = ups.Id,
             EstadoMantenimientoId = programado.Id, Descripcion = "Revisión",
             TecnicoProveedor = "Prueba", FechaMantenimiento = DateTime.Today.AddDays(1)
         };
@@ -142,7 +141,6 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         {
             UPSId = equipo.Id, IncluyeCambioBaterias = true,
             FechaMantenimiento = new DateTime(DateTime.Today.Year, 12, 31),
-            Tipo = new TipoMantenimiento { Nombre = "Cambio de baterías" },
             EstadoMantenimiento = new EstadoMantenimiento { Nombre = "Programado" }
         });
         await context.SaveChangesAsync();
@@ -164,7 +162,6 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         var mantenimiento = new Mantenimiento
         {
             UPSId = ups.Id,
-            Tipo = new TipoMantenimiento { Nombre = "Preventivo" },
             EstadoMantenimiento = new EstadoMantenimiento { Nombre = "Programado" },
             FechaMantenimiento = DateTime.Today.AddDays(1)
         };
@@ -204,17 +201,17 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         var entidad = context.Model.FindEntityType(typeof(Mantenimiento))!;
         Assert.Null(entidad.FindProperty("Costo"));
         Assert.Null(entidad.FindProperty("CostoBaterias"));
+        Assert.Null(entidad.FindProperty("TipoMantenimientoId"));
         var ups = Equipo("INV-COSTOS");
         await service.CrearAsync(ups);
-        var tipo = new TipoMantenimiento { Nombre = "Preventivo" };
         var programado = new EstadoMantenimiento { Nombre = "Programado" };
         var completado = new EstadoMantenimiento { Nombre = "Completado" };
-        context.AddRange(tipo, programado, completado);
+        context.AddRange(programado, completado);
         await context.SaveChangesAsync();
         var mantenimientos = new MantenimientoService(new MantenimientoRepository(context), context);
         var nuevo = new Mantenimiento
         {
-            UPSId = ups.Id, TipoMantenimientoId = tipo.Id,
+            UPSId = ups.Id,
             EstadoMantenimientoId = programado.Id, FechaMantenimiento = DateTime.Today,
             Descripcion = "Revisión", TecnicoProveedor = "Técnico", IncluyeCambioBaterias = true
         };
@@ -225,21 +222,178 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         context.ChangeTracker.Clear();
         await mantenimientos.ActualizarAsync(new Mantenimiento
         {
-            Id = nuevo.Id, UPSId = ups.Id, TipoMantenimientoId = tipo.Id,
+            Id = nuevo.Id, UPSId = ups.Id,
             EstadoMantenimientoId = completado.Id, FechaMantenimiento = DateTime.Today,
             Descripcion = "Revisión completada", TecnicoProveedor = "Técnico",
             IncluyeCambioBaterias = cambioBaterias
         });
         context.ChangeTracker.Clear();
         var guardado = await context.Mantenimientos.SingleAsync();
-        Assert.Equal(cambioBaterias ? 2 : 0, guardado.CantidadBateriasReemplazadas);
-        if (cambioBaterias)
-            Assert.Equal(DateTime.Today, (await context.UPSs.SingleAsync()).FechaUltimoCambioBaterias);
+        Assert.True(guardado.IncluyeCambioBaterias);
+        Assert.Equal(2, guardado.CantidadBateriasReemplazadas);
+        Assert.Equal(DateTime.Today, (await context.UPSs.SingleAsync()).FechaUltimoCambioBaterias);
+    }
+
+    [Theory]
+    [InlineData("Programado")]
+    [InlineData("En proceso")]
+    [InlineData("Cancelado")]
+    [InlineData("Completado")]
+    public async Task SoloCompletadoActualizaFechaYProyeccion(string nombreEstado)
+    {
+        var ups = Equipo("INV-FECHAS");
+        ups.FechaUltimoCambioBaterias = DateTime.Today.AddMonths(-3);
+        await service.CrearAsync(ups);
+        var estado = new EstadoMantenimiento { Nombre = nombreEstado };
+        context.AddRange(estado, new EstadoUPS { Nombre = "En mantenimiento" },
+            new ConfiguracionPresupuestoBaterias { Anio = DateTime.Today.Year + 1, CostoUnitarioBateria = 100 },
+            new PoliticaReemplazoBaterias { MesesReemplazoLocal = 12, MesesReemplazoForanea = 12 });
+        await context.SaveChangesAsync();
+        var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
+        var cambio = new Mantenimiento
+        {
+            UPSId = ups.Id, EstadoMantenimientoId = estado.Id,
+            FechaMantenimiento = DateTime.Today, TecnicoProveedor = "Técnico", Descripcion = "Banco completo",
+            IncluyeCambioBaterias = false, CantidadBateriasReemplazadas = 999
+        };
+        await cambios.CrearAsync(cambio);
+        context.ChangeTracker.Clear();
+        var guardado = await context.Mantenimientos.SingleAsync();
+        Assert.True(guardado.IncluyeCambioBaterias);
+        Assert.Equal(2, guardado.CantidadBateriasReemplazadas);
+        var esperada = nombreEstado == "Completado" ? DateTime.Today : DateTime.Today.AddMonths(-3);
+        Assert.Equal(esperada, (await context.UPSs.SingleAsync()).FechaUltimoCambioBaterias);
+        var config = new ConfiguracionPresupuestoService(new ConfiguracionPresupuestoRepository(context));
+        var result = await new PresupuestoController(context, config).ObtenerProyeccion(DateTime.Today.Year + 1);
+        var resumen = Assert.IsType<InventarioUPS.API.DTOs.Presupuesto.PresupuestoResumenDto>(
+            Assert.IsType<OkObjectResult>(result).Value);
+        var detalle = Assert.Single(Assert.Single(resumen.Agencias).UPS);
+        var proxima = esperada.AddMonths(12);
+        while (proxima.Year < DateTime.Today.Year + 1) proxima = proxima.AddMonths(12);
+        Assert.Equal(proxima, detalle.FechaProyectadaReemplazo);
+        Assert.Equal(200m, detalle.CostoEstimado);
+    }
+
+    [Theory]
+    [InlineData("Cancelado", false)]
+    [InlineData("Programado", false)]
+    [InlineData("Cancelado", true)]
+    public async Task RevertirCompletadoRecuperaFechaAnterior(string destino, bool conFechaBase)
+    {
+        var ups = Equipo("INV-REVERTIR");
+        DateTime? fechaBase = conFechaBase ? DateTime.Today.AddMonths(-4) : null;
+        ups.FechaUltimoCambioBaterias = fechaBase;
+        await service.CrearAsync(ups);
+        var completado = new EstadoMantenimiento { Nombre = "Completado" };
+        var estadoDestino = new EstadoMantenimiento { Nombre = destino };
+        context.AddRange(completado, estadoDestino);
+        await context.SaveChangesAsync();
+        var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
+        var cambio = new Mantenimiento
+        {
+            UPSId = ups.Id, EstadoMantenimientoId = completado.Id, FechaMantenimiento = DateTime.Today,
+            Descripcion = "Banco completo", TecnicoProveedor = "Técnico"
+        };
+        await cambios.CrearAsync(cambio);
+        context.ChangeTracker.Clear();
+        var editarUPS = (await service.ObtenerPorIdAsync(ups.Id))!;
+        editarUPS.Modelo = "Corregido";
+        await service.ActualizarAsync(editarUPS);
+        context.ChangeTracker.Clear();
+        await cambios.ActualizarAsync(new Mantenimiento
+        {
+            Id = cambio.Id, UPSId = ups.Id, EstadoMantenimientoId = estadoDestino.Id,
+            FechaMantenimiento = DateTime.Today, Descripcion = "Revertido", TecnicoProveedor = "Técnico"
+        });
+        context.ChangeTracker.Clear();
+        Assert.Equal(fechaBase, (await context.UPSs.SingleAsync()).FechaUltimoCambioBaterias);
+    }
+
+    [Fact]
+    public async Task RegistrosSinBateriasPermanecenFueraDelModulo()
+    {
+        var ups = Equipo("INV-HISTORICO");
+        await service.CrearAsync(ups);
+        var anterior = new Mantenimiento
+        {
+            UPSId = ups.Id, EstadoMantenimiento = new EstadoMantenimiento { Nombre = "Completado" },
+            IncluyeCambioBaterias = false, FechaMantenimiento = DateTime.Today
+        };
+        context.Add(anterior);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
+        Assert.Empty(await cambios.ObtenerTodosAsync());
+        Assert.Empty(await cambios.ObtenerPorUPSAsync(ups.Id));
+        Assert.Null(await cambios.ObtenerPorIdAsync(anterior.Id));
+        Assert.Equal(1, await context.Mantenimientos.CountAsync());
+    }
+
+    [Fact]
+    public async Task RechazaUPSsinBateriasYCompletadoConFechaFutura()
+    {
+        var ups = Equipo("INV-VALIDACION");
+        await service.CrearAsync(ups);
+        var estado = new EstadoMantenimiento { Nombre = "Completado" };
+        context.Add(estado);
+        await context.SaveChangesAsync();
+        var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
+        var cambio = new Mantenimiento
+        {
+            UPSId = ups.Id, EstadoMantenimientoId = estado.Id, FechaMantenimiento = DateTime.Today.AddDays(1),
+            Descripcion = "Banco completo", TecnicoProveedor = "Técnico"
+        };
+        await Assert.ThrowsAsync<ArgumentException>(() => cambios.CrearAsync(cambio));
+        ups.CantidadBaterias = 0;
+        await context.SaveChangesAsync();
+        cambio.FechaMantenimiento = DateTime.Today;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => cambios.CrearAsync(cambio));
+        Assert.Empty(await context.Mantenimientos.ToListAsync());
+    }
+
+    [Fact]
+    public async Task EditarCompletadoConservaCantidadYCancelarRecuperaOtroCambio()
+    {
+        var ups = Equipo("INV-HISTORIAL");
+        await service.CrearAsync(ups);
+        var completado = new EstadoMantenimiento { Nombre = "Completado" };
+        var cancelado = new EstadoMantenimiento { Nombre = "Cancelado" };
+        context.AddRange(completado, cancelado);
+        await context.SaveChangesAsync();
+        var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
+        var anterior = new Mantenimiento
+        {
+            UPSId = ups.Id, EstadoMantenimientoId = completado.Id,
+            FechaMantenimiento = DateTime.Today.AddDays(-10), TecnicoProveedor = "Técnico", Descripcion = "Anterior"
+        };
+        await cambios.CrearAsync(anterior);
+        var actual = new Mantenimiento
+        {
+            UPSId = ups.Id, EstadoMantenimientoId = completado.Id,
+            FechaMantenimiento = DateTime.Today, TecnicoProveedor = "Técnico", Descripcion = "Actual"
+        };
+        await cambios.CrearAsync(actual);
+        ups.CantidadBaterias = 4;
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        var editar = new Mantenimiento
+        {
+            Id = actual.Id, UPSId = ups.Id, EstadoMantenimientoId = completado.Id,
+            FechaMantenimiento = DateTime.Today, TecnicoProveedor = "Técnico", Descripcion = "Corregido"
+        };
+        await cambios.ActualizarAsync(editar);
+        context.ChangeTracker.Clear();
+        Assert.Equal(2, (await cambios.ObtenerPorIdAsync(actual.Id))!.CantidadBateriasReemplazadas);
+        editar.EstadoMantenimientoId = cancelado.Id;
+        await cambios.ActualizarAsync(editar);
+        context.ChangeTracker.Clear();
+        Assert.Equal(anterior.FechaMantenimiento, (await context.UPSs.SingleAsync()).FechaUltimoCambioBaterias);
     }
 
     [Theory]
     [InlineData("MigracionUPS.sql")]
     [InlineData("MantenimientosSinCostos.sql")]
+    [InlineData("CambiosBaterias.sql")]
     public void ScriptDeMigracionTieneSintaxisTSQLValida(string archivo)
     {
         var parser = new TSql160Parser(true);

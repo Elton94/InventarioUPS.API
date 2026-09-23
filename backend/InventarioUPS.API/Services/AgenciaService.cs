@@ -145,7 +145,7 @@ namespace InventarioUPS.API.Services
 
             if (mantenimientoEnProceso)
                 throw new InvalidOperationException(
-                    "No se puede desactivar la agencia mientras tenga mantenimientos En proceso.");
+                    "No se puede desactivar la agencia mientras tenga cambios de baterías En proceso.");
 
             var estadoResguardo = await _context.EstadosUPS
                 .FirstOrDefaultAsync(e => e.Activo && e.Nombre == "En resguardo");

@@ -23,11 +23,6 @@ namespace InventarioUPS.API.Data
             await ObtenerOCrearEstadoUPS(context, "De baja");
             await ObtenerOCrearEstadoUPS(context, "En resguardo");
 
-            // TIPOS DE MANTENIMIENTO
-            await ObtenerOCrearTipoMantenimiento(context, "Preventivo");
-            await ObtenerOCrearTipoMantenimiento(context, "Correctivo");
-            await ObtenerOCrearTipoMantenimiento(context, "Emergencia");
-
             // ESTADOS DE MANTENIMIENTO
             await ObtenerOCrearEstadoMantenimiento(context, "Programado");
             await ObtenerOCrearEstadoMantenimiento(context, "En proceso");
@@ -554,27 +549,6 @@ namespace InventarioUPS.API.Data
             return nuevo;
         }
 
-        private static async Task<TipoMantenimiento> ObtenerOCrearTipoMantenimiento(
-            InventarioUPSDbContext context,
-            string nombre)
-        {
-            var existente = await context.TiposMantenimiento
-                .FirstOrDefaultAsync(x => x.Nombre == nombre);
-
-            if (existente != null)
-                return existente;
-
-            var nuevo = new TipoMantenimiento
-            {
-                Nombre = nombre
-            };
-
-            context.TiposMantenimiento.Add(nuevo);
-            await context.SaveChangesAsync();
-
-            return nuevo;
-        }
-
         private static async Task<EstadoMantenimiento> ObtenerOCrearEstadoMantenimiento(
             InventarioUPSDbContext context,
             string nombre)
@@ -609,9 +583,9 @@ namespace InventarioUPS.API.Data
                 new { Codigo = "VER_UPS", Nombre = "Ver UPS", Descripcion = "Consulta del inventario UPS." },
                 new { Codigo = "CREAR_UPS", Nombre = "Crear UPS", Descripcion = "Registro de UPS." },
                 new { Codigo = "EDITAR_UPS", Nombre = "Editar UPS", Descripcion = "Edición y cambio de estado de UPS." },
-                new { Codigo = "VER_MANTENIMIENTO", Nombre = "Ver mantenimiento", Descripcion = "Consulta de mantenimientos." },
-                new { Codigo = "CREAR_MANTENIMIENTO", Nombre = "Crear mantenimiento", Descripcion = "Registro de mantenimientos." },
-                new { Codigo = "EDITAR_MANTENIMIENTO", Nombre = "Editar mantenimiento", Descripcion = "Actualización de mantenimientos." },
+                new { Codigo = "VER_MANTENIMIENTO", Nombre = "Ver cambio de baterías", Descripcion = "Consulta de cambios de baterías." },
+                new { Codigo = "CREAR_MANTENIMIENTO", Nombre = "Crear cambio de baterías", Descripcion = "Registro de cambios de baterías." },
+                new { Codigo = "EDITAR_MANTENIMIENTO", Nombre = "Editar cambio de baterías", Descripcion = "Actualización de cambios de baterías." },
                 new { Codigo = "VER_PRESUPUESTO", Nombre = "Ver presupuesto", Descripcion = "Consulta de proyecciones de baterías." },
                 new { Codigo = "GESTIONAR_PRESUPUESTO", Nombre = "Gestionar presupuesto", Descripcion = "Configuración de costos y política de reemplazo." },
                 new { Codigo = "GESTIONAR_USUARIOS", Nombre = "Gestionar usuarios", Descripcion = "Administración de usuarios." },
@@ -693,7 +667,7 @@ namespace InventarioUPS.API.Data
                 await ObtenerOCrearRol(
                     context,
                     "Técnico",
-                    "Gestión técnica de UPS y mantenimientos");
+                    "Gestión técnica de UPS y cambios de baterías");
 
                 await ObtenerOCrearRol(
                     context,

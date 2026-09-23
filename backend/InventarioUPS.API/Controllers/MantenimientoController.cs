@@ -34,7 +34,7 @@ namespace InventarioUPS.API.Controllers
             var resultado = await _service.ObtenerPorIdAsync(id);
 
             if (resultado == null)
-                return NotFound(new { mensaje = "El mantenimiento no existe." });
+                return NotFound(new { mensaje = "El cambio de baterías no existe." });
 
             return Ok(resultado);
         }
@@ -54,7 +54,7 @@ namespace InventarioUPS.API.Controllers
         public async Task<ActionResult<MantenimientoDTO>> Crear([FromBody] MantenimientoDTO dto)
         {
             if (dto == null)
-                return BadRequest(new { mensaje = "Los datos del mantenimiento son obligatorios." });
+                return BadRequest(new { mensaje = "Los datos del cambio de baterías son obligatorios." });
 
             try
             {
@@ -78,7 +78,7 @@ namespace InventarioUPS.API.Controllers
         public async Task<ActionResult<MantenimientoDTO>> Actualizar(int id, [FromBody] MantenimientoDTO dto)
         {
             if (dto == null || id <= 0)
-                return BadRequest(new { mensaje = "Los datos del mantenimiento no son válidos." });
+                return BadRequest(new { mensaje = "Los datos del cambio de baterías no son válidos." });
 
             try
             {
@@ -101,13 +101,11 @@ namespace InventarioUPS.API.Controllers
         {
             Id = dto.Id,
             UPSId = dto.UPSId,
-            TipoMantenimientoId = dto.TipoMantenimientoId,
             EstadoMantenimientoId = dto.EstadoMantenimientoId,
             FechaMantenimiento = dto.FechaMantenimiento,
             Descripcion = dto.Descripcion?.Trim() ?? string.Empty,
             TecnicoProveedor = dto.TecnicoProveedor?.Trim() ?? string.Empty,
             Observaciones = dto.Observaciones?.Trim() ?? string.Empty,
-            IncluyeCambioBaterias = dto.IncluyeCambioBaterias,
             CantidadBateriasReemplazadas = dto.CantidadBateriasReemplazadas
         };
     }

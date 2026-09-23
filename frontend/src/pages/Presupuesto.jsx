@@ -32,6 +32,7 @@ export default function Presupuesto() {
     const [busqueda, setBusqueda] = useState("");
     const [tipoAgencia, setTipoAgencia] = useState("Todas");
     const [dialogo, setDialogo] = useState(null);
+    const [calendario, setCalendario] = useState(null);
     const [errorDialogo, setErrorDialogo] = useState("");
     const [costo, setCosto] = useState("");
     const [local, setLocal] = useState("");
@@ -51,7 +52,7 @@ export default function Presupuesto() {
         return () => { vigente = false; solicitud.current++; };
     }, []);
 
-    const invalidar = () => { solicitud.current++; setProyeccion(null); setGenerando(false); };
+    const invalidar = () => { solicitud.current++; setProyeccion(null); setCalendario(null); setGenerando(false); };
     const generar = async () => {
         const id = ++solicitud.current;
         setError(""); setMensaje(""); setProyeccion(null);
@@ -165,22 +166,36 @@ export default function Presupuesto() {
                 {proyeccion.totalUPSExcluidos} UPS fuera de servicio o de baja excluidos. Solo se incluyen agencias activas.
             </Typography>}
             {agencias.map(a => <Accordion key={a.agenciaId} defaultExpanded disableGutters sx={{ mb: 2, border: "1px solid #e2e8f0", boxShadow: "none", borderRadius: "12px !important", "&:before": { display: "none" } }}>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}><Stack direction={{ xs: "column", sm: "row" }} gap={1} justifyContent="space-between" sx={{ width: "100%", pr: 2 }}>
-                    <Box><Typography fontWeight={700}>{a.agencia}</Typography><Typography variant="body2" color="text.secondary">{a.tipoAgencia} · {a.ups.length} UPS</Typography></Box>
-                    <Typography fontWeight={700}>{moneda(a.ups.reduce((total, u) => total + u.costoEstimado, 0))}</Typography>
-                </Stack></AccordionSummary>
-                <AccordionDetails sx={{ pt: 0 }}><TableContainer><Table size="small" sx={{ minWidth: 880 }}>
-                    <TableHead><TableRow>{["UPS / inventario", "Ciclo", "Fechas previstas", "Cambios", "Baterías / cambio", "Baterías totales", "Estimado"].map(c => <TableCell key={c} sx={{ fontWeight: 700, bgcolor: "#f8fafc" }}>{c}</TableCell>)}</TableRow></TableHead>
-                    <TableBody>{a.ups.map(u => <TableRow key={u.upsId} hover>
-                        <TableCell><Typography fontWeight={600}>{u.numeroInventario}</Typography><Typography variant="caption" color="text.secondary">{u.marca} {u.modelo} · {u.numeroSerie}</Typography></TableCell>
-                        <TableCell>{u.mesesCicloReemplazo} meses</TableCell>
-                        <TableCell sx={{ maxWidth: 320 }}><Stack direction="row" gap={0.5} flexWrap="wrap" sx={{ py: 1 }}>
-                            {u.estaVencido && <Chip size="small" color="warning" label={`Pendiente: ${fecha(u.fechaVencimientoPendiente)}`} />}
-                            {u.fechasReemplazo.map(f => <Chip key={f} size="small" variant="outlined" label={fecha(f)} />)}
-                        </Stack>{u.tieneMantenimientoProgramado && <Typography variant="caption" color="info.main">Trabajo programado: {fecha(u.fechaMantenimientoProgramado)}</Typography>}</TableCell>
-                        <TableCell>{u.cantidadCambios}</TableCell><TableCell>{u.cantidadBaterias}</TableCell><TableCell>{u.bateriasProyectadas}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{moneda(u.costoEstimado)}</TableCell>
-                    </TableRow>)}</TableBody>
-                </Table></TableContainer></AccordionDetails>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, alignItems: { sm: "center" }, gap: 2, justifyContent: "space-between", width: "100%", minWidth: 0, pr: 2 }}>
+                        <Box sx={{ minWidth: 0, overflowWrap: "anywhere" }}><Typography fontWeight={700}>{a.agencia}</Typography><Typography variant="body2" color="text.secondary">{a.tipoAgencia} · {a.ups.length} UPS</Typography></Box>
+                        <Typography fontWeight={700} sx={{ flexShrink: 0 }}>{moneda(a.ups.reduce((total, u) => total + u.costoEstimado, 0))}</Typography>
+                    </Box>
+                </AccordionSummary>
+                <AccordionDetails sx={{ pt: 0 }}>
+                    <TableContainer sx={{ overflowX: "auto" }}>
+                        <Table size="small" sx={{ minWidth: 1100, tableLayout: "fixed", "& td": { verticalAlign: "top", overflowWrap: "anywhere" } }}>
+                            <colgroup>{[20, 8, 25, 8, 11, 11, 17].map((ancho, i) => <col key={i} style={{ width: `${ancho}%` }} />)}</colgroup>
+                            <TableHead><TableRow>{["UPS / inventario", "Ciclo", "Fechas previstas", "Cambios", "Baterías / cambio", "Baterías totales", "Estimado"].map((c, i) => <TableCell key={c} align={i >= 3 ? "right" : "left"} sx={{ fontWeight: 700, bgcolor: "#f8fafc" }}>{c}</TableCell>)}</TableRow></TableHead>
+                            <TableBody>{a.ups.map(u => <TableRow key={u.upsId} hover>
+                                <TableCell><Typography fontWeight={600}>{u.numeroInventario}</Typography><Typography variant="caption" color="text.secondary">{u.marca} {u.modelo} · {u.numeroSerie}</Typography></TableCell>
+                                <TableCell>{u.mesesCicloReemplazo} {u.mesesCicloReemplazo === 1 ? "mes" : "meses"}</TableCell>
+                                <TableCell>
+                                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, minWidth: 0, "& .MuiChip-root": { maxWidth: "100%" } }}>
+                                        {u.estaVencido && <Chip size="small" color="warning" label={`Pendiente: ${fecha(u.fechaVencimientoPendiente)}`} />}
+                                        {u.fechasReemplazo.slice(0, 2).map(f => <Chip key={f} size="small" variant="outlined" label={fecha(f)} />)}
+                                    </Box>
+                                    {u.fechasReemplazo.length > 2 && <Button size="small" onClick={() => setCalendario({ ...u, agencia: a.agencia })} aria-label={`Ver las ${u.fechasReemplazo.length} fechas de ${u.numeroInventario}`} sx={{ mt: 0.5 }}>Ver las {u.fechasReemplazo.length} fechas</Button>}
+                                    {u.tieneMantenimientoProgramado && <Typography display="block" variant="caption" color="info.main" sx={{ mt: 0.5 }}>Trabajo programado: {fecha(u.fechaMantenimientoProgramado)}</Typography>}
+                                </TableCell>
+                                <TableCell align="right">{u.cantidadCambios}</TableCell>
+                                <TableCell align="right">{u.cantidadBaterias}</TableCell>
+                                <TableCell align="right">{u.bateriasProyectadas}</TableCell>
+                                <TableCell align="right" sx={{ fontVariantNumeric: "tabular-nums" }}>{moneda(u.costoEstimado)}</TableCell>
+                            </TableRow>)}</TableBody>
+                        </Table>
+                    </TableContainer>
+                </AccordionDetails>
             </Accordion>)}
             {!agencias.length && <Alert severity="info">{filtrado ? "No hay equipos que coincidan con los filtros." : "No hay reemplazos previstos para este período con los datos actuales."}</Alert>}
             {proyeccion.upsInformacionInsuficienteDetalle?.length > 0 && <Alert severity="warning" sx={{ mt: 2 }}>
@@ -188,6 +203,23 @@ export default function Presupuesto() {
                 {proyeccion.upsInformacionInsuficienteDetalle.map(u => <Typography key={u.upsId} variant="body2">{u.numeroInventario} · {u.agencia}: {u.observacion}</Typography>)}
             </Alert>}
         </>}
+        <Dialog open={Boolean(calendario)} onClose={() => setCalendario(null)} fullWidth maxWidth="sm" aria-labelledby="calendario-titulo">
+            <DialogTitle id="calendario-titulo">Fechas previstas · {calendario?.numeroInventario}</DialogTitle>
+            <DialogContent dividers>
+                <Typography fontWeight={600}>{calendario?.agencia}</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Proyección {anio} · Ciclo de {calendario?.mesesCicloReemplazo} {calendario?.mesesCicloReemplazo === 1 ? "mes" : "meses"}</Typography>
+                {calendario?.estaVencido && <Alert severity="warning" sx={{ mb: 2 }}>Reemplazo pendiente desde {fecha(calendario.fechaVencimientoPendiente)}.</Alert>}
+                <Box component="ol" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" }, gap: 1, listStyle: "none", p: 0, m: 0 }}>
+                    {calendario?.fechasReemplazo.map((f, i) => <Box component="li" key={f} sx={{ p: 1.5, border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
+                        <Typography variant="caption" color="text.secondary">Fecha {i + 1}</Typography>
+                        <Typography fontWeight={600}>{fecha(f)}</Typography>
+                    </Box>)}
+                </Box>
+                {calendario?.tieneMantenimientoProgramado && <Alert severity="info" sx={{ mt: 2 }}>Trabajo programado: {fecha(calendario.fechaMantenimientoProgramado)}.</Alert>}
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>Estas fechas son estimadas y no crean órdenes de trabajo.</Typography>
+            </DialogContent>
+            <DialogActions><Button onClick={() => setCalendario(null)}>Cerrar</Button></DialogActions>
+        </Dialog>
         <Dialog open={Boolean(dialogo)} onClose={guardando ? undefined : () => setDialogo(null)} fullWidth maxWidth="xs">
             <DialogTitle>{dialogo?.tipo === "costo" ? `Costo por batería · ${dialogo.anio}` : "Política de reemplazo"}</DialogTitle>
             <DialogContent><Stack gap={2} sx={{ pt: 1 }}>

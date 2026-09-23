@@ -35,6 +35,7 @@ namespace InventarioUPS.API.Services
             if (!await _repository.ExisteEstadoUPSActivoAsync(ups.EstadoUPSId))
                 throw new InvalidOperationException("El estado de UPS seleccionado no existe o está inactivo.");
 
+            await ValidarEstadoOperativoAsync(0, ups.EstadoUPSId, ups.AgenciaId);
             ups.FechaUltimoCambioBateriasBase = ups.FechaUltimoCambioBaterias;
             ups.Id = 0;
             await _repository.CrearAsync(ups);
@@ -75,8 +76,16 @@ namespace InventarioUPS.API.Services
             if (await _repository.ExisteNumeroSerieExceptoIdAsync(ups.NumeroSerie, ups.Id))
                 throw new InvalidOperationException("Ya existe otro UPS con ese número de serie.");
 
-            if (!await _repository.ExisteAgenciaActivaAsync(ups.AgenciaId))
+            if (ups.AgenciaId != existente.AgenciaId && !await _repository.ExisteAgenciaActivaAsync(ups.AgenciaId))
                 throw new InvalidOperationException("La agencia seleccionada no existe o está inactiva.");
+
+            await ValidarEstadoOperativoAsync(ups.Id, ups.EstadoUPSId, ups.AgenciaId);
+            var enProceso = await TieneCambioEnProcesoAsync(ups.Id);
+            if (enProceso && (ups.AgenciaId != existente.AgenciaId || ups.CantidadBaterias != existente.CantidadBaterias))
+                throw new InvalidOperationException("Finalice o cancele el cambio en proceso antes de trasladar el UPS o modificar su banco de baterías.");
+            if (await _context.Mantenimientos.AnyAsync(m => m.UPSId == ups.Id && m.IncluyeCambioBaterias &&
+                m.FechaMantenimiento < ups.FechaInstalacion))
+                throw new ArgumentException("La instalación no puede ser posterior a los cambios registrados del UPS.");
 
             var tieneCambiosCompletados = await _context.Mantenimientos.AsNoTracking()
                 .AnyAsync(m =>
@@ -141,7 +150,23 @@ namespace InventarioUPS.API.Services
                 await ValidarSinMantenimientoPendienteAsync(id);
             }
 
+            await ValidarEstadoOperativoAsync(id, destino.Id, ups.AgenciaId);
             await _repository.CambiarEstadoAsync(id, destino.Nombre);
+        }
+
+        private Task<bool> TieneCambioEnProcesoAsync(int upsId) =>
+            _context.Mantenimientos.AnyAsync(m => m.UPSId == upsId && m.IncluyeCambioBaterias &&
+                m.EstadoMantenimiento != null && m.EstadoMantenimiento.Nombre == "En proceso");
+
+        private async Task ValidarEstadoOperativoAsync(int upsId, int estadoId, int agenciaId)
+        {
+            var estado = await _context.EstadosUPS.AsNoTracking().FirstAsync(e => e.Id == estadoId);
+            var agenciaActiva = await _context.Agencias.AnyAsync(a => a.Id == agenciaId && a.Activa);
+            if (!agenciaActiva && !EsEstado(estado.Nombre, "En resguardo") && !EsEstado(estado.Nombre, "De baja"))
+                throw new InvalidOperationException("Un UPS en una agencia inactiva debe permanecer en resguardo o de baja.");
+            var enProceso = upsId > 0 && await TieneCambioEnProcesoAsync(upsId);
+            if (EsEstado(estado.Nombre, "En mantenimiento") != enProceso)
+                throw new InvalidOperationException("El estado En mantenimiento se administra desde Cambios de baterías. Inicie o finalice el cambio allí.");
         }
 
         private async Task ValidarSinMantenimientoPendienteAsync(int upsId)

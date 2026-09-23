@@ -391,6 +391,105 @@ public sealed class UPSIdentityTests : IAsyncLifetime
     }
 
     [Theory]
+    [InlineData("San Pedro Sula", 4)]
+    [InlineData("La Ceiba", 4)]
+    [InlineData("Distrito Central", 4)]
+    [InlineData("El Progreso", 2)]
+    public async Task Presupuesto2029CuentaLosCiclosPorCiudadYUsaSuCosto(string ciudad, int cambiosEsperados)
+    {
+        (await context.Ciudades.SingleAsync()).Nombre = ciudad;
+        await context.SaveChangesAsync();
+        var ups = Equipo("INV-CICLICO");
+        ups.CantidadBaterias = 4;
+        ups.FechaInstalacion = new DateTime(2025, 12, 15);
+        await service.CrearAsync(ups);
+        context.Add(new PoliticaReemplazoBaterias { MesesReemplazoLocal = 3, MesesReemplazoForanea = 6 });
+        await context.SaveChangesAsync();
+        var config = new ConfiguracionPresupuestoService(new ConfiguracionPresupuestoRepository(context));
+        await config.CrearAsync(new() { Anio = 2029, CostoUnitarioBateria = 500 });
+        await config.CrearAsync(new() { Anio = 2028, CostoUnitarioBateria = 100 });
+        await Assert.ThrowsAsync<InvalidOperationException>(() => config.CrearAsync(new() { Anio = 2029, CostoUnitarioBateria = 900 }));
+        var result = await new PresupuestoController(context, config).ObtenerProyeccion(2029);
+        var resumen = Assert.IsType<InventarioUPS.API.DTOs.Presupuesto.PresupuestoResumenDto>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.Equal(1, resumen.TotalUPSConReemplazo);
+        Assert.Equal(cambiosEsperados, resumen.TotalCambios);
+        Assert.Equal(cambiosEsperados * 4, resumen.TotalBaterias);
+        Assert.Equal(cambiosEsperados * 2000m, resumen.TotalPresupuesto);
+        var detalle = Assert.Single(Assert.Single(resumen.Agencias).UPS);
+        Assert.Equal(cambiosEsperados == 4 ? new[] { 3, 6, 9, 12 } : new[] { 6, 12 }, detalle.FechasReemplazo.Select(f => f.Month));
+        Assert.Equal(0m, detalle.CostoPendiente);
+    }
+
+    [Fact]
+    public async Task SinCostoActivoNoGeneraPresupuestoYRechazaImportesInvalidos()
+    {
+        var config = new ConfiguracionPresupuestoService(new ConfiguracionPresupuestoRepository(context));
+        var controller = new PresupuestoController(context, config);
+        Assert.IsType<NotFoundObjectResult>(await controller.ObtenerProyeccion(2029));
+        foreach (var costo in new[] { 0m, -1m, 0.001m, 12.345m, 10000000000000000m })
+            await Assert.ThrowsAsync<ArgumentException>(() => config.CrearAsync(new() { Anio = 2029, CostoUnitarioBateria = costo }));
+        await config.CrearAsync(new() { Anio = 2029, CostoUnitarioBateria = 500 });
+        var guardado = await config.ObtenerPorAnioAsync(2029);
+        await config.ActualizarAsync(guardado!.Id, new() { CostoUnitarioBateria = 500, Activo = false });
+        Assert.IsType<NotFoundObjectResult>(await controller.ObtenerProyeccion(2029));
+        Assert.IsType<BadRequestObjectResult>(await controller.ObtenerProyeccion(DateTime.Today.Year - 1));
+    }
+
+    [Fact]
+    public async Task CambioNoReparaUnUPSniPermiteFechasAnterioresALaInstalacion()
+    {
+        var ups = Equipo("INV-ESTADOS");
+        var fuera = new EstadoUPS { Nombre = "Fuera de servicio" };
+        var enProceso = new EstadoUPS { Nombre = "En mantenimiento" };
+        var proceso = new EstadoMantenimiento { Nombre = "En proceso" };
+        var completo = new EstadoMantenimiento { Nombre = "Completado" };
+        context.AddRange(fuera, enProceso, proceso, completo);
+        await context.SaveChangesAsync();
+        ups.EstadoUPSId = fuera.Id;
+        await service.CrearAsync(ups);
+        var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
+        var cambio = new Mantenimiento { UPSId = ups.Id, EstadoMantenimientoId = proceso.Id,
+            FechaMantenimiento = ups.FechaInstalacion.AddDays(-1), Descripcion = "Reemplazo", TecnicoProveedor = "Técnico" };
+        await Assert.ThrowsAsync<ArgumentException>(() => cambios.CrearAsync(cambio));
+        cambio.FechaMantenimiento = DateTime.Today;
+        await cambios.CrearAsync(cambio);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CambiarEstadoAsync(ups.Id, "Operativo"));
+        context.ChangeTracker.Clear();
+        await cambios.ActualizarAsync(new Mantenimiento { Id = cambio.Id, UPSId = ups.Id,
+            EstadoMantenimientoId = completo.Id, FechaMantenimiento = DateTime.Today, Descripcion = "Completado", TecnicoProveedor = "Técnico" });
+        context.ChangeTracker.Clear();
+        Assert.Equal(fuera.Id, (await context.UPSs.SingleAsync()).EstadoUPSId);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CambiarEstadoAsync(ups.Id, "En mantenimiento"));
+    }
+
+    [Fact]
+    public async Task ProyeccionActualConsolidaVencidosYExcluyeEquiposDadosDeBaja()
+    {
+        var ups = Equipo("INV-VENCIDO");
+        ups.FechaInstalacion = DateTime.Today.AddYears(-2);
+        await service.CrearAsync(ups);
+        var excluido = Equipo("INV-BAJA", "SERIE-BAJA");
+        await service.CrearAsync(excluido);
+        var baja = new EstadoUPS { Nombre = "De baja" };
+        context.Add(baja);
+        context.Add(new PoliticaReemplazoBaterias { MesesReemplazoLocal = 3, MesesReemplazoForanea = 6 });
+        await context.SaveChangesAsync();
+        await service.CambiarEstadoAsync(excluido.Id, "De baja");
+        var config = new ConfiguracionPresupuestoService(new ConfiguracionPresupuestoRepository(context));
+        await config.CrearAsync(new() { Anio = DateTime.Today.Year, CostoUnitarioBateria = 500 });
+        context.ChangeTracker.Clear();
+        var result = await new PresupuestoController(context, config).ObtenerProyeccion(DateTime.Today.Year);
+        var resumen = Assert.IsType<InventarioUPS.API.DTOs.Presupuesto.PresupuestoResumenDto>(Assert.IsType<OkObjectResult>(result).Value);
+        var detalle = Assert.Single(Assert.Single(resumen.Agencias).UPS);
+        Assert.Equal(1, resumen.TotalUPSConReemplazo);
+        Assert.Equal(1, resumen.TotalUPSExcluidos);
+        Assert.Equal(1000m, resumen.TotalPendiente);
+        Assert.Equal(detalle.FechasReemplazo.Count + 1, detalle.CantidadCambios);
+        Assert.Equal(detalle.CantidadCambios * 1000m, resumen.TotalPresupuesto);
+        Assert.All(detalle.FechasReemplazo, f => Assert.True(f > DateTime.Today));
+    }
+
+    [Theory]
     [InlineData("MigracionUPS.sql")]
     [InlineData("MantenimientosSinCostos.sql")]
     [InlineData("CambiosBaterias.sql")]

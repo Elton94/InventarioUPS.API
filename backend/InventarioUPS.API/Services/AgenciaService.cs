@@ -138,6 +138,7 @@ namespace InventarioUPS.API.Services
             var mantenimientoEnProceso = await _context.Mantenimientos
                 .AsNoTracking()
                 .AnyAsync(m =>
+                    m.IncluyeCambioBaterias &&
                     m.UPS != null &&
                     m.UPS.AgenciaId == agenciaId &&
                     m.EstadoMantenimiento != null &&

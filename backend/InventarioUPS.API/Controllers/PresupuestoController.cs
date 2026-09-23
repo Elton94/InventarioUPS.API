@@ -160,8 +160,8 @@ namespace InventarioUPS.API.Controllers
         [PermisoAuthorize("VER_PRESUPUESTO")]
         public async Task<ActionResult> ObtenerProyeccion(int anio)
         {
-            if (anio < 2020 || anio > 2100)
-                return BadRequest(new { mensaje = "El año debe estar entre 2020 y 2100." });
+            if (anio < DateTime.Today.Year || anio > 2100)
+                return BadRequest(new { mensaje = $"Seleccione un año entre {DateTime.Today.Year} y 2100. La proyección no es un historial de gastos." });
 
             var configuracion = await _configuracionService.ObtenerPorAnioAsync(anio);
 
@@ -234,7 +234,10 @@ namespace InventarioUPS.API.Controllers
 
                 if (EsEstado(estadoUPS, "Fuera de servicio") ||
                     EsEstado(estadoUPS, "De baja"))
+                {
+                    resultado.TotalUPSExcluidos++;
                     continue;
+                }
 
                 var tipoAgencia = ObtenerTipoAgencia(equipo);
                 var esLocal = tipoAgencia.Equals("Local", StringComparison.OrdinalIgnoreCase);
@@ -245,7 +248,10 @@ namespace InventarioUPS.API.Controllers
 
                 if (equipo.CantidadBaterias <= 0 ||
                     equipo.FechaInstalacion == default ||
-                    mesesCiclo <= 0)
+                    equipo.FechaInstalacion.Date > hoy ||
+                    equipo.FechaUltimoCambioBaterias?.Date > hoy ||
+                    equipo.FechaUltimoCambioBaterias?.Date < equipo.FechaInstalacion.Date ||
+                    mesesCiclo is < 1 or > 120)
                 {
                     var insuficiente = CrearDetalle(
                         equipo,
@@ -260,7 +266,9 @@ namespace InventarioUPS.API.Controllers
                             ? "El UPS no tiene una cantidad válida de baterías."
                             : equipo.FechaInstalacion == default
                                 ? "El UPS no tiene una fecha de instalación válida."
-                                : "La política de reemplazo no tiene un ciclo válido.";
+                                : mesesCiclo is < 1 or > 120
+                                ? "La política debe estar entre 1 y 120 meses."
+                                : "Revise las fechas de instalación y último cambio.";
 
                     resultado.UPSInformacionInsuficienteDetalle.Add(insuficiente);
                     continue;
@@ -270,29 +278,12 @@ namespace InventarioUPS.API.Controllers
                     equipo.FechaUltimoCambioBaterias ??
                     equipo.FechaInstalacion;
 
-                var primeraFecha = fechaBase.AddMonths(mesesCiclo);
-                var fechaProyectada = primeraFecha;
-                var vencido = false;
-                var reemplazoAnteriorPendiente = primeraFecha.Date < hoy;
-
-                if (anio == anioActual && primeraFecha.Date < hoy)
-                {
-                    // Si el reemplazo debió hacerse y no existe un cambio
-                    // completado que moviera la fecha base, sigue pendiente.
-                    fechaProyectada = primeraFecha;
-                    vencido = true;
-                }
-                else
-                {
-                    while (fechaProyectada.Year < anio)
-                        fechaProyectada = fechaProyectada.AddMonths(mesesCiclo);
-
-                    if (fechaProyectada.Year != anio)
-                        continue;
-
-                    if (anio == anioActual && fechaProyectada.Date < hoy)
-                        vencido = true;
-                }
+                var calendario = CalculadoraReemplazos.Calcular(fechaBase, mesesCiclo, anio, hoy);
+                var incluirPendiente = anio == anioActual && calendario.VencimientoPendiente.HasValue;
+                var cantidadCambios = calendario.Fechas.Count + (incluirPendiente ? 1 : 0);
+                if (calendario.VencimientoPendiente.HasValue)
+                    resultado.TotalUPSPendientesPrevios++;
+                if (cantidadCambios == 0) continue;
 
                 var mantenimientoProgramado = programados
                     .Where(m =>
@@ -308,21 +299,27 @@ namespace InventarioUPS.API.Controllers
                     mesesCiclo,
                     configuracion.CostoUnitarioBateria);
 
-                detalle.FechaProyectadaReemplazo = fechaProyectada;
-                detalle.CostoEstimado =
-                    equipo.CantidadBaterias *
-                    configuracion.CostoUnitarioBateria;
+                detalle.FechasReemplazo = calendario.Fechas;
+                detalle.FechaVencimientoPendiente = calendario.VencimientoPendiente;
+                detalle.FechaProyectadaReemplazo = incluirPendiente
+                    ? calendario.VencimientoPendiente : calendario.Fechas.First();
+                detalle.CantidadCambios = cantidadCambios;
+                detalle.BateriasProyectadas = (long)equipo.CantidadBaterias * cantidadCambios;
+                detalle.CostoEstimado = detalle.BateriasProyectadas * configuracion.CostoUnitarioBateria;
+                detalle.CostoPendiente = incluirPendiente
+                    ? equipo.CantidadBaterias * configuracion.CostoUnitarioBateria : 0;
                 detalle.InformacionSuficiente = true;
-                detalle.EstaVencido = vencido;
-                detalle.ReemplazoAnteriorPendiente =
-                    anio > anioActual && reemplazoAnteriorPendiente;
+                detalle.EstaVencido = incluirPendiente;
+                detalle.ReemplazoAnteriorPendiente = calendario.VencimientoPendiente.HasValue;
                 detalle.TieneMantenimientoProgramado =
                     mantenimientoProgramado != null;
                 detalle.FechaMantenimientoProgramado =
                     mantenimientoProgramado?.FechaMantenimiento;
 
                 resultado.TotalUPSConReemplazo++;
-                resultado.TotalBaterias += equipo.CantidadBaterias;
+                resultado.TotalBaterias += detalle.BateriasProyectadas;
+                resultado.TotalCambios += cantidadCambios;
+                resultado.TotalPendiente += detalle.CostoPendiente;
                 resultado.TotalPresupuesto += detalle.CostoEstimado;
 
                 if (detalle.EstaVencido)
@@ -348,7 +345,8 @@ namespace InventarioUPS.API.Controllers
                 }
 
                 resumenAgencia.CantidadUPSConReemplazo++;
-                resumenAgencia.CantidadBaterias += equipo.CantidadBaterias;
+                resumenAgencia.CantidadBaterias += detalle.BateriasProyectadas;
+                resumenAgencia.CantidadCambios += cantidadCambios;
                 resumenAgencia.Subtotal += detalle.CostoEstimado;
                 resumenAgencia.UPS.Add(detalle);
             }

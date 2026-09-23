@@ -1,3 +1,5 @@
+using System.Data;
+using Microsoft.Data.SqlClient;
 using InventarioUPS.API.Data;
 using InventarioUPS.API.DTOs;
 using InventarioUPS.API.Models;
@@ -39,7 +41,28 @@ namespace InventarioUPS.API.Services
                 .ToList();
         }
 
-        public async Task CrearAsync(Mantenimiento mantenimiento)
+        public Task CrearAsync(Mantenimiento mantenimiento) =>
+            EjecutarTransaccionAsync(() => CrearInternoAsync(mantenimiento));
+
+        public Task ActualizarAsync(Mantenimiento mantenimiento) =>
+            EjecutarTransaccionAsync(() => ActualizarInternoAsync(mantenimiento));
+
+        private async Task EjecutarTransaccionAsync(Func<Task> operacion)
+        {
+            await using var transaccion = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                await operacion();
+                await transaccion.CommitAsync();
+            }
+            catch (Exception ex) when (ex is SqlException { Number: 1205 } ||
+                ex is DbUpdateException { InnerException: SqlException { Number: 1205 } })
+            {
+                throw new InvalidOperationException("Otro usuario está actualizando este equipo. Recargue y vuelva a intentar.", ex);
+            }
+        }
+
+        private async Task CrearInternoAsync(Mantenimiento mantenimiento)
         {
             ValidarDatosBasicos(mantenimiento);
 
@@ -53,20 +76,22 @@ namespace InventarioUPS.API.Services
                 estado.Nombre);
 
             ValidarFecha(mantenimiento.FechaMantenimiento, estado.Nombre);
+            if (mantenimiento.FechaMantenimiento.Date < ups.FechaInstalacion.Date)
+                throw new ArgumentException("El cambio no puede ser anterior a la instalación del UPS.");
             PrepararBaterias(mantenimiento, ups);
             LimpiarTextos(mantenimiento);
 
             mantenimiento.AgenciaIdRegistro = ups.AgenciaId;
             mantenimiento.AgenciaNombreRegistro = ups.Agencia?.Nombre ?? string.Empty;
 
-            await SincronizarEstadoUPSAsync(ups, mantenimiento, estado.Nombre);
+            await SincronizarEstadoUPSAsync(ups, mantenimiento, estado.Nombre, null);
             await RecalcularFechaBateriasAsync(ups, mantenimiento, estado.Nombre);
 
             _context.Mantenimientos.Add(mantenimiento);
             await _context.SaveChangesAsync();
         }
 
-        public async Task ActualizarAsync(Mantenimiento mantenimiento)
+        private async Task ActualizarInternoAsync(Mantenimiento mantenimiento)
         {
             ValidarDatosBasicos(mantenimiento);
 
@@ -91,6 +116,8 @@ namespace InventarioUPS.API.Services
                 estado.Nombre);
 
             ValidarFecha(mantenimiento.FechaMantenimiento, estado.Nombre);
+            if (mantenimiento.FechaMantenimiento.Date < ups.FechaInstalacion.Date)
+                throw new ArgumentException("El cambio no puede ser anterior a la instalación del UPS.");
             PrepararBaterias(mantenimiento, ups);
             if (EsEstado(existente.EstadoMantenimiento?.Nombre, "Completado") &&
                 EsEstado(estado.Nombre, "Completado"))
@@ -104,7 +131,7 @@ namespace InventarioUPS.API.Services
                     : ups.Agencia?.Nombre ?? string.Empty;
             mantenimiento.EstadoUPSAnteriorId = existente.EstadoUPSAnteriorId;
 
-            await SincronizarEstadoUPSAsync(ups, mantenimiento, estado.Nombre);
+            await SincronizarEstadoUPSAsync(ups, mantenimiento, estado.Nombre, existente.EstadoMantenimiento?.Nombre);
             await RecalcularFechaBateriasAsync(ups, mantenimiento, estado.Nombre);
 
             existente.EstadoMantenimientoId = mantenimiento.EstadoMantenimientoId;
@@ -147,98 +174,42 @@ namespace InventarioUPS.API.Services
             var estado = await _context.EstadosMantenimiento.FirstOrDefaultAsync(e => e.Id == id);
             if (estado == null)
                 throw new ArgumentException("El estado de cambio de baterías seleccionado no existe.");
+            if (!new[] { "Programado", "En proceso", "Completado", "Cancelado" }
+                .Any(nombre => EsEstado(estado.Nombre, nombre)))
+                throw new ArgumentException("El estado del cambio no está soportado.");
             if (!estado.Activo)
                 throw new InvalidOperationException("El estado de cambio de baterías seleccionado está inactivo.");
             return estado;
         }
 
         private async Task SincronizarEstadoUPSAsync(
-            UPS ups,
-            Mantenimiento mantenimiento,
-            string estadoMantenimiento)
+            UPS ups, Mantenimiento cambio, string estado, string? estadoAnterior)
         {
-            if (EsEstado(estadoMantenimiento, "Programado"))
+            if (EsEstado(estado, "En proceso"))
             {
-                // Si el registro estaba En proceso y se devuelve a Programado,
-                // el UPS debe recuperar el estado que tenía antes.
-                if (mantenimiento.EstadoUPSAnteriorId.HasValue)
-                {
-                    var anterior = await _context.EstadosUPS
-                        .FirstOrDefaultAsync(e =>
-                            e.Id == mantenimiento.EstadoUPSAnteriorId.Value &&
-                            e.Activo &&
-                            e.Nombre != "De baja");
-
-                    if (anterior != null)
-                    {
-                        ups.EstadoUPSId = anterior.Id;
-                        ups.EstadoUPS = anterior;
-                        ups.FechaModificacion = DateTime.Now;
-                    }
-                }
-
-                mantenimiento.EstadoUPSAnteriorId = null;
-                return;
-            }
-
-            if (mantenimiento.EstadoUPSAnteriorId == null)
-            {
-                mantenimiento.EstadoUPSAnteriorId = ups.EstadoUPSId;
-            }
-
-            if (EsEstado(estadoMantenimiento, "En proceso"))
-            {
-                var estado = await ObtenerEstadoUPSAsync("En mantenimiento");
-                ups.EstadoUPSId = estado.Id;
-                ups.EstadoUPS = estado;
+                if (!EsEstado(estadoAnterior, "En proceso"))
+                    cambio.EstadoUPSAnteriorId = ups.EstadoUPSId;
+                var enProceso = await ObtenerEstadoUPSAsync("En mantenimiento");
+                ups.EstadoUPSId = enProceso.Id;
+                ups.EstadoUPS = enProceso;
                 ups.FechaModificacion = DateTime.Now;
                 return;
             }
 
-            if (EsEstado(estadoMantenimiento, "Completado"))
+            // Completar un reemplazo no demuestra que un equipo averiado esté reparado.
+            if (EsEstado(estadoAnterior, "En proceso"))
             {
-                // Una agencia inactiva conserva sus equipos en resguardo.
-                // En una agencia activa, un mantenimiento completado deja
-                // el equipo operativo.
-                var nombreDestino =
-                    ups.Agencia?.Activa == false
-                        ? "En resguardo"
-                        : "Operativo";
-
-                var estado = await ObtenerEstadoUPSAsync(nombreDestino);
-                ups.EstadoUPSId = estado.Id;
-                ups.EstadoUPS = estado;
-                ups.FechaModificacion = DateTime.Now;
-                return;
-            }
-
-            if (EsEstado(estadoMantenimiento, "Cancelado"))
-            {
-                EstadoUPS? restaurar = null;
-
-                if (mantenimiento.EstadoUPSAnteriorId.HasValue)
-                {
-                    restaurar = await _context.EstadosUPS
-                        .FirstOrDefaultAsync(e =>
-                            e.Id == mantenimiento.EstadoUPSAnteriorId.Value &&
-                            e.Activo &&
-                            e.Nombre != "De baja");
-                }
-
+                var restaurar = await _context.EstadosUPS.FirstOrDefaultAsync(e =>
+                    e.Id == cambio.EstadoUPSAnteriorId && e.Activo && e.Nombre != "En mantenimiento");
+                if (ups.Agencia?.Activa == false)
+                    restaurar = await ObtenerEstadoUPSAsync("En resguardo");
                 if (restaurar == null)
-                {
-                    var nombreDestino =
-                        ups.Agencia?.Activa == false
-                            ? "En resguardo"
-                            : "Operativo";
-
-                    restaurar = await ObtenerEstadoUPSAsync(nombreDestino);
-                }
-
+                    throw new InvalidOperationException("No se puede recuperar el estado anterior del UPS. Revise su catálogo de estados.");
                 ups.EstadoUPSId = restaurar.Id;
                 ups.EstadoUPS = restaurar;
                 ups.FechaModificacion = DateTime.Now;
             }
+            cambio.EstadoUPSAnteriorId = null;
         }
 
         private async Task ValidarMantenimientoActivoDuplicadoAsync(
@@ -246,7 +217,7 @@ namespace InventarioUPS.API.Services
             int mantenimientoId,
             string estado)
         {
-            if (!EsEstado(estado, "En proceso"))
+            if (!EsEstado(estado, "En proceso") && !EsEstado(estado, "Completado"))
                 return;
 
             var existe = await _context.Mantenimientos

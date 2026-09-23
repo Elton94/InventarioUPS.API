@@ -64,7 +64,7 @@ export default function MainLayout() {
         },
         {
             ruta: "/presupuesto",
-            texto: "Presupuesto",
+            texto: "Proyecciones",
             visible:
                 tienePermiso(
                     "VER_PRESUPUESTO"

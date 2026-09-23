@@ -59,6 +59,7 @@ export default function Home() {
         detalleProyeccion,
         setDetalleProyeccion
     ] = useState([]);
+    const [estadoProyeccion, setEstadoProyeccion] = useState("pendiente");
     const [cargando, setCargando] =
         useState(true);
     const [error, setError] =
@@ -141,6 +142,7 @@ export default function Home() {
                                         )
                                     : [];
 
+                            setEstadoProyeccion("lista");
                             setDetalleProyeccion(
                                 detalle
                             );
@@ -151,8 +153,10 @@ export default function Home() {
                                     ?.status !==
                                 404
                             ) {
+                                setEstadoProyeccion("error");
                                 throw e;
                             }
+                            setEstadoProyeccion("sinConfigurar");
                             setDetalleProyeccion(
                                 []
                             );
@@ -218,7 +222,7 @@ export default function Home() {
             (total, item) =>
                 total +
                 Number(
-                    item.cantidadBaterias ||
+                    item.bateriasProyectadas ||
                     0
                 ),
             0
@@ -291,10 +295,7 @@ export default function Home() {
         puedePresupuesto && {
             titulo:
                 `Baterías proyectadas ${anio}`,
-            valor:
-                numero.format(
-                    bateriasProyectadas
-                )
+            valor: estadoProyeccion === "lista" ? numero.format(bateriasProyectadas) : estadoProyeccion === "sinConfigurar" ? "Sin configurar" : "No disponible"
         }
     ].filter(Boolean);
 
@@ -495,7 +496,7 @@ export default function Home() {
                                                     </TableCell>
                                                     <TableCell>
                                                         <strong>
-                                                            {item.numeroInventarioUPS || "—"}
+                                                            {item.numeroInventario || "—"}
                                                         </strong>
                                                     </TableCell>
                                                     <TableCell>

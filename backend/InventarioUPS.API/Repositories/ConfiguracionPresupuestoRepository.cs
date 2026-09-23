@@ -1,6 +1,7 @@
 using InventarioUPS.API.Data;
 using InventarioUPS.API.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 namespace InventarioUPS.API.Repositories
 {
@@ -30,7 +31,14 @@ namespace InventarioUPS.API.Repositories
         public async Task CrearAsync(ConfiguracionPresupuestoBaterias configuracion)
         {
             await _context.ConfiguracionPresupuestoBaterias.AddAsync(configuracion);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2601 or 2627 })
+            {
+                throw new InvalidOperationException($"Ya existe una configuración para el año {configuracion.Anio}.", ex);
+            }
         }
 
         public async Task ActualizarAsync(ConfiguracionPresupuestoBaterias configuracion)

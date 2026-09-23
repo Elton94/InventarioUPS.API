@@ -77,9 +77,9 @@ namespace InventarioUPS.API.Services
 
         private static void ValidarCosto(decimal costo)
         {
-            if (costo <= 0)
+            if (costo < 0.01m || costo > 9999999999999999.99m || decimal.Round(costo, 2) != costo)
                 throw new ArgumentException(
-                    "El costo unitario de la batería debe ser mayor que cero.");
+                    "El costo debe ser positivo, con máximo dos decimales y menor que 10,000,000,000,000,000.");
         }
 
         private static ConfiguracionPresupuestoDto MapearDto(

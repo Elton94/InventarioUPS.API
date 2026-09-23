@@ -1,981 +1,204 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-    useEffect,
-    useMemo,
-    useState
-} from "react";
-
-import {
-    Accordion,
-    AccordionDetails,
-    AccordionSummary,
-    Alert,
-    Box,
-    Button,
-    Card,
-    CardContent,
-    Chip,
-    CircularProgress,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    FormControl,
-    Grid,
-    InputLabel,
-    MenuItem,
-    Select,
-    Snackbar,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    TextField,
-    Typography
+    Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button,
+    Card, CardContent, Chip, CircularProgress, Dialog, DialogActions,
+    DialogContent, DialogTitle, MenuItem, Stack, Table, TableBody,
+    TableCell, TableContainer, TableHead, TableRow, TextField, Typography
 } from "@mui/material";
-
-import ExpandMoreIcon
-    from "@mui/icons-material/ExpandMore";
-import SettingsIcon
-    from "@mui/icons-material/Settings";
-
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import SettingsIcon from "@mui/icons-material/Settings";
 import {
-    obtenerConfiguracionesPresupuesto,
-    crearConfiguracionPresupuesto,
-    actualizarConfiguracionPresupuesto,
-    obtenerPoliticaReemplazo,
-    actualizarPoliticaReemplazo,
-    obtenerProyeccionPresupuesto
+    obtenerConfiguracionesPresupuesto, crearConfiguracionPresupuesto,
+    actualizarConfiguracionPresupuesto, obtenerPoliticaReemplazo,
+    actualizarPoliticaReemplazo, obtenerProyeccionPresupuesto
 } from "../services/presupuestoService";
+import { tienePermiso } from "../services/permisos";
 
-import {
-    tienePermiso
-} from "../services/permisos";
-
-const formatearMoneda = (valor) =>
-    new Intl.NumberFormat(
-        "es-HN",
-        {
-            style: "currency",
-            currency: "HNL"
-        }
-    ).format(
-        Number(valor || 0)
-    );
-
-const formatearFecha = (valor) =>
-    valor
-        ? new Date(
-            valor
-        ).toLocaleDateString("es-HN")
-        : "—";
+const moneda = valor => new Intl.NumberFormat("es-HN", { style: "currency", currency: "HNL" }).format(valor || 0);
+const fecha = valor => valor ? new Date(valor).toLocaleDateString("es-HN") : "—";
+const normalizar = valor => String(valor || "").toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
 export default function Presupuesto() {
-    const anioActual =
-        new Date().getFullYear();
-
-    const [anio, setAnio] =
-        useState(anioActual);
-    const [
-        configuraciones,
-        setConfiguraciones
-    ] = useState([]);
-    const [politica, setPolitica] =
-        useState(null);
-    const [proyeccion, setProyeccion] =
-        useState(null);
-    const [cargando, setCargando] =
-        useState(true);
-    const [
-        cargandoProyeccion,
-        setCargandoProyeccion
-    ] = useState(false);
-    const [dialogoCosto, setDialogoCosto] =
-        useState(false);
-    const [
-        dialogoPolitica,
-        setDialogoPolitica
-    ] = useState(false);
-    const [costo, setCosto] =
-        useState("");
-    const [mesesLocal, setMesesLocal] =
-        useState("");
-    const [mesesForanea, setMesesForanea] =
-        useState("");
-    const [mensaje, setMensaje] =
-        useState("");
-    const [error, setError] =
-        useState("");
-
-    const puedeGestionar =
-        tienePermiso(
-            "GESTIONAR_PRESUPUESTO"
-        );
-
-    const configuracion =
-        useMemo(
-            () =>
-                configuraciones.find(
-                    (c) =>
-                        Number(c.anio) ===
-                        Number(anio)
-                ),
-            [
-                configuraciones,
-                anio
-            ]
-        );
-
-    const anios =
-        useMemo(() => {
-            const lista = [];
-
-            for (
-                let i = 0;
-                i <= 5;
-                i++
-            ) {
-                lista.push(
-                    anioActual + i
-                );
-            }
-
-            configuraciones.forEach(
-                (c) =>
-                    lista.push(
-                        Number(c.anio)
-                    )
-            );
-
-            return [
-                ...new Set(lista)
-            ].sort(
-                (a, b) => a - b
-            );
-        }, [
-            configuraciones,
-            anioActual
-        ]);
-
-    const cargarBase = async () => {
-        const [configs, politicaData] =
-            await Promise.all([
-                obtenerConfiguracionesPresupuesto(),
-                obtenerPoliticaReemplazo()
-            ]);
-
-        setConfiguraciones(
-            Array.isArray(configs)
-                ? configs
-                : []
-        );
-        setPolitica(politicaData);
-    };
+    const actual = new Date().getFullYear();
+    const [anio, setAnio] = useState(actual);
+    const [configs, setConfigs] = useState([]);
+    const [politica, setPolitica] = useState(null);
+    const [proyeccion, setProyeccion] = useState(null);
+    const [cargando, setCargando] = useState(true);
+    const [generando, setGenerando] = useState(false);
+    const [guardando, setGuardando] = useState(false);
+    const [error, setError] = useState("");
+    const [mensaje, setMensaje] = useState("");
+    const [busqueda, setBusqueda] = useState("");
+    const [tipoAgencia, setTipoAgencia] = useState("Todas");
+    const [dialogo, setDialogo] = useState(null);
+    const [errorDialogo, setErrorDialogo] = useState("");
+    const [costo, setCosto] = useState("");
+    const [local, setLocal] = useState("");
+    const [foranea, setForanea] = useState("");
+    const solicitud = useRef(0);
+    const puedeGestionar = tienePermiso("GESTIONAR_PRESUPUESTO");
+    const configuracion = configs.find(c => Number(c.anio) === anio);
+    const anios = [...new Set([...Array.from({ length: 6 }, (_, i) => actual + i), ...configs.map(c => Number(c.anio))])]
+        .filter(a => a >= actual && a <= 2100).sort((a, b) => a - b);
 
     useEffect(() => {
-        const cargar = async () => {
-            try {
-                setCargando(true);
-                await cargarBase();
-            } catch (e) {
-                setError(
-                    e.response?.data?.mensaje ||
-                    "No fue posible cargar la configuración del presupuesto."
-                );
-            } finally {
-                setCargando(false);
-            }
-        };
-
-        cargar();
+        let vigente = true;
+        Promise.all([obtenerConfiguracionesPresupuesto(), obtenerPoliticaReemplazo()])
+            .then(([costos, reglas]) => { if (vigente) { setConfigs(costos || []); setPolitica(reglas); } })
+            .catch(e => { if (vigente) setError(e.response?.data?.mensaje || "No se pudo cargar la configuración. Recargue la página para reintentar."); })
+            .finally(() => { if (vigente) setCargando(false); });
+        return () => { vigente = false; solicitud.current++; };
     }, []);
 
+    const invalidar = () => { solicitud.current++; setProyeccion(null); setGenerando(false); };
     const generar = async () => {
-        if (
-            !configuracion ||
-            !configuracion.activo
-        ) {
-            setError(
-                `Configure un costo de batería activo para ${anio}.`
-            );
-            return;
-        }
-
+        const id = ++solicitud.current;
+        setError(""); setMensaje(""); setProyeccion(null);
+        if (!configuracion?.activo) return setError(`Configure un costo activo para ${anio}.`);
+        setGenerando(true);
         try {
-            setCargandoProyeccion(
-                true
-            );
-            setError("");
-
-            const datos =
-                await obtenerProyeccionPresupuesto(
-                    anio
-                );
-
-            setProyeccion(datos);
+            const datos = await obtenerProyeccionPresupuesto(anio);
+            if (id === solicitud.current) setProyeccion(datos);
         } catch (e) {
-            setProyeccion(null);
-            setError(
-                e.response?.data?.mensaje ||
-                "No fue posible generar la proyección."
-            );
+            if (id === solicitud.current) setError(e.response?.data?.mensaje || "No se pudo generar la proyección. Intente de nuevo.");
         } finally {
-            setCargandoProyeccion(
-                false
-            );
+            if (id === solicitud.current) setGenerando(false);
         }
     };
 
     const abrirCosto = () => {
-        setCosto(
-            configuracion
-                ?.costoUnitarioBateria ??
-            ""
-        );
-        setDialogoCosto(true);
+        setCosto(configuracion?.costoUnitarioBateria ?? ""); setErrorDialogo("");
+        setDialogo({ tipo: "costo", anio, id: configuracion?.id });
     };
-
-    const guardarCosto = async () => {
-        const valor =
-            Number(costo);
-
-        if (
-            costo === "" ||
-            valor <= 0
-        ) {
-            setError(
-                "El costo unitario debe ser mayor que cero."
-            );
-            return;
-        }
-
-        try {
-            if (configuracion) {
-                await actualizarConfiguracionPresupuesto(
-                    configuracion.id,
-                    {
-                        costoUnitarioBateria:
-                            valor,
-                        activo: true
-                    }
-                );
-            } else {
-                await crearConfiguracionPresupuesto(
-                    {
-                        anio:
-                            Number(anio),
-                        costoUnitarioBateria:
-                            valor
-                    }
-                );
-            }
-
-            await cargarBase();
-            setProyeccion(null);
-            setDialogoCosto(false);
-            setMensaje(
-                "Costo anual guardado correctamente."
-            );
-        } catch (e) {
-            setError(
-                e.response?.data?.mensaje ||
-                "No fue posible guardar el costo anual."
-            );
-        }
-    };
-
     const abrirPolitica = () => {
-        if (!politica) return;
-
-        setMesesLocal(
-            politica.mesesReemplazoLocal
-        );
-        setMesesForanea(
-            politica.mesesReemplazoForanea
-        );
-        setDialogoPolitica(true);
+        setLocal(politica.mesesReemplazoLocal); setForanea(politica.mesesReemplazoForanea);
+        setErrorDialogo(""); setDialogo({ tipo: "politica" });
     };
-
-    const guardarPolitica = async () => {
-        const local =
-            Number(mesesLocal);
-        const foranea =
-            Number(mesesForanea);
-
-        if (
-            local <= 0 ||
-            local > 120 ||
-            foranea <= 0 ||
-            foranea > 120
-        ) {
-            setError(
-                "Los ciclos deben estar entre 1 y 120 meses."
-            );
-            return;
+    const guardar = async () => {
+        setErrorDialogo("");
+        const valor = Number(costo);
+        if (dialogo.tipo === "costo") {
+            if (!Number.isFinite(valor) || valor < 0.01 || valor >= 1e16 || !/^\d+(\.\d{1,2})?$/.test(String(costo).trim()))
+                return setErrorDialogo("Ingrese un costo positivo con máximo dos decimales.");
+        } else if (![Number(local), Number(foranea)].every(v => Number.isInteger(v) && v >= 1 && v <= 120)) {
+            return setErrorDialogo("Use meses enteros entre 1 y 120.");
         }
-
+        setGuardando(true);
         try {
-            await actualizarPoliticaReemplazo(
-                {
-                    mesesReemplazoLocal:
-                        local,
-                    mesesReemplazoForanea:
-                        foranea
-                }
-            );
-
-            await cargarBase();
-            setProyeccion(null);
-            setDialogoPolitica(
-                false
-            );
-            setMensaje(
-                "Política actualizada correctamente."
-            );
+            if (dialogo.tipo === "costo") {
+                if (dialogo.id) await actualizarConfiguracionPresupuesto(dialogo.id, { costoUnitarioBateria: valor, activo: true });
+                else await crearConfiguracionPresupuesto({ anio: dialogo.anio, costoUnitarioBateria: valor });
+                setConfigs(await obtenerConfiguracionesPresupuesto());
+            } else {
+                await actualizarPoliticaReemplazo({ mesesReemplazoLocal: Number(local), mesesReemplazoForanea: Number(foranea) });
+                setPolitica(await obtenerPoliticaReemplazo());
+            }
+            invalidar(); setError(""); setMensaje("Configuración guardada. Genere nuevamente la proyección."); setDialogo(null);
         } catch (e) {
-            setError(
-                e.response?.data?.mensaje ||
-                "No fue posible guardar la política."
-            );
-        }
+            setErrorDialogo(e.response?.data?.mensaje || "No se pudo guardar. Verifique los datos e intente de nuevo.");
+        } finally { setGuardando(false); }
     };
 
-    if (cargando) {
-        return (
-            <Box
-                sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    py: 10
-                }}
-            >
-                <CircularProgress />
+    const agencias = useMemo(() => (proyeccion?.agencias || []).map(a => ({
+        ...a, ups: a.ups.filter(u => (tipoAgencia === "Todas" || u.tipoAgencia === tipoAgencia) &&
+            normalizar([a.agencia, u.numeroInventario, u.numeroSerie].join(" ")).includes(normalizar(busqueda)))
+    })).filter(a => a.ups.length), [proyeccion, busqueda, tipoAgencia]);
+    const equipos = agencias.flatMap(a => a.ups);
+    const filtrado = Boolean(busqueda.trim()) || tipoAgencia !== "Todas";
+    const resumen = equipos.reduce((r, u) => ({ cambios: r.cambios + u.cantidadCambios,
+        baterias: r.baterias + u.bateriasProyectadas, total: r.total + u.costoEstimado,
+        pendiente: r.pendiente + u.costoPendiente }), { cambios: 0, baterias: 0, total: 0, pendiente: 0 });
+
+    if (cargando) return <Box sx={{ py: 8, textAlign: "center" }}><CircularProgress aria-label="Cargando configuración" /></Box>;
+
+    return <Box sx={{ maxWidth: 1500, mx: "auto" }}>
+        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={2} sx={{ mb: 3 }}>
+            <Box><Typography variant="h4" fontWeight={700}>Proyecciones de baterías</Typography>
+                <Typography color="text.secondary">Planifique los reemplazos y las compras de cada año.</Typography></Box>
+            {politica && <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1}>
+                <Chip label={`Local: ${politica.mesesReemplazoLocal} meses`} variant="outlined" />
+                <Chip label={`Foránea: ${politica.mesesReemplazoForanea} meses`} variant="outlined" />
+                {puedeGestionar && <Button startIcon={<SettingsIcon />} onClick={abrirPolitica}>Política</Button>}
+            </Stack>}
+        </Stack>
+        {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>{error}</Alert>}
+        {mensaje && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMensaje("")}>{mensaje}</Alert>}
+        <Card variant="outlined" sx={{ mb: 3, borderRadius: 3 }}><CardContent>
+            <Stack direction={{ xs: "column", md: "row" }} alignItems={{ md: "center" }} gap={3}>
+                <TextField select label="Año a proyectar" value={anio} sx={{ minWidth: 180 }} onChange={e => {
+                    setAnio(Number(e.target.value)); invalidar(); setError(""); setMensaje("");
+                }}>{anios.map(a => <MenuItem key={a} value={a}>{a}</MenuItem>)}</TextField>
+                <Box sx={{ flex: 1 }}><Typography variant="body2" color="text.secondary">Costo estimado por batería · {anio}</Typography>
+                    <Typography variant="h5" fontWeight={700}>{configuracion?.activo ? moneda(configuracion.costoUnitarioBateria) : "Sin configurar"}</Typography></Box>
+                {puedeGestionar && <Button variant="outlined" onClick={abrirCosto}>{configuracion ? "Editar costo" : "Configurar costo"}</Button>}
+                <Button variant="contained" size="large" disabled={generando || !configuracion?.activo || !politica} onClick={generar}>
+                    {generando ? "Calculando…" : "Generar proyección"}</Button>
+            </Stack>
+        </CardContent></Card>
+        {!configuracion?.activo && <Alert severity="info" sx={{ mb: 3 }}>Falta el costo de {anio}. {puedeGestionar ? "Use Configurar costo para continuar." : "Solicite la configuración al administrador."}</Alert>}
+        {!proyeccion && !generando && configuracion?.activo && <Box sx={{ py: 5, textAlign: "center", border: "1px dashed #cbd5e1", borderRadius: 3 }}>
+            <Typography variant="h6">La configuración está lista</Typography>
+            <Typography color="text.secondary">Genere la proyección para ver fechas, cantidades y presupuesto por agencia.</Typography></Box>}
+        {proyeccion && <>
+            <Stack direction={{ xs: "column", sm: "row" }} gap={2} sx={{ mb: 2 }}>
+                <TextField size="small" label="Buscar agencia, inventario o serie" value={busqueda} onChange={e => setBusqueda(e.target.value)} sx={{ flex: 1 }} />
+                <TextField size="small" select label="Tipo de agencia" value={tipoAgencia} onChange={e => setTipoAgencia(e.target.value)} sx={{ minWidth: 180 }}>
+                    {["Todas", "Local", "Foránea"].map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}</TextField>
+                {filtrado && <Button onClick={() => { setBusqueda(""); setTipoAgencia("Todas"); }}>Limpiar filtros</Button>}
+            </Stack>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{filtrado ? "Resumen de los resultados filtrados" : `Resumen de ${anio}`}</Typography>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" }, gap: 2, mb: 2 }}>
+                {[["UPS con reemplazo", equipos.length], ["Cambios previstos", resumen.cambios], ["Baterías por comprar", resumen.baterias], ["Presupuesto estimado", moneda(resumen.total)]].map(([titulo, valor], i) =>
+                    <Card key={titulo} variant="outlined" sx={{ borderRadius: 3, bgcolor: i === 3 ? "#eef4ff" : "white" }}><CardContent>
+                        <Typography variant="body2" color="text.secondary">{titulo}</Typography><Typography variant="h5" fontWeight={700} sx={{ mt: 1 }}>{valor}</Typography>
+                    </CardContent></Card>)}
             </Box>
-        );
-    }
-
-    return (
-        <Box>
-            <Typography
-                variant="h4"
-                fontWeight="bold"
-                sx={{ mb: 3 }}
-            >
-                Presupuesto de Baterías
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {anio === actual ? "Estimación pendiente desde hoy hasta diciembre; no incluye gastos ya realizados." : "Estimación de enero a diciembre con el inventario y la política actuales."}
             </Typography>
-
-            {error && (
-                <Alert
-                    severity="error"
-                    sx={{ mb: 3 }}
-                    onClose={() =>
-                        setError("")
-                    }
-                >
-                    {error}
-                </Alert>
-            )}
-
-            <Card sx={{ mb: 3 }}>
-                <CardContent>
-                    <Box
-                        sx={{
-                            display: "flex",
-                            justifyContent:
-                                "space-between",
-                            alignItems: "center",
-                            gap: 2,
-                            flexWrap: "wrap"
-                        }}
-                    >
-                        <Box>
-                            <Typography
-                                variant="h6"
-                                fontWeight="bold"
-                            >
-                                Política global de reemplazo
-                            </Typography>
-                            <Typography
-                                color="text.secondary"
-                            >
-                                Local:{" "}
-                                <strong>
-                                    {
-                                        politica
-                                            ?.mesesReemplazoLocal
-                                    } meses
-                                </strong>
-                                {" · "}
-                                Foránea:{" "}
-                                <strong>
-                                    {
-                                        politica
-                                            ?.mesesReemplazoForanea
-                                    } meses
-                                </strong>
-                            </Typography>
-                        </Box>
-
-                        {puedeGestionar && (
-                            <Button
-                                variant="outlined"
-                                startIcon={
-                                    <SettingsIcon />
-                                }
-                                onClick={
-                                    abrirPolitica
-                                }
-                            >
-                                Editar política
-                            </Button>
-                        )}
-                    </Box>
-                </CardContent>
-            </Card>
-
-            <Card sx={{ mb: 3 }}>
-                <CardContent>
-                    <Grid
-                        container
-                        spacing={2}
-                        alignItems="center"
-                    >
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 3
-                            }}
-                        >
-                            <FormControl
-                                fullWidth
-                            >
-                                <InputLabel>
-                                    Año
-                                </InputLabel>
-                                <Select
-                                    label="Año"
-                                    value={anio}
-                                    onChange={(e) => {
-                                        setAnio(
-                                            Number(
-                                                e.target.value
-                                            )
-                                        );
-                                        setProyeccion(
-                                            null
-                                        );
-                                    }}
-                                >
-                                    {anios.map(
-                                        (valor) => (
-                                            <MenuItem
-                                                key={valor}
-                                                value={valor}
-                                            >
-                                                {valor}
-                                            </MenuItem>
-                                        )
-                                    )}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 4
-                            }}
-                        >
-                            <Typography
-                                color="text.secondary"
-                                variant="body2"
-                            >
-                                Costo estimado por batería
-                            </Typography>
-                            <Typography
-                                variant="h5"
-                                fontWeight="bold"
-                            >
-                                {configuracion
-                                    ? formatearMoneda(
-                                        configuracion
-                                            .costoUnitarioBateria
-                                    )
-                                    : "Sin configurar"}
-                            </Typography>
-                        </Grid>
-
-                        <Grid
-                            size={{
-                                xs: 12,
-                                md: 5
-                            }}
-                        >
-                            <Box
-                                sx={{
-                                    display: "flex",
-                                    gap: 1,
-                                    justifyContent:
-                                        "flex-end",
-                                    flexWrap: "wrap"
-                                }}
-                            >
-                                {puedeGestionar && (
-                                    <Button
-                                        variant="outlined"
-                                        onClick={
-                                            abrirCosto
-                                        }
-                                    >
-                                        {configuracion
-                                            ? "Editar costo"
-                                            : "Configurar costo"}
-                                    </Button>
-                                )}
-
-                                <Button
-                                    variant="contained"
-                                    onClick={generar}
-                                    disabled={
-                                        cargandoProyeccion
-                                    }
-                                >
-                                    Generar proyección
-                                </Button>
-                            </Box>
-                        </Grid>
-                    </Grid>
-                </CardContent>
-            </Card>
-
-            {cargandoProyeccion && (
-                <Box
-                    sx={{
-                        display: "flex",
-                        justifyContent: "center",
-                        py: 8
-                    }}
-                >
-                    <CircularProgress />
-                </Box>
-            )}
-
-            {!cargandoProyeccion &&
-                proyeccion && (
-                <>
-                    <Grid
-                        container
-                        spacing={2}
-                        sx={{ mb: 3 }}
-                    >
-                        {[
-                            [
-                                "UPS en inventario",
-                                proyeccion
-                                    .totalUPSInventario
-                            ],
-                            [
-                                "UPS con reemplazo",
-                                proyeccion
-                                    .totalUPSConReemplazo
-                            ],
-                            [
-                                "Baterías requeridas",
-                                proyeccion
-                                    .totalBaterias
-                            ],
-                            [
-                                "Presupuesto",
-                                formatearMoneda(
-                                    proyeccion
-                                        .totalPresupuesto
-                                )
-                            ],
-                            [
-                                "Vencidos",
-                                proyeccion
-                                    .totalUPSVencidos
-                            ],
-                            [
-                                "Ya programados",
-                                proyeccion
-                                    .totalUPSProgramados
-                            ]
-                        ].map(
-                            ([titulo, valor]) => (
-                                <Grid
-                                    key={titulo}
-                                    size={{
-                                        xs: 12,
-                                        sm: 6,
-                                        md: 4
-                                    }}
-                                >
-                                    <Card>
-                                        <CardContent>
-                                            <Typography
-                                                color="text.secondary"
-                                                variant="body2"
-                                            >
-                                                {titulo}
-                                            </Typography>
-                                            <Typography
-                                                variant="h5"
-                                                fontWeight="bold"
-                                            >
-                                                {valor ?? 0}
-                                            </Typography>
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-                            )
-                        )}
-                    </Grid>
-
-                    {(proyeccion.agencias ||
-                        []).map(
-                        (agencia) => (
-                            <Accordion
-                                key={
-                                    agencia.agenciaId
-                                }
-                                sx={{ mb: 1 }}
-                            >
-                                <AccordionSummary
-                                    expandIcon={
-                                        <ExpandMoreIcon />
-                                    }
-                                >
-                                    <Box
-                                        sx={{
-                                            width: "100%",
-                                            display: "flex",
-                                            justifyContent:
-                                                "space-between",
-                                            pr: 2
-                                        }}
-                                    >
-                                        <Box>
-                                            <Typography
-                                                fontWeight="bold"
-                                            >
-                                                {agencia.agencia}
-                                            </Typography>
-                                            <Typography
-                                                variant="body2"
-                                                color="text.secondary"
-                                            >
-                                                {agencia.tipoAgencia}
-                                                {" · "}
-                                                {agencia.cantidadUPSConReemplazo} UPS
-                                                {" · "}
-                                                {agencia.cantidadBaterias} baterías
-                                            </Typography>
-                                        </Box>
-                                        <Typography
-                                            fontWeight="bold"
-                                        >
-                                            {formatearMoneda(
-                                                agencia.subtotal
-                                            )}
-                                        </Typography>
-                                    </Box>
-                                </AccordionSummary>
-
-                                <AccordionDetails>
-                                    <TableContainer>
-                                        <Table size="small">
-                                            <TableHead>
-                                                <TableRow>
-                                                    <TableCell>
-                                                        UPS
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        Marca / modelo
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        Fecha proyectada
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        Situación
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        Cambio de baterías programado
-                                                    </TableCell>
-                                                    <TableCell
-                                                        align="right"
-                                                    >
-                                                        Baterías
-                                                    </TableCell>
-                                                    <TableCell
-                                                        align="right"
-                                                    >
-                                                        Costo
-                                                    </TableCell>
-                                                </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                                {(agencia.ups ||
-                                                    []).map(
-                                                    (equipo) => (
-                                                        <TableRow
-                                                            key={
-                                                                equipo.upsId
-                                                            }
-                                                        >
-                                                            <TableCell>
-                                                                <strong>
-                                                                    {equipo.numeroInventario}
-                                                                </strong>
-                                                                <br />
-                                                                Serie: {equipo.numeroSerie || "—"}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {equipo.marca}
-                                                                {" "}
-                                                                {equipo.modelo}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {formatearFecha(
-                                                                    equipo
-                                                                        .fechaProyectadaReemplazo
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {equipo.estaVencido ? (
-                                                                    <Chip
-                                                                        label="Vencido"
-                                                                        color="error"
-                                                                        size="small"
-                                                                    />
-                                                                ) : equipo.reemplazoAnteriorPendiente ? (
-                                                                    <Chip
-                                                                        label="Existe ciclo anterior pendiente"
-                                                                        color="warning"
-                                                                        size="small"
-                                                                    />
-                                                                ) : (
-                                                                    <Chip
-                                                                        label="Proyectado"
-                                                                        color="info"
-                                                                        size="small"
-                                                                    />
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {equipo.tieneMantenimientoProgramado
-                                                                    ? formatearFecha(
-                                                                        equipo
-                                                                            .fechaMantenimientoProgramado
-                                                                    )
-                                                                    : "No"}
-                                                            </TableCell>
-                                                            <TableCell
-                                                                align="right"
-                                                            >
-                                                                {equipo.cantidadBaterias}
-                                                            </TableCell>
-                                                            <TableCell
-                                                                align="right"
-                                                            >
-                                                                {formatearMoneda(
-                                                                    equipo.costoEstimado
-                                                                )}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )
-                                                )}
-                                            </TableBody>
-                                        </Table>
-                                    </TableContainer>
-                                </AccordionDetails>
-                            </Accordion>
-                        )
-                    )}
-
-                    {proyeccion
-                        .upsInformacionInsuficiente >
-                        0 && (
-                        <Card sx={{ mt: 3 }}>
-                            <CardContent>
-                                <Typography
-                                    variant="h6"
-                                    fontWeight="bold"
-                                    sx={{ mb: 2 }}
-                                >
-                                    UPS con información insuficiente
-                                </Typography>
-
-                                <TableContainer>
-                                    <Table size="small">
-                                        <TableHead>
-                                            <TableRow>
-                                                <TableCell>
-                                                    Agencia
-                                                </TableCell>
-                                                <TableCell>
-                                                    UPS
-                                                </TableCell>
-                                                <TableCell>
-                                                    Observación
-                                                </TableCell>
-                                            </TableRow>
-                                        </TableHead>
-                                        <TableBody>
-                                            {(proyeccion
-                                                .upsInformacionInsuficienteDetalle ||
-                                                []).map(
-                                                (equipo) => (
-                                                    <TableRow
-                                                        key={
-                                                            equipo.upsId
-                                                        }
-                                                    >
-                                                        <TableCell>
-                                                            {equipo.agencia}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <strong>{equipo.numeroInventario}</strong>
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {equipo.observacion}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                </TableContainer>
-                            </CardContent>
-                        </Card>
-                    )}
-                </>
-            )}
-
-            <Dialog
-                open={dialogoCosto}
-                onClose={() =>
-                    setDialogoCosto(false)
-                }
-                fullWidth
-                maxWidth="sm"
-            >
-                <DialogTitle>
-                    Costo estimado {anio}
-                </DialogTitle>
-                <DialogContent>
-                    <TextField
-                        fullWidth
-                        type="number"
-                        label="Costo unitario por batería"
-                        value={costo}
-                        onChange={(e) =>
-                            setCosto(
-                                e.target.value
-                            )
-                        }
-                        sx={{ mt: 2 }}
-                        helperText="Debe ser mayor que cero."
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button
-                        onClick={() =>
-                            setDialogoCosto(
-                                false
-                            )
-                        }
-                    >
-                        Cancelar
-                    </Button>
-                    <Button
-                        variant="contained"
-                        onClick={
-                            guardarCosto
-                        }
-                    >
-                        Guardar
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
-            <Dialog
-                open={dialogoPolitica}
-                onClose={() =>
-                    setDialogoPolitica(
-                        false
-                    )
-                }
-                fullWidth
-                maxWidth="sm"
-            >
-                <DialogTitle>
-                    Política global
-                </DialogTitle>
-                <DialogContent>
-                    <TextField
-                        fullWidth
-                        type="number"
-                        label="Ciclo Local (meses)"
-                        value={mesesLocal}
-                        onChange={(e) =>
-                            setMesesLocal(
-                                e.target.value
-                            )
-                        }
-                        sx={{ mt: 2 }}
-                    />
-                    <TextField
-                        fullWidth
-                        type="number"
-                        label="Ciclo Foránea (meses)"
-                        value={mesesForanea}
-                        onChange={(e) =>
-                            setMesesForanea(
-                                e.target.value
-                            )
-                        }
-                        sx={{ mt: 2 }}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button
-                        onClick={() =>
-                            setDialogoPolitica(
-                                false
-                            )
-                        }
-                    >
-                        Cancelar
-                    </Button>
-                    <Button
-                        variant="contained"
-                        onClick={
-                            guardarPolitica
-                        }
-                    >
-                        Guardar
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
-            <Snackbar
-                open={Boolean(mensaje)}
-                autoHideDuration={4000}
-                onClose={() =>
-                    setMensaje("")
-                }
-            >
-                <Alert
-                    severity="success"
-                    onClose={() =>
-                        setMensaje("")
-                    }
-                >
-                    {mensaje}
-                </Alert>
-            </Snackbar>
-        </Box>
-    );
+            {proyeccion.totalUPSPendientesPrevios > 0 && <Alert severity="warning" sx={{ mb: 2 }}>
+                {anio === actual ? `Los vencidos se incluyen una sola vez. Importe pendiente${filtrado ? " filtrado" : ""}: ${moneda(resumen.pendiente)}.` : "Hay reemplazos vencidos. Los ciclos futuros suponen que se atienden los pendientes; confirme las fechas al realizar los cambios."}
+                {" "}Las fechas futuras son estimadas y no crean órdenes de trabajo.
+            </Alert>}
+            {Boolean(proyeccion.totalUPSExcluidos) && <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {proyeccion.totalUPSExcluidos} UPS fuera de servicio o de baja excluidos. Solo se incluyen agencias activas.
+            </Typography>}
+            {agencias.map(a => <Accordion key={a.agenciaId} defaultExpanded disableGutters sx={{ mb: 2, border: "1px solid #e2e8f0", boxShadow: "none", borderRadius: "12px !important", "&:before": { display: "none" } }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}><Stack direction={{ xs: "column", sm: "row" }} gap={1} justifyContent="space-between" sx={{ width: "100%", pr: 2 }}>
+                    <Box><Typography fontWeight={700}>{a.agencia}</Typography><Typography variant="body2" color="text.secondary">{a.tipoAgencia} · {a.ups.length} UPS</Typography></Box>
+                    <Typography fontWeight={700}>{moneda(a.ups.reduce((total, u) => total + u.costoEstimado, 0))}</Typography>
+                </Stack></AccordionSummary>
+                <AccordionDetails sx={{ pt: 0 }}><TableContainer><Table size="small" sx={{ minWidth: 880 }}>
+                    <TableHead><TableRow>{["UPS / inventario", "Ciclo", "Fechas previstas", "Cambios", "Baterías / cambio", "Baterías totales", "Estimado"].map(c => <TableCell key={c} sx={{ fontWeight: 700, bgcolor: "#f8fafc" }}>{c}</TableCell>)}</TableRow></TableHead>
+                    <TableBody>{a.ups.map(u => <TableRow key={u.upsId} hover>
+                        <TableCell><Typography fontWeight={600}>{u.numeroInventario}</Typography><Typography variant="caption" color="text.secondary">{u.marca} {u.modelo} · {u.numeroSerie}</Typography></TableCell>
+                        <TableCell>{u.mesesCicloReemplazo} meses</TableCell>
+                        <TableCell sx={{ maxWidth: 320 }}><Stack direction="row" gap={0.5} flexWrap="wrap" sx={{ py: 1 }}>
+                            {u.estaVencido && <Chip size="small" color="warning" label={`Pendiente: ${fecha(u.fechaVencimientoPendiente)}`} />}
+                            {u.fechasReemplazo.map(f => <Chip key={f} size="small" variant="outlined" label={fecha(f)} />)}
+                        </Stack>{u.tieneMantenimientoProgramado && <Typography variant="caption" color="info.main">Trabajo programado: {fecha(u.fechaMantenimientoProgramado)}</Typography>}</TableCell>
+                        <TableCell>{u.cantidadCambios}</TableCell><TableCell>{u.cantidadBaterias}</TableCell><TableCell>{u.bateriasProyectadas}</TableCell><TableCell sx={{ whiteSpace: "nowrap" }}>{moneda(u.costoEstimado)}</TableCell>
+                    </TableRow>)}</TableBody>
+                </Table></TableContainer></AccordionDetails>
+            </Accordion>)}
+            {!agencias.length && <Alert severity="info">{filtrado ? "No hay equipos que coincidan con los filtros." : "No hay reemplazos previstos para este período con los datos actuales."}</Alert>}
+            {proyeccion.upsInformacionInsuficienteDetalle?.length > 0 && <Alert severity="warning" sx={{ mt: 2 }}>
+                <Typography fontWeight={600}>Equipos pendientes de corregir</Typography>
+                {proyeccion.upsInformacionInsuficienteDetalle.map(u => <Typography key={u.upsId} variant="body2">{u.numeroInventario} · {u.agencia}: {u.observacion}</Typography>)}
+            </Alert>}
+        </>}
+        <Dialog open={Boolean(dialogo)} onClose={guardando ? undefined : () => setDialogo(null)} fullWidth maxWidth="xs">
+            <DialogTitle>{dialogo?.tipo === "costo" ? `Costo por batería · ${dialogo.anio}` : "Política de reemplazo"}</DialogTitle>
+            <DialogContent><Stack gap={2} sx={{ pt: 1 }}>
+                {errorDialogo && <Alert severity="error">{errorDialogo}</Alert>}
+                {dialogo?.tipo === "costo" ? <TextField autoFocus label="Costo estimado (L)" type="number" value={costo} onChange={e => setCosto(e.target.value)} slotProps={{ htmlInput: { min: 0.01, step: 0.01 } }} /> : <>
+                    <TextField label="Agencias locales · meses" type="number" value={local} onChange={e => setLocal(e.target.value)} slotProps={{ htmlInput: { min: 1, max: 120, step: 1 } }} />
+                    <TextField label="Agencias foráneas · meses" type="number" value={foranea} onChange={e => setForanea(e.target.value)} slotProps={{ htmlInput: { min: 1, max: 120, step: 1 } }} />
+                    <Typography variant="body2" color="text.secondary">La política aplica a las próximas proyecciones de todos los años.</Typography>
+                </>}
+            </Stack></DialogContent>
+            <DialogActions><Button disabled={guardando} onClick={() => setDialogo(null)}>Cancelar</Button><Button variant="contained" disabled={guardando} onClick={guardar}>{guardando ? "Guardando…" : "Guardar"}</Button></DialogActions>
+        </Dialog>
+    </Box>;
 }

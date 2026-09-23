@@ -38,6 +38,11 @@ namespace InventarioUPS.API.DTOs.Presupuesto
         public int MesesCicloReemplazo { get; set; }
         public decimal CostoUnitarioBateria { get; set; }
         public decimal CostoEstimado { get; set; }
+        public int CantidadCambios { get; set; }
+        public long BateriasProyectadas { get; set; }
+        public decimal CostoPendiente { get; set; }
+        public DateTime? FechaVencimientoPendiente { get; set; }
+        public List<DateTime> FechasReemplazo { get; set; } = new();
         public bool InformacionSuficiente { get; set; }
         public string? Observacion { get; set; }
 
@@ -54,8 +59,9 @@ namespace InventarioUPS.API.DTOs.Presupuesto
         public string TipoAgencia { get; set; } = string.Empty;
         public int CantidadUPS { get; set; }
         public int CantidadUPSConReemplazo { get; set; }
-        public int CantidadBaterias { get; set; }
+        public long CantidadBaterias { get; set; }
         public decimal Subtotal { get; set; }
+        public int CantidadCambios { get; set; }
         public List<PresupuestoUpsDetalleDto> UPS { get; set; }
             = new List<PresupuestoUpsDetalleDto>();
     }
@@ -66,7 +72,11 @@ namespace InventarioUPS.API.DTOs.Presupuesto
         public decimal CostoUnitarioBateria { get; set; }
         public int TotalUPSInventario { get; set; }
         public int TotalUPSConReemplazo { get; set; }
-        public int TotalBaterias { get; set; }
+        public long TotalBaterias { get; set; }
+        public int TotalCambios { get; set; }
+        public decimal TotalPendiente { get; set; }
+        public int TotalUPSExcluidos { get; set; }
+        public int TotalUPSPendientesPrevios { get; set; }
         public decimal TotalPresupuesto { get; set; }
         public int TotalUPSVencidos { get; set; }
         public int TotalUPSProgramados { get; set; }

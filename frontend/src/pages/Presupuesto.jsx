@@ -222,15 +222,15 @@ export default function Presupuesto() {
         </Dialog>
         <Dialog open={Boolean(dialogo)} onClose={guardando ? undefined : () => setDialogo(null)} fullWidth maxWidth="xs">
             <DialogTitle>{dialogo?.tipo === "costo" ? `Costo por batería · ${dialogo.anio}` : "Política de reemplazo"}</DialogTitle>
-            <DialogContent><Stack gap={2} sx={{ pt: 1 }}>
+            <DialogContent><Box sx={{ display: "flex", flexDirection: "column", gap: 3, pt: 1, pb: 1 }}>
                 {errorDialogo && <Alert severity="error">{errorDialogo}</Alert>}
                 {dialogo?.tipo === "costo" ? <TextField autoFocus label="Costo estimado (L)" type="number" value={costo} onChange={e => setCosto(e.target.value)} slotProps={{ htmlInput: { min: 0.01, step: 0.01 } }} /> : <>
-                    <TextField label="Agencias locales · meses" type="number" value={local} onChange={e => setLocal(e.target.value)} slotProps={{ htmlInput: { min: 1, max: 120, step: 1 } }} />
-                    <TextField label="Agencias foráneas · meses" type="number" value={foranea} onChange={e => setForanea(e.target.value)} slotProps={{ htmlInput: { min: 1, max: 120, step: 1 } }} />
+                    <TextField fullWidth helperText="Cada cuántos meses se reemplazan las baterías." label="Agencias locales · meses" type="number" value={local} onChange={e => setLocal(e.target.value)} slotProps={{ htmlInput: { min: 1, max: 120, step: 1 } }} />
+                    <TextField fullWidth helperText="Ingrese un número entero entre 1 y 120." label="Agencias foráneas · meses" type="number" value={foranea} onChange={e => setForanea(e.target.value)} slotProps={{ htmlInput: { min: 1, max: 120, step: 1 } }} />
                     <Typography variant="body2" color="text.secondary">La política aplica a las próximas proyecciones de todos los años.</Typography>
                 </>}
-            </Stack></DialogContent>
-            <DialogActions><Button disabled={guardando} onClick={() => setDialogo(null)}>Cancelar</Button><Button variant="contained" disabled={guardando} onClick={guardar}>{guardando ? "Guardando…" : "Guardar"}</Button></DialogActions>
+            </Box></DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}><Button disabled={guardando} onClick={() => setDialogo(null)}>Cancelar</Button><Button variant="contained" disabled={guardando} onClick={guardar}>{guardando ? "Guardando…" : "Guardar"}</Button></DialogActions>
         </Dialog>
     </Box>;
 }

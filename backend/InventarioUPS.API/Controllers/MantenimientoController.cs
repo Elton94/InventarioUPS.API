@@ -105,7 +105,7 @@ namespace InventarioUPS.API.Controllers
             EstadoMantenimientoId = dto.EstadoMantenimientoId,
             FechaMantenimiento = dto.FechaMantenimiento,
             Descripcion = dto.Descripcion?.Trim() ?? string.Empty,
-            TecnicoProveedor = dto.TecnicoProveedor?.Trim() ?? string.Empty,
+            ResponsableServicioId = dto.ResponsableServicioId,
             Observaciones = dto.Observaciones?.Trim() ?? string.Empty,
             CantidadBateriasReemplazadas = dto.CantidadBateriasReemplazadas
         };

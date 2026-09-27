@@ -83,6 +83,7 @@ namespace InventarioUPS.API.Services
                 throw new ArgumentException("Seleccione el tipo y modelo de las baterías del cambio.");
             LimpiarTextos(mantenimiento);
 
+            await ResolverResponsableAsync(mantenimiento);
             mantenimiento.AgenciaIdRegistro = ups.AgenciaId;
             mantenimiento.AgenciaNombreRegistro = ups.Agencia?.Nombre ?? string.Empty;
 
@@ -131,6 +132,7 @@ namespace InventarioUPS.API.Services
                 mantenimiento.CantidadBateriasReemplazadas = existente.CantidadBateriasReemplazadas;
             LimpiarTextos(mantenimiento);
 
+            await ResolverResponsableAsync(mantenimiento, existente);
             mantenimiento.AgenciaIdRegistro = existente.AgenciaIdRegistro ?? ups.AgenciaId;
             mantenimiento.AgenciaNombreRegistro =
                 !string.IsNullOrWhiteSpace(existente.AgenciaNombreRegistro)
@@ -145,6 +147,7 @@ namespace InventarioUPS.API.Services
             existente.EstadoMantenimientoId = mantenimiento.EstadoMantenimientoId;
             existente.FechaMantenimiento = mantenimiento.FechaMantenimiento;
             existente.Descripcion = mantenimiento.Descripcion;
+            existente.ResponsableServicioId = mantenimiento.ResponsableServicioId;
             existente.TecnicoProveedor = mantenimiento.TecnicoProveedor;
             existente.Observaciones = mantenimiento.Observaciones;
             existente.IncluyeCambioBaterias = mantenimiento.IncluyeCambioBaterias;
@@ -285,6 +288,10 @@ namespace InventarioUPS.API.Services
                 ultimo.FechaMantenimiento >= ups.FechaUltimoCambioBateriasBase.Value)
                 ? ultimo.ModeloBateriaId ?? ups.ModeloBateriaBaseId : ups.ModeloBateriaBaseId;
 
+            ups.TipoBateriaId = ups.ModeloBateriaId.HasValue
+                ? await _context.ModelosBateria.Where(x => x.Id == ups.ModeloBateriaId).Select(x => (int?)x.TipoBateriaId).SingleAsync()
+                : ups.TipoBateriaBaseId;
+
             ups.FechaUltimoCambioBaterias =
                 MaxFecha(
                     ups.FechaUltimoCambioBateriasBase,
@@ -301,10 +308,18 @@ namespace InventarioUPS.API.Services
                 throw new ArgumentException("Debe seleccionar un estado de cambio de baterías.");
             if (m.FechaMantenimiento == default)
                 throw new ArgumentException("La fecha del cambio de baterías es obligatoria.");
-            if (string.IsNullOrWhiteSpace(m.Descripcion))
-                throw new ArgumentException("La descripción del cambio de baterías es obligatoria.");
-            if (string.IsNullOrWhiteSpace(m.TecnicoProveedor))
-                throw new ArgumentException("El técnico o proveedor es obligatorio.");
+            if ((m.Descripcion?.Length ?? 0) > 1000 || (m.Observaciones?.Length ?? 0) > 1000)
+                throw new ArgumentException("El detalle admite 1000 caracteres y las observaciones 1000.");
+        }
+
+        private async Task ResolverResponsableAsync(Mantenimiento cambio, Mantenimiento? anterior = null)
+        {
+            var responsable = await _context.ResponsablesServicio.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == cambio.ResponsableServicioId);
+            if (responsable == null || (!responsable.Activo && responsable.Id != anterior?.ResponsableServicioId))
+                throw new ArgumentException("Seleccione un responsable del servicio activo del catálogo.");
+            cambio.TecnicoProveedor = responsable.Id == anterior?.ResponsableServicioId
+                ? anterior.TecnicoProveedor : responsable.Nombre;
         }
 
         private static void ValidarFecha(DateTime fecha, string estado)
@@ -353,6 +368,7 @@ namespace InventarioUPS.API.Services
             EstadoMantenimientoId = m.EstadoMantenimientoId,
             FechaMantenimiento = m.FechaMantenimiento,
             Descripcion = m.Descripcion,
+            ResponsableServicioId = m.ResponsableServicioId,
             TecnicoProveedor = m.TecnicoProveedor,
             Observaciones = m.Observaciones,
             CantidadBateriasReemplazadas = m.CantidadBateriasReemplazadas,

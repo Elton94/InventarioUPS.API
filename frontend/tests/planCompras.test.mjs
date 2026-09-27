@@ -24,3 +24,11 @@ test('Exportación conserva ceros de inventario, escapa comillas y neutraliza f�
     assert.ok(csv.includes('"Modelo ""A"""'));
     assert.ok(csv.includes('Específico por modelo'));
 });
+
+test('Sin modelo, las compras se separan por tipo de batería', () => {
+    const base = { ...equipo, modeloBateriaId: null, modeloBateria: 'Sin identificar', usaCostoGeneral: true };
+    const r = resumirCompras([base, { ...base, tipoBateria: 'Litio' }, { ...base, agencia: 'Otra' }], 2026, 9);
+    assert.equal(r.modelos.length, 2);
+    assert.equal(r.modelos.find(m => m.tipo === 'Plomo').baterias, 24);
+    assert.equal(r.modelos.find(m => m.tipo === 'Litio').baterias, 12);
+});

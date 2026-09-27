@@ -59,3 +59,14 @@ test('cambios de baterías usan UPSId y omiten costos, tipo e indicador opcional
   await mantenimientos.obtenerMantenimientosPorUPS(7);
   assert.equal(lastRequest().url, '/Mantenimiento/ups/7');
 });
+
+test('UPS permite enviar tipo sin modelo y el responsable se envía por ID', async () => {
+  await ups.crearUPS({ tipoBateriaId: '3', modeloBateriaId: null });
+  let data = JSON.parse(lastRequest().data);
+  assert.equal(data.tipoBateriaId, 3);
+  assert.equal(data.modeloBateriaId, null);
+  await mantenimientos.crearMantenimiento({ upsId: 7, responsableServicioId: '8', tecnicoProveedor: 'Texto libre' });
+  data = JSON.parse(lastRequest().data);
+  assert.equal(data.responsableServicioId, 8);
+  assert.equal('tecnicoProveedor' in data, false);
+});

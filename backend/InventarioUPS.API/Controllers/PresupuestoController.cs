@@ -196,6 +196,7 @@ namespace InventarioUPS.API.Controllers
                 .Include(u => u.Agencia!)
                     .ThenInclude(a => a.TipoAgencia!)
                 .Include(u => u.EstadoUPS)
+                .Include(u => u.TipoBateria)
                 .Include(u => u.ModeloBateria)!.ThenInclude(b => b!.TipoBateria)
                 .Where(u => u.Agencia != null && u.Agencia.Activa)
                 .ToListAsync();
@@ -394,7 +395,7 @@ namespace InventarioUPS.API.Controllers
                 UPSId = equipo.Id,
                 ModeloBateriaId = equipo.ModeloBateriaId,
                 ModeloBateria = equipo.ModeloBateria?.Nombre ?? "Sin identificar",
-                TipoBateria = equipo.ModeloBateria?.TipoBateria?.Nombre ?? "Sin identificar",
+                TipoBateria = equipo.TipoBateria?.Nombre ?? equipo.ModeloBateria?.TipoBateria?.Nombre ?? "Sin identificar",
                 NumeroInventario = equipo.NumeroInventario,
                 NumeroSerie = equipo.NumeroSerie,
                 Marca = equipo.Marca,

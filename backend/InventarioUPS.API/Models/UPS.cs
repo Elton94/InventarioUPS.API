@@ -12,6 +12,9 @@ namespace InventarioUPS.API.Models
         public int AgenciaId { get; set; }
         public int EstadoUPSId { get; set; }
         public DateTime FechaInstalacion { get; set; }
+        public int? TipoBateriaId { get; set; }
+        public TipoBateria? TipoBateria { get; set; }
+        public int? TipoBateriaBaseId { get; set; }
         public int? ModeloBateriaId { get; set; }
         public ModeloBateria? ModeloBateria { get; set; }
         public int? ModeloBateriaBaseId { get; set; }

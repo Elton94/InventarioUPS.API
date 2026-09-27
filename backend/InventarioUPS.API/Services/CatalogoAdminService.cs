@@ -15,6 +15,7 @@ public class CatalogoAdminService(InventarioUPSDbContext db)
     private record Definicion(Type Entidad, string Estado, string? Padre, int Longitud);
     private static readonly Dictionary<string, Definicion> Editables = new()
     {
+        ["responsables-servicio"] = new(typeof(ResponsableServicio), "Activo", null, 150),
         ["departamentos"] = new(typeof(Departamento), "Activo", null, 100),
         ["ciudades"] = new(typeof(Ciudad), "Activa", "DepartamentoId", 100),
         ["tipos-bateria"] = new(typeof(TipoBateria), "Activo", null, 80),
@@ -26,6 +27,7 @@ public class CatalogoAdminService(InventarioUPSDbContext db)
 
     public async Task<List<CatalogoItem>> ListarAsync(string catalogo) => catalogo switch
     {
+        "responsables-servicio" => await db.ResponsablesServicio.AsNoTracking().OrderBy(x => x.Nombre).Select(x => new CatalogoItem(x.Id, x.Nombre, x.Activo, null, null)).ToListAsync(),
         "departamentos" => await db.Departamentos.AsNoTracking().OrderBy(x => x.Nombre).Select(x => new CatalogoItem(x.Id, x.Nombre, x.Activo, null, null)).ToListAsync(),
         "ciudades" => await db.Ciudades.AsNoTracking().OrderBy(x => x.Nombre).Select(x => new CatalogoItem(x.Id, x.Nombre, x.Activa, x.DepartamentoId, x.EsLocal)).ToListAsync(),
         "tipos-bateria" => await db.TiposBateria.AsNoTracking().OrderBy(x => x.Nombre).Select(x => new CatalogoItem(x.Id, x.Nombre, x.Activo, null, null)).ToListAsync(),

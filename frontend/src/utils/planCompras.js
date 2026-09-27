@@ -11,7 +11,7 @@ export function resumirCompras(equipos, anio, mesActual) {
             fila.baterias += u.cantidadBaterias;
             fila.costo += u.cantidadBaterias * u.costoUnitarioBateria;
         }
-        const clave = u.modeloBateriaId || 'sin-identificar';
+        const clave = u.modeloBateriaId ? `modelo:${u.modeloBateriaId}` : `tipo:${u.tipoBateria || 'Sin identificar'}`;
         const fila = modelos.get(clave) || { modelo: u.modeloBateria || 'Sin identificar', tipo: u.tipoBateria || 'Sin identificar', baterias: 0, costo: 0, general: u.usaCostoGeneral };
         fila.baterias += u.bateriasProyectadas; fila.costo += u.costoEstimado;
         modelos.set(clave, fila);

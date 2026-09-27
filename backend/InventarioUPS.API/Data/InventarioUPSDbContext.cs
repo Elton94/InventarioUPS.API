@@ -14,6 +14,7 @@ namespace InventarioUPS.API.Data
         public DbSet<MarcaUPS> MarcasUPS => Set<MarcaUPS>();
         public DbSet<ModeloUPS> ModelosUPS => Set<ModeloUPS>();
         public DbSet<AuditoriaCatalogo> AuditoriaCatalogos => Set<AuditoriaCatalogo>();
+        public DbSet<ResponsableServicio> ResponsablesServicio { get; set; }
         public DbSet<TipoBateria> TiposBateria { get; set; }
         public DbSet<ModeloBateria> ModelosBateria { get; set; }
         public DbSet<CostoModeloBateria> CostosModeloBateria { get; set; }
@@ -57,6 +58,11 @@ namespace InventarioUPS.API.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<ResponsableServicio>().Property(x => x.Nombre).HasMaxLength(150).UseCollation("Latin1_General_100_CI_AS").IsRequired();
+            modelBuilder.Entity<ResponsableServicio>().HasIndex(x => x.Nombre).IsUnique();
+            modelBuilder.Entity<Mantenimiento>().HasOne<ResponsableServicio>().WithMany().HasForeignKey(x => x.ResponsableServicioId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<UPS>().HasOne(x => x.TipoBateria).WithMany().HasForeignKey(x => x.TipoBateriaId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<UPS>().HasOne<TipoBateria>().WithMany().HasForeignKey(x => x.TipoBateriaBaseId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<TipoBateria>().Property(x => x.Nombre).HasMaxLength(80).IsRequired();
             modelBuilder.Entity<TipoBateria>().HasIndex(x => x.Nombre).IsUnique();
             modelBuilder.Entity<ModeloBateria>().Property(x => x.Nombre).HasMaxLength(150).UseCollation("Latin1_General_100_CI_AS").IsRequired();

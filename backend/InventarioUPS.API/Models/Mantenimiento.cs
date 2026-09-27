@@ -6,6 +6,7 @@ namespace InventarioUPS.API.Models
         public int EstadoMantenimientoId { get; set; }
         public DateTime FechaMantenimiento { get; set; }
         public string Descripcion { get; set; } = string.Empty;
+        public int? ResponsableServicioId { get; set; }
         public string TecnicoProveedor { get; set; } = string.Empty;
         public string Observaciones { get; set; } = string.Empty;
 

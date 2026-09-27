@@ -32,6 +32,7 @@ import {
 import SelectorBateria from "../baterias/SelectorBateria";
 
 const inicial = {
+    tipoBateriaId: null,
     modeloBateriaId: null,
     numeroInventario: "",
     marca: "",
@@ -45,10 +46,10 @@ const inicial = {
     fechaUltimoCambioBaterias: ""
 };
 
-const hoy = () =>
-    new Date()
-        .toISOString()
-        .substring(0, 10);
+const hoy = () => {
+    const fecha = new Date();
+    return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}-${String(fecha.getDate()).padStart(2, "0")}`;
+};
 
 export default function NuevoUPSModal({
     open,
@@ -125,6 +126,7 @@ export default function NuevoUPSModal({
 
                 if (ups) {
                     setFormulario({
+                        tipoBateriaId: ups.tipoBateriaId || null,
                         modeloBateriaId: ups.modeloBateriaId || null,
                         numeroInventario:
                             ups.numeroInventario || "",
@@ -190,7 +192,7 @@ export default function NuevoUPSModal({
     const guardar = async () => {
         setError("");
 
-        if (!formulario.modeloBateriaId) return setError("Seleccione el tipo y modelo de batería.");
+        if (!formulario.tipoBateriaId) return setError("Seleccione el tipo de batería. El modelo es opcional.");
 
         if (!formulario.numeroInventario.trim()) {
             setError(
@@ -593,7 +595,7 @@ export default function NuevoUPSModal({
                         }
                     />
 
-                    <SelectorBateria value={formulario.modeloBateriaId} onChange={id => cambiar("modeloBateriaId", id)} disabled={guardando || cargando} />
+                    <SelectorBateria modeloOpcional tipoValue={formulario.tipoBateriaId} onTipoChange={id => cambiar("tipoBateriaId", id)} value={formulario.modeloBateriaId} onChange={id => cambiar("modeloBateriaId", id)} disabled={guardando || cargando} />
 
                     <TextField
                         type="date"

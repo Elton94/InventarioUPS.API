@@ -5,7 +5,7 @@ import {
 } from "@mui/material";
 import { obtenerUPS } from "../../services/upsService";
 import { crearMantenimiento, actualizarMantenimiento } from "../../services/mantenimientoService";
-import { obtenerResponsablesMantenimiento } from "../../services/usuarioService";
+import api from "../../services/api";
 import { obtenerEstadosMantenimiento } from "../../services/catalogosService";
 
 import SelectorBateria from "../baterias/SelectorBateria";
@@ -14,7 +14,7 @@ const inicial = {
     modeloBateriaId: null,
     fechaMantenimiento: "",
     descripcion: "",
-    tecnicoProveedor: "",
+    responsableServicioId: null,
     estadoMantenimientoId: "",
     observaciones: ""
 };
@@ -42,7 +42,8 @@ export default function NuevoMantenimientoModal({ open, onClose, onGuardado, man
             setError("");
             try {
                 const [ups, estadosData, responsablesData] = await Promise.all([
-                    obtenerUPS(), obtenerEstadosMantenimiento(), obtenerResponsablesMantenimiento()
+                    obtenerUPS(), obtenerEstadosMantenimiento(),
+                    api.get("/catalogos/responsables-servicio", { params: { actualId: mantenimientoEditar?.responsableServicioId } }).then(r => r.data)
                 ]);
                 if (!vigente) return;
                 setEquipos((ups || []).filter(u => String(u.estado || "").toLowerCase() !== "de baja"));
@@ -54,16 +55,13 @@ export default function NuevoMantenimientoModal({ open, onClose, onGuardado, man
                         modeloBateriaId: mantenimientoEditar.modeloBateriaId || null,
                         fechaMantenimiento: mantenimientoEditar.fechaMantenimiento?.substring(0, 10) || "",
                         descripcion: mantenimientoEditar.descripcion || "",
-                        tecnicoProveedor: mantenimientoEditar.tecnicoProveedor || "",
+                        responsableServicioId: mantenimientoEditar.responsableServicioId || null,
                         estadoMantenimientoId: mantenimientoEditar.estadoMantenimientoId || "",
                         observaciones: mantenimientoEditar.observaciones || ""
                     });
                 } else {
                     setUpsSeleccionado(null);
-                    setFormulario({
-                        ...inicial,
-                        tecnicoProveedor: localStorage.getItem("nombreCompleto") || localStorage.getItem("nombreUsuario") || ""
-                    });
+                    setFormulario(inicial);
                 }
             } catch (e) {
                 if (vigente) setError(e.response?.data?.mensaje || "No fue posible cargar los datos necesarios.");
@@ -91,8 +89,7 @@ export default function NuevoMantenimientoModal({ open, onClose, onGuardado, man
         if (!formulario.fechaMantenimiento) return setError("Seleccione la fecha del cambio.");
         if (formulario.fechaMantenimiento > fechaActual() && !esProgramado)
             return setError("Una fecha futura solamente puede utilizarse con estado Programado.");
-        if (!formulario.descripcion.trim()) return setError("Ingrese una descripción.");
-        if (!formulario.tecnicoProveedor.trim()) return setError("Indique un técnico o proveedor.");
+        if (!formulario.responsableServicioId) return setError("Seleccione el responsable del servicio.");
         if (cantidadBaterias <= 0) return setError("El UPS no tiene una cantidad válida de baterías.");
 
         const datos = {
@@ -137,16 +134,20 @@ export default function NuevoMantenimientoModal({ open, onClose, onGuardado, man
                     <TextField required type="date" label="Fecha del cambio" value={formulario.fechaMantenimiento}
                         onChange={e => cambiar("fechaMantenimiento", e.target.value)}
                         slotProps={{ inputLabel: { shrink: true }, htmlInput: esProgramado ? {} : { max: fechaActual() } }} />
-                    <Autocomplete freeSolo options={responsables.map(r => r.nombreCompleto || r.nombreUsuario)}
-                        inputValue={formulario.tecnicoProveedor}
-                        onInputChange={(_, valor) => cambiar("tecnicoProveedor", valor)}
-                        renderInput={params => <TextField {...params} required label="Técnico / proveedor" />} />
+                    <Autocomplete options={responsables}
+                        value={responsables.find(r => r.id === Number(formulario.responsableServicioId)) || null}
+                        disabled={cargando || guardando}
+                        getOptionLabel={r => `${r.nombre}${r.activo === false ? ' (Inactivo)' : ''}`}
+                        isOptionEqualToValue={(a, b) => a.id === b.id}
+                        onChange={(_, valor) => cambiar("responsableServicioId", valor?.id || null)}
+                        renderInput={params => <TextField {...params} required label="Responsable del servicio"
+                            helperText="Seleccione un técnico o proveedor. El administrador agrega opciones en Configuración." />} />
                     <TextField label="Cantidad de baterías" value={cantidadBaterias || ""} disabled
                         helperText={conservaCantidad ? "Cantidad registrada al completar el cambio." : "Se reemplaza el banco completo."} />
                     <SelectorBateria key={upsSeleccionado?.id || "nuevo"} value={formulario.modeloBateriaId} onChange={id => cambiar("modeloBateriaId", id)} disabled={cargando || guardando} />
-                    <TextField sx={{ gridColumn: "1 / -1" }} required multiline rows={3} label="Descripción"
+                    <TextField sx={{ gridColumn: "1 / -1" }} multiline rows={3} label="Detalle del trabajo (opcional)" slotProps={{ htmlInput: { maxLength: 1000 } }}
                         value={formulario.descripcion} onChange={e => cambiar("descripcion", e.target.value)} />
-                    <TextField sx={{ gridColumn: "1 / -1" }} multiline rows={2} label="Observaciones"
+                    <TextField sx={{ gridColumn: "1 / -1" }} multiline rows={2} label="Observaciones" slotProps={{ htmlInput: { maxLength: 1000 } }}
                         value={formulario.observaciones} onChange={e => cambiar("observaciones", e.target.value)} />
                 </Box>
             </DialogContent>

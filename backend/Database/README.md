@@ -1,3 +1,23 @@
+# Revisión de campos y catálogos (actualización más reciente)
+
+1. Detenga la API y respalde la base de datos.
+2. Descargue la rama `desarrollo` con `git pull --ff-only origin desarrollo`.
+3. Si aún faltan, ejecute en este orden `20260927_CatalogoBaterias.sql` y
+   `20260927_AdministracionCatalogos.sql` (sus requisitos anteriores se describen abajo).
+4. Ejecute `backend/Database/20260927_RevisionCampos.sql` en la base de la aplicación.
+5. Reinicie la API y el frontend. En Configuración revise **Responsables del servicio**.
+
+El nuevo script conserva los datos. Importa los técnicos/proveedores anteriores como
+opciones; si no había registros, el administrador debe agregar responsables antes de
+registrar cambios. UPS requiere tipo de batería y permite modelo pendiente; los cambios
+siguen requiriendo modelo. No ejecute Add-Migration/Update-Database para esta actualización.
+
+Consulte [la clasificación completa de campos](CAMPOS_Y_CATALOGOS.md).
+La migración se verificó con el analizador T-SQL; su ejecución en SQL Server requiere
+la instalación local. Las pruebas de negocio utilizan SQLite.
+
+---
+
 # Administración de catálogos
 
 Esta actualización agrega **Configuración**, con acceso mediante `GESTIONAR_CATALOGOS`.
@@ -24,7 +44,7 @@ Esta actualización agrega **Configuración**, con acceso mediante `GESTIONAR_CA
 - Las tres ciudades locales se identifican mediante una clasificación persistente, no por su texto. La migración inicializa esa clasificación una sola vez. Renombrarlas no cambia las políticas; nuevas ciudades son foráneas.
 - Estados operativos y tipos de agencia son de solo lectura; sus nombres funcionales permanecen protegidos.
 - Roles/permisos y políticas/costos mantienen sus módulos y permisos específicos; gestionar catálogos no concede acceso adicional a esos módulos.
-- Solo quienes tengan GESTIONAR_CATALOGOS pueden agregar modelos de batería desde formularios. Las marcas y modelos de UPS se seleccionan desde el catálogo.
+- Solo quienes tengan GESTIONAR_CATALOGOS pueden agregar modelos de batería desde Configuración. Las marcas y modelos de UPS se seleccionan desde el catálogo.
 - El historial registra usuario, fecha UTC, acción y valores anteriores/nuevos, dentro de la misma transacción. Las ediciones sobre una versión desactualizada se rechazan.
 - Al reiniciar no se recrean ciudades renombradas ni se reactivan catálogos desactivados.
 
@@ -49,16 +69,14 @@ Si la aplicación ya tiene los cambios anteriores de `desarrollo`:
 3. En SSMS, seleccione la base de Inventario UPS y ejecute completo
    `backend/Database/20260927_CatalogoBaterias.sql`.
 4. Reinicie la API y el frontend. No use `Update-Database` para esta actualización.
-5. Edite los UPS existentes y seleccione su tipo y modelo de batería. Puede agregar
-   la referencia del fabricante desde el mismo formulario; no hay página de baterías.
+5. Edite los UPS existentes y seleccione su tipo de batería; el modelo es opcional en la versión actual. Agregue las referencias desde Configuración; no hay página de baterías.
 6. En Proyecciones, configure el costo general del año y, cuando disponga de precios
    concretos, use **Costos por modelo**. Genere nuevamente la proyección.
 
 El script es reejecutable y no borra registros. Crea `TiposBateria`, `ModelosBateria`
 y `CostosModeloBateria`, con claves foráneas desde UPS y cambios. Los datos antiguos
 quedan sin modelo identificado; no se supone que todos usen la misma tecnología.
-Los nuevos registros y las ediciones requieren un modelo válido. El modelo determina
-el tipo y evita combinaciones inconsistentes. Los tipos clasifican baterías; el
+Los UPS requieren un tipo válido y permiten modelo pendiente. Los cambios requieren modelo. Cuando se selecciona un modelo, debe corresponder al tipo. Los tipos clasifican baterías; el
 sistema no certifica su compatibilidad eléctrica con un UPS.
 
 Al completar un cambio se actualiza el modelo instalado. Cancelarlo o reprogramarlo

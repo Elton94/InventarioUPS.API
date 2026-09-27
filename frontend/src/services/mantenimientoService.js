@@ -8,7 +8,7 @@ const prepararDatos = (cambio) => ({
     estadoMantenimientoId: Number(cambio.estadoMantenimientoId),
     fechaMantenimiento: cambio.fechaMantenimiento,
     descripcion: cambio.descripcion?.trim() || "",
-    tecnicoProveedor: cambio.tecnicoProveedor?.trim() || "",
+    responsableServicioId: cambio.responsableServicioId ? Number(cambio.responsableServicioId) : null,
     observaciones: cambio.observaciones?.trim() || ""
 });
 

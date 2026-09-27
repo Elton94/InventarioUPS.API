@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import api from '../services/api';
 const catalogos = [
+    { id: 'responsables-servicio', nombre: 'Responsables del servicio', max: 150 },
     { id: 'departamentos', nombre: 'Departamentos', max: 100 },
     { id: 'ciudades', nombre: 'Ciudades', padre: 'departamentos', etiquetaPadre: 'Departamento', max: 100 },
     { id: 'tipos-bateria', nombre: 'Tipos de batería', max: 80 },
@@ -68,6 +69,7 @@ export default function Configuracion() {
                 {!definicion.protegido && <Button variant="contained" disabled={cargando || Boolean(error)} onClick={() => abrir(null)}>Agregar opción</Button>}
             </Box></CardContent></Card>
             <Alert severity="info" sx={{ mb: 2 }}>{definicion.protegido ? 'Catálogo protegido: sus valores controlan reglas del sistema y solo se pueden consultar.' : 'Desactive las opciones que ya no se utilizarán. Los registros existentes se conservan; no se eliminan opciones ni se trasladan equipos automáticamente.'}</Alert>
+            {catalogo === 'responsables-servicio' && <Alert severity="info" sx={{ mb: 2 }}>Registre técnicos internos o proveedores externos. No necesitan una cuenta de acceso. El nombre registrado en cada cambio se conserva como evidencia histórica.</Alert>}
             {catalogo === 'ciudades' && <Alert severity="info" sx={{ mb: 2 }}>La clasificación Local/Foránea está protegida. Corregir el nombre conserva la clasificación. Las ciudades nuevas se registran como Foráneas.</Alert>}
         </>}
         {cargando ? <CircularProgress aria-label="Cargando configuración" /> : !error && (historial ? <>

@@ -1,15 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Alert, Autocomplete, Box, Button, MenuItem, TextField } from '@mui/material';
-import { tienePermiso } from '../../services/permisos';
-import { obtenerBaterias, crearModeloBateria } from '../../services/bateriasService';
+import { Alert, Autocomplete, Box, MenuItem, TextField } from '@mui/material';
+import { obtenerBaterias } from '../../services/bateriasService';
 
-export default function SelectorBateria({ value, onChange, disabled = false }) {
-    const puedeCrear = tienePermiso('GESTIONAR_CATALOGOS');
+export default function SelectorBateria({ value, onChange, tipoValue, onTipoChange, modeloOpcional = false, disabled = false }) {
     const [catalogo, setCatalogo] = useState({ tipos: [], modelos: [] });
-    const [tipo, setTipo] = useState('');
-    const [texto, setTexto] = useState('');
+    const [tipoInterno, setTipoInterno] = useState('');
     const [error, setError] = useState('');
-    const [guardando, setGuardando] = useState(false);
     const [cargando, setCargando] = useState(true);
     useEffect(() => {
         let vigente = true;
@@ -19,36 +15,24 @@ export default function SelectorBateria({ value, onChange, disabled = false }) {
         return () => { vigente = false; };
     }, []);
     const seleccionado = catalogo.modelos.find(m => m.id === Number(value)) || null;
+    const tipo = tipoValue !== undefined ? tipoValue : tipoInterno;
     useEffect(() => {
-        if (seleccionado) { setTipo(seleccionado.tipoBateriaId); setTexto(seleccionado.nombre); }
+        if (seleccionado) setTipoInterno(seleccionado.tipoBateriaId);
     }, [seleccionado]);
     const modelos = catalogo.modelos.filter(m => m.tipoBateriaId === Number(tipo) && (m.activo !== false || m.id === Number(value)));
-    const crear = async () => {
-        setError(''); setGuardando(true);
-        try {
-            const modelo = await crearModeloBateria(tipo, texto.trim());
-            setCatalogo(c => ({ ...c, modelos: [...c.modelos.filter(m => m.id !== modelo.id), modelo] }));
-            onChange(modelo.id);
-        } catch (e) { setError(e.response?.data?.mensaje || 'No se pudo guardar el modelo.'); }
-        finally { setGuardando(false); }
-    };
     return <Box sx={{ display: 'grid', gap: 2, gridColumn: '1 / -1' }}>
         {error && <Alert severity="error">{error}</Alert>}
-        {seleccionado?.activo === false && <Alert severity="warning">Este modelo está inactivo. Puede conservarlo en registros existentes; para nuevos registros seleccione un modelo activo.</Alert>}
-        <TextField select required label="Tipo de batería" value={tipo} disabled={disabled || cargando || guardando}
-            onChange={e => { onChange(null); setTipo(e.target.value); setTexto(''); }}>
-            {catalogo.tipos.filter(t => t.activo !== false || t.id === Number(tipo)).map(t => <MenuItem key={t.id} value={t.id}>{t.nombre}{t.activo === false ? " (Inactivo)" : ""}</MenuItem>)}
+        {seleccionado?.activo === false && <Alert severity="warning">El modelo está inactivo. Puede conservarlo en su registro existente; para nuevas selecciones utilice un modelo activo.</Alert>}
+        <TextField select required label="Tipo de batería" value={tipo || ''} disabled={disabled || cargando}
+            onChange={e => { onChange(null); setTipoInterno(e.target.value); onTipoChange?.(Number(e.target.value)); }}>
+            {catalogo.tipos.filter(t => t.activo !== false || t.id === Number(tipo)).map(t => <MenuItem key={t.id} value={t.id}>{t.nombre}{t.activo === false ? ' (Inactivo)' : ''}</MenuItem>)}
         </TextField>
-        <Autocomplete freeSolo={puedeCrear} options={modelos} value={seleccionado} inputValue={texto}
-            disabled={disabled || !tipo || cargando || guardando}
-            getOptionLabel={m => typeof m === 'string' ? m : m.nombre}
-            isOptionEqualToValue={(a, b) => a.id === b.id}
-            onInputChange={(_, text, reason) => { if (reason === 'input') { setTexto(text); if (seleccionado) onChange(null); } }}
-            onChange={(_, m) => { if (m && typeof m !== 'string') onChange(m.id); else { onChange(null); setTexto(m || ''); } }}
-            renderInput={params => <TextField {...params} required label="Modelo de batería" helperText={puedeCrear ? "Seleccione un modelo o agregue una referencia al catálogo." : "Seleccione un modelo. Solicite las opciones nuevas al administrador."} />} />
-        {puedeCrear && !seleccionado && catalogo.tipos.some(t => t.id === Number(tipo) && t.activo !== false) && texto.trim() && <Button disabled={disabled || guardando} variant="outlined" onClick={crear}>
-            {guardando ? 'Agregando…' : 'Agregar este modelo al catálogo'}
-        </Button>}
-        <Alert severity="info">El tipo clasifica la batería; confirme la compatibilidad del modelo con el UPS antes de instalarlo.</Alert>
+        <Autocomplete options={modelos} value={seleccionado} disabled={disabled || !tipo || cargando}
+            getOptionLabel={m => m.nombre} isOptionEqualToValue={(a, b) => a.id === b.id}
+            onChange={(_, m) => { onChange(m?.id || null); if (m) onTipoChange?.(m.tipoBateriaId); }}
+            renderInput={params => <TextField {...params} required={!modeloOpcional}
+                label={modeloOpcional ? 'Modelo / referencia de batería (opcional)' : 'Modelo / referencia de batería'}
+                helperText={modeloOpcional ? 'Si todavía no lo conoce, déjelo vacío. La proyección usará el costo general del año.' : 'Seleccione el repuesto que se instalará. Las nuevas referencias se agregan en Configuración.'} />} />
+        <Alert severity="info">El tipo clasifica la batería; la selección del catálogo no certifica compatibilidad. Confirme el repuesto con el manual del UPS.</Alert>
     </Box>;
 }

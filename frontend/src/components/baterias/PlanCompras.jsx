@@ -11,7 +11,7 @@ export default function PlanCompras({ equipos, anio }) {
     };
     return <Box sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 1, mb: 2 }}><Typography variant="h6" fontWeight={700}>Plan de compras · {anio}</Typography><Button variant="outlined" onClick={exportar} disabled={!equipos.length}>Exportar detalle CSV</Button></Box>
-        {!!referencia && <Alert severity="warning" sx={{ mb: 2 }}>{referencia} UPS utilizan el costo general de referencia. Configure costos por modelo para una estimación más precisa. Los equipos sin modelo identificado requieren completar su ficha.</Alert>}
+        {!!referencia && <Alert severity="warning" sx={{ mb: 2 }}>{referencia} UPS utilizan el costo general de referencia. Configure costos por modelo para una estimación más precisa. Identifique el modelo antes de comprar; agrupar por tipo no garantiza que las baterías sean intercambiables.</Alert>}
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 2 }}>
             <Card variant="outlined"><CardContent><Typography fontWeight={700}>Distribución mensual</Typography>
                 <Typography variant="caption" color="text.secondary">Los vencidos del año actual se asignan al mes actual para planificar su atención.</Typography>

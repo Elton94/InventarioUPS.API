@@ -24,6 +24,7 @@ namespace InventarioUPS.API.Repositories
                         .ThenInclude(c => c!.Departamento)
                 .Include(u => u.Agencia)
                     .ThenInclude(a => a!.TipoAgencia)
+                .Include(u => u.TipoBateria)
                 .Include(u => u.EstadoUPS)
                 .Include(u => u.ModeloBateria)!.ThenInclude(b => b!.TipoBateria)
                 .OrderBy(u => u.NumeroInventario)
@@ -39,6 +40,7 @@ namespace InventarioUPS.API.Repositories
                         .ThenInclude(c => c!.Departamento)
                 .Include(u => u.Agencia)
                     .ThenInclude(a => a!.TipoAgencia)
+                .Include(u => u.TipoBateria)
                 .Include(u => u.EstadoUPS)
                 .Include(u => u.ModeloBateria)!.ThenInclude(b => b!.TipoBateria)
                 .FirstOrDefaultAsync(u => u.Id == id);
@@ -67,6 +69,8 @@ namespace InventarioUPS.API.Repositories
             existente.EstadoUPSId = ups.EstadoUPSId;
             existente.FechaInstalacion = ups.FechaInstalacion;
             existente.CantidadBaterias = ups.CantidadBaterias;
+            existente.TipoBateriaId = ups.TipoBateriaId;
+            existente.TipoBateriaBaseId = ups.TipoBateriaBaseId;
             existente.ModeloBateriaId = ups.ModeloBateriaId;
             existente.ModeloBateriaBaseId = ups.ModeloBateriaBaseId;
             existente.FechaUltimoCambioBaterias = ups.FechaUltimoCambioBaterias;

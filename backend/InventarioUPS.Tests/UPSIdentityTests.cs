@@ -33,9 +33,9 @@ public sealed class UPSIdentityTests : IAsyncLifetime
             TipoAgencia = new TipoAgencia { Nombre = "Local" }
         };
         var estado = new EstadoUPS { Nombre = "Operativo" };
-        context.AddRange(agencia, estado, new ModeloBateria { Id = 1, Nombre = "AGM de prueba", TipoBateria = new TipoBateria { Nombre = "AGM" } });
+        context.AddRange(agencia, estado, new TipoBateria { Id = 1, Nombre = "AGM" });
         context.ModelosUPS.Add(new ModeloUPS { Nombre = "Prueba", MarcaUPS = new MarcaUPS { Nombre = "APC" } });
-        context.ResponsablesServicio.Add(new ResponsableServicio { Id = 1, Nombre = "Técnico de prueba" });
+        context.Usuarios.Add(new Usuario { Id = 1, NombreUsuario = "admin", NombreCompleto = "Administrador de prueba", Correo = "admin@test.test", PasswordHash = "test", Rol = new Rol { Nombre = "Administrador" } });
         await context.SaveChangesAsync();
         agenciaId = agencia.Id;
         estadoId = estado.Id;
@@ -44,7 +44,7 @@ public sealed class UPSIdentityTests : IAsyncLifetime
 
     private UPS Equipo(string inventario, string serie = "SERIE-1") => new()
     {
-        ModeloBateriaId = 1, NumeroInventario = inventario, NumeroSerie = serie, Marca = "APC", Modelo = "Prueba",
+        TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9, NumeroInventario = inventario, NumeroSerie = serie, Marca = "APC", Modelo = "Prueba",
         AgenciaId = agenciaId, EstadoUPSId = estadoId, CapacidadVA = 1000,
         CantidadBaterias = 2, FechaInstalacion = DateTime.Today.AddYears(-1)
     };
@@ -119,13 +119,13 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         context.AddRange(programado, new EstadoUPS { Nombre = "De baja" });
         await context.SaveChangesAsync();
         var mantenimiento = new Mantenimiento
-        { ResponsableServicioId = 1, ModeloBateriaId = 1,
+        { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
             UPSId = ups.Id,
             EstadoMantenimientoId = programado.Id, Descripcion = "Revisión",
             TecnicoProveedor = "Prueba", FechaMantenimiento = DateTime.Today.AddDays(1)
         };
         var mantenimientos = new MantenimientoService(new MantenimientoRepository(context), context);
-        await mantenimientos.CrearAsync(mantenimiento);
+        await mantenimientos.CrearAsync(mantenimiento, 1);
         context.ChangeTracker.Clear();
         var listado = await mantenimientos.ObtenerPorUPSAsync(ups.Id);
         Assert.Equal("0001/A", Assert.Single(listado).NumeroInventarioUPS);
@@ -142,7 +142,7 @@ public sealed class UPSIdentityTests : IAsyncLifetime
             new ConfiguracionPresupuestoBaterias { Anio = DateTime.Today.Year, CostoUnitarioBateria = 100 },
             new PoliticaReemplazoBaterias { MesesReemplazoLocal = 12, MesesReemplazoForanea = 12 });
         context.Mantenimientos.Add(new Mantenimiento
-        { ResponsableServicioId = 1, ModeloBateriaId = 1,
+        { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
             UPSId = equipo.Id, IncluyeCambioBaterias = true,
             FechaMantenimiento = new DateTime(DateTime.Today.Year, 12, 31),
             EstadoMantenimiento = new EstadoMantenimiento { Nombre = "Programado" }
@@ -164,7 +164,7 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         var ups = Equipo("INV-PEND-1");
         await service.CrearAsync(ups);
         var mantenimiento = new Mantenimiento
-        { ResponsableServicioId = 1, ModeloBateriaId = 1,
+        { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
             UPSId = ups.Id,
             EstadoMantenimiento = new EstadoMantenimiento { Nombre = "Programado" },
             FechaMantenimiento = DateTime.Today.AddDays(1)
@@ -214,23 +214,23 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         await context.SaveChangesAsync();
         var mantenimientos = new MantenimientoService(new MantenimientoRepository(context), context);
         var nuevo = new Mantenimiento
-        { ResponsableServicioId = 1, ModeloBateriaId = 1,
+        { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
             UPSId = ups.Id,
             EstadoMantenimientoId = programado.Id, FechaMantenimiento = DateTime.Today,
             Descripcion = "Revisión", TecnicoProveedor = "Técnico", IncluyeCambioBaterias = true
         };
-        await mantenimientos.CrearAsync(nuevo);
+        await mantenimientos.CrearAsync(nuevo, 1);
         Assert.Equal(2, nuevo.CantidadBateriasReemplazadas);
 
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
         await mantenimientos.ActualizarAsync(new Mantenimiento
-        { ResponsableServicioId = 1, ModeloBateriaId = 1,
+        { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
             Id = nuevo.Id, UPSId = ups.Id,
             EstadoMantenimientoId = completado.Id, FechaMantenimiento = DateTime.Today,
             Descripcion = "Revisión completada", TecnicoProveedor = "Técnico",
             IncluyeCambioBaterias = cambioBaterias
-        });
+        }, 1);
         context.ChangeTracker.Clear();
         var guardado = await context.Mantenimientos.SingleAsync();
         Assert.True(guardado.IncluyeCambioBaterias);
@@ -255,12 +255,12 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         await context.SaveChangesAsync();
         var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
         var cambio = new Mantenimiento
-        { ResponsableServicioId = 1, ModeloBateriaId = 1,
+        { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
             UPSId = ups.Id, EstadoMantenimientoId = estado.Id,
             FechaMantenimiento = DateTime.Today, TecnicoProveedor = "Técnico", Descripcion = "Banco completo",
             IncluyeCambioBaterias = false, CantidadBateriasReemplazadas = 999
         };
-        await cambios.CrearAsync(cambio);
+        await cambios.CrearAsync(cambio, 1);
         context.ChangeTracker.Clear();
         var guardado = await context.Mantenimientos.SingleAsync();
         Assert.True(guardado.IncluyeCambioBaterias);
@@ -294,11 +294,11 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         await context.SaveChangesAsync();
         var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
         var cambio = new Mantenimiento
-        { ResponsableServicioId = 1, ModeloBateriaId = 1,
+        { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
             UPSId = ups.Id, EstadoMantenimientoId = completado.Id, FechaMantenimiento = DateTime.Today,
             Descripcion = "Banco completo", TecnicoProveedor = "Técnico"
         };
-        await cambios.CrearAsync(cambio);
+        await cambios.CrearAsync(cambio, 1);
         context.ChangeTracker.Clear();
         var editarUPS = (await service.ObtenerPorIdAsync(ups.Id))!;
         context.ModelosUPS.Add(new ModeloUPS { Nombre = "Corregido", MarcaUPSId = (await context.MarcasUPS.SingleAsync()).Id });
@@ -307,10 +307,10 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         await service.ActualizarAsync(editarUPS);
         context.ChangeTracker.Clear();
         await cambios.ActualizarAsync(new Mantenimiento
-        { ResponsableServicioId = 1, ModeloBateriaId = 1,
+        { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
             Id = cambio.Id, UPSId = ups.Id, EstadoMantenimientoId = estadoDestino.Id,
             FechaMantenimiento = DateTime.Today, Descripcion = "Revertido", TecnicoProveedor = "Técnico"
-        });
+        }, 1);
         context.ChangeTracker.Clear();
         Assert.Equal(fechaBase, (await context.UPSs.SingleAsync()).FechaUltimoCambioBaterias);
     }
@@ -321,7 +321,7 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         var ups = Equipo("INV-HISTORICO");
         await service.CrearAsync(ups);
         var anterior = new Mantenimiento
-        { ResponsableServicioId = 1, ModeloBateriaId = 1,
+        { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
             UPSId = ups.Id, EstadoMantenimiento = new EstadoMantenimiento { Nombre = "Completado" },
             IncluyeCambioBaterias = false, FechaMantenimiento = DateTime.Today
         };
@@ -345,15 +345,15 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         await context.SaveChangesAsync();
         var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
         var cambio = new Mantenimiento
-        { ResponsableServicioId = 1, ModeloBateriaId = 1,
+        { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
             UPSId = ups.Id, EstadoMantenimientoId = estado.Id, FechaMantenimiento = DateTime.Today.AddDays(1),
             Descripcion = "Banco completo", TecnicoProveedor = "Técnico"
         };
-        await Assert.ThrowsAsync<ArgumentException>(() => cambios.CrearAsync(cambio));
+        await Assert.ThrowsAsync<ArgumentException>(() => cambios.CrearAsync(cambio, 1));
         ups.CantidadBaterias = 0;
         await context.SaveChangesAsync();
         cambio.FechaMantenimiento = DateTime.Today;
-        await Assert.ThrowsAsync<InvalidOperationException>(() => cambios.CrearAsync(cambio));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => cambios.CrearAsync(cambio, 1));
         Assert.Empty(await context.Mantenimientos.ToListAsync());
     }
 
@@ -368,30 +368,30 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         await context.SaveChangesAsync();
         var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
         var anterior = new Mantenimiento
-        { ResponsableServicioId = 1, ModeloBateriaId = 1,
+        { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
             UPSId = ups.Id, EstadoMantenimientoId = completado.Id,
             FechaMantenimiento = DateTime.Today.AddDays(-10), TecnicoProveedor = "Técnico", Descripcion = "Anterior"
         };
-        await cambios.CrearAsync(anterior);
+        await cambios.CrearAsync(anterior, 1);
         var actual = new Mantenimiento
-        { ResponsableServicioId = 1, ModeloBateriaId = 1,
+        { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
             UPSId = ups.Id, EstadoMantenimientoId = completado.Id,
             FechaMantenimiento = DateTime.Today, TecnicoProveedor = "Técnico", Descripcion = "Actual"
         };
-        await cambios.CrearAsync(actual);
+        await cambios.CrearAsync(actual, 1);
         ups.CantidadBaterias = 4;
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
         var editar = new Mantenimiento
-        { ResponsableServicioId = 1, ModeloBateriaId = 1,
+        { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
             Id = actual.Id, UPSId = ups.Id, EstadoMantenimientoId = completado.Id,
             FechaMantenimiento = DateTime.Today, TecnicoProveedor = "Técnico", Descripcion = "Corregido"
         };
-        await cambios.ActualizarAsync(editar);
+        await cambios.ActualizarAsync(editar, 1);
         context.ChangeTracker.Clear();
         Assert.Equal(2, (await cambios.ObtenerPorIdAsync(actual.Id))!.CantidadBateriasReemplazadas);
         editar.EstadoMantenimientoId = cancelado.Id;
-        await cambios.ActualizarAsync(editar);
+        await cambios.ActualizarAsync(editar, 1);
         context.ChangeTracker.Clear();
         Assert.Equal(anterior.FechaMantenimiento, (await context.UPSs.SingleAsync()).FechaUltimoCambioBaterias);
     }
@@ -455,15 +455,15 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         ups.EstadoUPSId = fuera.Id;
         await service.CrearAsync(ups);
         var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
-        var cambio = new Mantenimiento { ResponsableServicioId = 1, ModeloBateriaId = 1, UPSId = ups.Id, EstadoMantenimientoId = proceso.Id,
+        var cambio = new Mantenimiento { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9, UPSId = ups.Id, EstadoMantenimientoId = proceso.Id,
             FechaMantenimiento = ups.FechaInstalacion.AddDays(-1), Descripcion = "Reemplazo", TecnicoProveedor = "Técnico" };
-        await Assert.ThrowsAsync<ArgumentException>(() => cambios.CrearAsync(cambio));
+        await Assert.ThrowsAsync<ArgumentException>(() => cambios.CrearAsync(cambio, 1));
         cambio.FechaMantenimiento = DateTime.Today;
-        await cambios.CrearAsync(cambio);
+        await cambios.CrearAsync(cambio, 1);
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.CambiarEstadoAsync(ups.Id, "Operativo"));
         context.ChangeTracker.Clear();
-        await cambios.ActualizarAsync(new Mantenimiento { ResponsableServicioId = 1, ModeloBateriaId = 1, Id = cambio.Id, UPSId = ups.Id,
-            EstadoMantenimientoId = completo.Id, FechaMantenimiento = DateTime.Today, Descripcion = "Completado", TecnicoProveedor = "Técnico" });
+        await cambios.ActualizarAsync(new Mantenimiento { ResponsableUsuarioId = 1, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9, Id = cambio.Id, UPSId = ups.Id,
+            EstadoMantenimientoId = completo.Id, FechaMantenimiento = DateTime.Today, Descripcion = "Completado", TecnicoProveedor = "Técnico" }, 1);
         context.ChangeTracker.Clear();
         Assert.Equal(fuera.Id, (await context.UPSs.SingleAsync()).EstadoUPSId);
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.CambiarEstadoAsync(ups.Id, "En mantenimiento"));
@@ -503,6 +503,7 @@ public sealed class UPSIdentityTests : IAsyncLifetime
     [InlineData("CatalogoBaterias.sql")]
     [InlineData("AdministracionCatalogos.sql")]
     [InlineData("RevisionCampos.sql")]
+    [InlineData("TiposBateriaYUsuarios.sql")]
     public void ScriptDeMigracionTieneSintaxisTSQLValida(string archivo)
     {
         var parser = new TSql160Parser(true);
@@ -514,15 +515,14 @@ public sealed class UPSIdentityTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task UPSConTipoSinModeloSeGuardaYProyectaConReferenciaGeneral()
+    public async Task UPSConTipoYEspecificacionSeGuardaYProyectaConReferenciaGeneral()
     {
         var ups = Equipo("SOLO-TIPO");
-        ups.ModeloBateriaId = null;
         ups.TipoBateriaId = (await context.TiposBateria.SingleAsync()).Id;
         await service.CrearAsync(ups);
         context.ChangeTracker.Clear();
         var guardado = (await service.ObtenerPorIdAsync(ups.Id))!;
-        Assert.Null(guardado.ModeloBateriaId);
+        Assert.Equal(12m, guardado.VoltajeBateria);
         Assert.Equal(ups.TipoBateriaId, guardado.TipoBateriaBaseId);
         Assert.Equal("AGM", guardado.TipoBateria!.Nombre);
         guardado.NumeroSerie = "EDITADO";
@@ -540,131 +540,33 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         Assert.True(detalle.UsaCostoGeneral);
     }
 
-    [Fact]
-    public async Task RechazaTipoIncompatibleConModeloEInactivoParaNuevoUPS()
-    {
-        var tipo = new TipoBateria { Nombre = "Litio", Activo = false };
-        context.Add(tipo);
-        await context.SaveChangesAsync();
-        var ups = Equipo("INCOMPATIBLE");
-        ups.TipoBateriaId = tipo.Id;
-        await Assert.ThrowsAsync<ArgumentException>(() => service.CrearAsync(ups));
-        ups.ModeloBateriaId = null;
-        await Assert.ThrowsAsync<ArgumentException>(() => service.CrearAsync(ups));
-        Assert.Empty(await context.UPSs.ToListAsync());
-    }
+
+
+
+
 
     [Fact]
-    public async Task CancelarCambioRestauraTipoOriginalSinModelo()
-    {
-        var ups = Equipo("TIPO-BASE");
-        ups.ModeloBateriaId = null;
-        ups.TipoBateriaId = (await context.TiposBateria.SingleAsync()).Id;
-        await service.CrearAsync(ups);
-        var modelo = new ModeloBateria { Nombre = "Litio nuevo", TipoBateria = new TipoBateria { Nombre = "Litio" } };
-        var completo = new EstadoMantenimiento { Nombre = "Completado" };
-        var cancelado = new EstadoMantenimiento { Nombre = "Cancelado" };
-        context.AddRange(modelo, completo, cancelado);
-        await context.SaveChangesAsync();
-        var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
-        var cambio = new Mantenimiento { ResponsableServicioId = 1, UPSId = ups.Id, ModeloBateriaId = modelo.Id,
-            EstadoMantenimientoId = completo.Id, FechaMantenimiento = DateTime.Today };
-        await cambios.CrearAsync(cambio);
-        context.ChangeTracker.Clear();
-        Assert.Equal(modelo.TipoBateriaId, (await service.ObtenerPorIdAsync(ups.Id))!.TipoBateriaId);
-        cambio.EstadoMantenimientoId = cancelado.Id;
-        await cambios.ActualizarAsync(cambio);
-        context.ChangeTracker.Clear();
-        var restaurado = (await service.ObtenerPorIdAsync(ups.Id))!;
-        Assert.Null(restaurado.ModeloBateriaId);
-        Assert.Equal(ups.TipoBateriaBaseId, restaurado.TipoBateriaId);
-    }
-
-    [Fact]
-    public async Task ResponsableRequiereCatalogoYConservaNombreHistorico()
-    {
-        var ups = Equipo("RESPONSABLE");
-        await service.CrearAsync(ups);
-        var estado = new EstadoMantenimiento { Nombre = "Programado" };
-        context.Add(estado);
-        await context.SaveChangesAsync();
-        var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
-        var cambio = new Mantenimiento { UPSId = ups.Id, ModeloBateriaId = 1, EstadoMantenimientoId = estado.Id,
-            FechaMantenimiento = DateTime.Today, TecnicoProveedor = "Texto que no es una opción" };
-        await Assert.ThrowsAsync<ArgumentException>(() => cambios.CrearAsync(cambio));
-        cambio.ResponsableServicioId = 1;
-        await cambios.CrearAsync(cambio);
-        Assert.Equal("Técnico de prueba", cambio.TecnicoProveedor);
-        var admin = new CatalogoAdminService(context);
-        var antes = Assert.Single(await admin.ListarAsync("responsables-servicio"));
-        await admin.GuardarAsync("responsables-servicio", antes.Id, new GuardarCatalogo("Nombre corregido", false, null, antes), 1, "Admin");
-        context.ChangeTracker.Clear();
-        cambio.TecnicoProveedor = "Intento de modificar el historial";
-        await cambios.ActualizarAsync(cambio);
-        context.ChangeTracker.Clear();
-        Assert.Equal("Técnico de prueba", (await cambios.ObtenerPorIdAsync(cambio.Id))!.TecnicoProveedor);
-        var nuevo = new Mantenimiento { ResponsableServicioId = 1, UPSId = ups.Id, ModeloBateriaId = 1,
-            EstadoMantenimientoId = estado.Id, FechaMantenimiento = DateTime.Today };
-        await Assert.ThrowsAsync<ArgumentException>(() => cambios.CrearAsync(nuevo));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => admin.GuardarAsync("responsables-servicio", 0,
-            new GuardarCatalogo(" nombre   corregido ", true, null), 1, "Admin"));
-    }
-
-    [Fact]
-    public async Task TipoEsObligatorioYModeloSeleccionadoDebeExistir()
-    {
-        var ups = Equipo("INV-SIN-MODELO");
-        ups.ModeloBateriaId = null;
-        await Assert.ThrowsAsync<ArgumentException>(() => service.CrearAsync(ups));
-        ups.ModeloBateriaId = 999;
-        await Assert.ThrowsAsync<ArgumentException>(() => service.CrearAsync(ups));
-    }
-
-    [Fact]
-    public async Task ModeloInstaladoCambiaSoloAlCompletarYSeRestauraAlCancelar()
-    {
-        var ups = Equipo("INV-MODELOS");
-        await service.CrearAsync(ups);
-        var modelo = new ModeloBateria { Nombre = "Modelo nuevo", TipoBateriaId = (await context.TiposBateria.SingleAsync()).Id };
-        var programado = new EstadoMantenimiento { Nombre = "Programado" };
-        var completado = new EstadoMantenimiento { Nombre = "Completado" };
-        var cancelado = new EstadoMantenimiento { Nombre = "Cancelado" };
-        context.AddRange(modelo, programado, completado, cancelado);
-        await context.SaveChangesAsync();
-        var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
-        var cambio = new Mantenimiento { ResponsableServicioId = 1, UPSId = ups.Id, ModeloBateriaId = modelo.Id,
-            EstadoMantenimientoId = programado.Id, FechaMantenimiento = DateTime.Today, Descripcion = "Prueba", TecnicoProveedor = "Técnico" };
-        await cambios.CrearAsync(cambio);
-        context.ChangeTracker.Clear();
-        Assert.Equal(1, (await context.UPSs.AsNoTracking().SingleAsync()).ModeloBateriaId);
-        cambio.EstadoMantenimientoId = completado.Id;
-        await cambios.ActualizarAsync(cambio);
-        context.ChangeTracker.Clear();
-        Assert.Equal(modelo.Id, (await context.UPSs.AsNoTracking().SingleAsync()).ModeloBateriaId);
-        cambio.EstadoMantenimientoId = cancelado.Id;
-        await cambios.ActualizarAsync(cambio);
-        context.ChangeTracker.Clear();
-        Assert.Equal(1, (await context.UPSs.AsNoTracking().SingleAsync()).ModeloBateriaId);
-    }
-
-    [Fact]
-    public async Task PrecioPorModeloPrevaleceSoloEnSuAnio()
+    public async Task PrecioPorTipoSeAplicaSoloAlElegirDetalleYEnSuAnio()
     {
         var ups = Equipo("INV-COSTO-MODELO");
         await service.CrearAsync(ups);
         context.Add(new PoliticaReemplazoBaterias { MesesReemplazoLocal = 3, MesesReemplazoForanea = 6 });
-        context.Add(new CostoModeloBateria { ModeloBateriaId = 1, Anio = 2029, CostoUnitario = 750 });
+        context.Add(new CostoTipoBateria { TipoBateriaId = 1, Anio = 2029, CostoUnitario = 750 });
         await context.SaveChangesAsync();
         var config = new ConfiguracionPresupuestoService(new ConfiguracionPresupuestoRepository(context));
         await config.CrearAsync(new() { Anio = 2029, CostoUnitarioBateria = 500 });
         await config.CrearAsync(new() { Anio = 2030, CostoUnitarioBateria = 600 });
         var controlador = new PresupuestoController(context, config);
-        var resumen = Assert.IsType<InventarioUPS.API.DTOs.Presupuesto.PresupuestoResumenDto>(Assert.IsType<OkObjectResult>(await controlador.ObtenerProyeccion(2029)).Value);
+        var resumen = Assert.IsType<InventarioUPS.API.DTOs.Presupuesto.PresupuestoResumenDto>(Assert.IsType<OkObjectResult>(await controlador.ObtenerProyeccion(2029, "tipo")).Value);
         var detalle = Assert.Single(Assert.Single(resumen.Agencias).UPS);
         Assert.False(detalle.UsaCostoGeneral);
         Assert.Equal(750m, detalle.CostoUnitarioBateria);
         Assert.Equal(resumen.TotalBaterias * 750m, resumen.TotalPresupuesto);
-        resumen = Assert.IsType<InventarioUPS.API.DTOs.Presupuesto.PresupuestoResumenDto>(Assert.IsType<OkObjectResult>(await controlador.ObtenerProyeccion(2030)).Value);
+        var referencia = Assert.IsType<InventarioUPS.API.DTOs.Presupuesto.PresupuestoResumenDto>(Assert.IsType<OkObjectResult>(await controlador.ObtenerProyeccion(2029, "referencia")).Value);
+        Assert.Equal(500m, Assert.Single(Assert.Single(referencia.Agencias).UPS).CostoUnitarioBateria);
+        Assert.Equal("referencia", referencia.MetodoCosto);
+        Assert.IsType<BadRequestObjectResult>(await controlador.ObtenerProyeccion(2029, "otro"));
+        resumen = Assert.IsType<InventarioUPS.API.DTOs.Presupuesto.PresupuestoResumenDto>(Assert.IsType<OkObjectResult>(await controlador.ObtenerProyeccion(2030, "tipo")).Value);
         detalle = Assert.Single(Assert.Single(resumen.Agencias).UPS);
         Assert.True(detalle.UsaCostoGeneral);
         Assert.Equal(600m, detalle.CostoUnitarioBateria);
@@ -702,25 +604,6 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         await Assert.ThrowsAsync<InvalidOperationException>(() => admin.GuardarAsync("tipos-bateria", creado.Id, new("Otro nombre", true, null, creado), 7, "Administrador"));
     }
 
-    [Fact]
-    public async Task NoPermiteReclasificarModelosUsadosNiCrearBajoPadresInactivos()
-    {
-        var equipo = Equipo("INV-CATALOGO");
-        await service.CrearAsync(equipo);
-        var admin = new CatalogoAdminService(context);
-        var otroTipo = await admin.GuardarAsync("tipos-bateria", 0, new("Otro tipo", true, null), 7, "Admin");
-        var modelo = (await admin.ListarAsync("modelos-bateria")).Single();
-        await Assert.ThrowsAsync<InvalidOperationException>(() => admin.GuardarAsync("modelos-bateria", modelo.Id, new(modelo.Nombre, true, otroTipo.Id, modelo), 7, "Admin"));
-        var inactivo = await admin.GuardarAsync("tipos-bateria", otroTipo.Id, new(otroTipo.Nombre, false, null, otroTipo), 7, "Admin");
-        await Assert.ThrowsAsync<ArgumentException>(() => admin.GuardarAsync("modelos-bateria", 0, new("Batería nueva", true, inactivo.Id), 7, "Admin"));
-        var retirado = await admin.GuardarAsync("modelos-bateria", modelo.Id, new(modelo.Nombre, false, modelo.PadreId, modelo), 7, "Admin");
-        Assert.False(retirado.Activo);
-        context.ChangeTracker.Clear();
-        Assert.Equal(modelo.Id, (await context.UPSs.SingleAsync()).ModeloBateriaId);
-        context.ChangeTracker.Clear();
-        await Assert.ThrowsAsync<ArgumentException>(() => service.CrearAsync(Equipo("INV-OTRO", "SERIE-OTRA")));
-        await service.ActualizarAsync((await service.ObtenerPorIdAsync(equipo.Id))!);
-    }
 
     [Fact]
     public async Task CorregirCiudadNoCambiaSuClasificacionNiSuProyeccion()
@@ -797,11 +680,11 @@ public sealed class UPSIdentityTests : IAsyncLifetime
     {
         var equipo = Equipo("INV-RELACIONES");
         equipo.ModeloUPS = new ModeloUPS { Nombre = "Modelo no autorizado", MarcaUPS = new MarcaUPS { Nombre = "Marca no autorizada" } };
-        equipo.ModeloBateria = new ModeloBateria { Nombre = "Batería no autorizada", TipoBateria = new TipoBateria { Nombre = "Tipo no autorizado" } };
+        equipo.TipoBateria = new TipoBateria { Nombre = "Tipo no autorizado" };
         await service.CrearAsync(equipo);
         Assert.Single(await context.ModelosUPS.ToListAsync());
         Assert.Single(await context.MarcasUPS.ToListAsync());
-        Assert.Single(await context.ModelosBateria.ToListAsync());
+        Assert.Single(await context.TiposBateria.ToListAsync());
         var otro = Equipo("INV-LIBRE", "SERIE-LIBRE");
         otro.Modelo = "Modelo escrito libremente";
         await Assert.ThrowsAsync<ArgumentException>(() => service.CrearAsync(otro));
@@ -834,6 +717,154 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         Assert.Equal("SPS corregida", (await context.Ciudades.SingleAsync()).Nombre);
         Assert.False((await context.Departamentos.SingleAsync()).Activo);
         Assert.True((await context.Ciudades.SingleAsync()).EsLocal);
+    }
+
+    [Theory]
+    [InlineData(0, 9)]
+    [InlineData(-12, 9)]
+    [InlineData(12, 0)]
+    [InlineData(12.1234, 9)]
+    public async Task RechazaEspecificacionesInvalidas(double voltaje, double capacidad)
+    {
+        var ups = Equipo("INVALIDO");
+        ups.VoltajeBateria = (decimal)voltaje;
+        ups.CapacidadBateriaAh = (decimal)capacidad;
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CrearAsync(ups));
+        Assert.Empty(await context.UPSs.ToListAsync());
+    }
+
+    [Fact]
+    public async Task TipoInactivoNoSeAsignaANuevosEquiposPeroSeConservaEnExistentes()
+    {
+        var equipo = Equipo("EXISTENTE");
+        await service.CrearAsync(equipo);
+        (await context.TiposBateria.SingleAsync()).Activo = false;
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        await service.ActualizarAsync((await service.ObtenerPorIdAsync(equipo.Id))!);
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CrearAsync(Equipo("NUEVO", "SERIE-NUEVA")));
+    }
+
+    [Fact]
+    public async Task CompletarYCancelarRecuperaTipoVoltajeYCapacidad()
+    {
+        var equipo = Equipo("BANCO");
+        await service.CrearAsync(equipo);
+        var tipo = new TipoBateria { Nombre = "Litio" };
+        var completo = new EstadoMantenimiento { Nombre = "Completado" };
+        var cancelado = new EstadoMantenimiento { Nombre = "Cancelado" };
+        context.AddRange(tipo, completo, cancelado);
+        await context.SaveChangesAsync();
+        var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
+        var cambio = new Mantenimiento { UPSId = equipo.Id, TipoBateriaId = tipo.Id, VoltajeBateria = 24, CapacidadBateriaAh = 20,
+            EstadoMantenimientoId = completo.Id, FechaMantenimiento = DateTime.Today };
+        await cambios.CrearAsync(cambio, 1);
+        context.ChangeTracker.Clear();
+        var instalado = (await service.ObtenerPorIdAsync(equipo.Id))!;
+        Assert.Equal(tipo.Id, instalado.TipoBateriaId);
+        Assert.Equal(24m, instalado.VoltajeBateria);
+        Assert.Equal(20m, instalado.CapacidadBateriaAh);
+        instalado.VoltajeBateria = 48;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ActualizarAsync(instalado));
+        cambio.EstadoMantenimientoId = cancelado.Id;
+        await cambios.ActualizarAsync(cambio, 1);
+        context.ChangeTracker.Clear();
+        var restaurado = (await service.ObtenerPorIdAsync(equipo.Id))!;
+        Assert.Equal(1, restaurado.TipoBateriaId);
+        Assert.Equal(12m, restaurado.VoltajeBateria);
+        Assert.Equal(9m, restaurado.CapacidadBateriaAh);
+    }
+
+    private async Task<Usuario> CrearTecnico(string nombre)
+    {
+        var rol = await context.Roles.FirstOrDefaultAsync(x => x.Nombre == "Técnico");
+        if (rol == null) {
+            rol = new Rol { Nombre = "Técnico" };
+            context.RolPermisos.Add(new RolPermiso { Rol = rol, Permiso = new Permiso { Codigo = "CREAR_MANTENIMIENTO", Nombre = "Crear cambios" } });
+        }
+        var usuario = new Usuario { NombreUsuario = nombre, NombreCompleto = nombre, Correo = nombre + "@test.test", PasswordHash = "test", Rol = rol };
+        context.Add(usuario);
+        await context.SaveChangesAsync();
+        return usuario;
+    }
+
+    [Fact]
+    public async Task TecnicoSeAsignaAutomaticamenteYNoPuedeSuplantarNiEditarAOtro()
+    {
+        var tecnico = await CrearTecnico("tecnico1");
+        var otro = await CrearTecnico("tecnico2");
+        var ups = Equipo("TECNICOS");
+        await service.CrearAsync(ups);
+        var estado = new EstadoMantenimiento { Nombre = "Programado" };
+        context.Add(estado);
+        await context.SaveChangesAsync();
+        var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
+        var cambio = new Mantenimiento { UPSId = ups.Id, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
+            EstadoMantenimientoId = estado.Id, FechaMantenimiento = DateTime.Today, TecnicoProveedor = "Nombre falso" };
+        await cambios.CrearAsync(cambio, tecnico.Id);
+        Assert.Equal(tecnico.Id, cambio.ResponsableUsuarioId);
+        Assert.Equal("tecnico1", cambio.TecnicoProveedor);
+        context.ChangeTracker.Clear();
+        cambio.ResponsableUsuarioId = otro.Id;
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => cambios.ActualizarAsync(cambio, tecnico.Id));
+        cambio.ResponsableUsuarioId = tecnico.Id;
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => cambios.ActualizarAsync(cambio, otro.Id));
+        var falso = new Mantenimiento { UPSId = ups.Id, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
+            ResponsableUsuarioId = otro.Id, EstadoMantenimientoId = estado.Id, FechaMantenimiento = DateTime.Today };
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => cambios.CrearAsync(falso, tecnico.Id));
+        Assert.Equal(1, await context.Mantenimientos.CountAsync());
+    }
+
+    [Theory]
+    [InlineData("Administrador")]
+    [InlineData("Control Total")]
+    public async Task AdministradoresSeleccionanUsuarioYConservanNombreHistorico(string rolNombre)
+    {
+        (await context.Usuarios.Include(x => x.Rol).SingleAsync(x => x.Id == 1)).Rol!.Nombre = rolNombre;
+        var tecnico = await CrearTecnico("asignado");
+        var ups = Equipo("ASIGNADO");
+        await service.CrearAsync(ups);
+        var estado = new EstadoMantenimiento { Nombre = "Programado" };
+        context.Add(estado);
+        await context.SaveChangesAsync();
+        var cambios = new MantenimientoService(new MantenimientoRepository(context), context);
+        var cambio = new Mantenimiento { UPSId = ups.Id, TipoBateriaId = 1, VoltajeBateria = 12, CapacidadBateriaAh = 9,
+            ResponsableUsuarioId = tecnico.Id, EstadoMantenimientoId = estado.Id, FechaMantenimiento = DateTime.Today };
+        await cambios.CrearAsync(cambio, 1);
+        tecnico.NombreCompleto = "Nombre corregido";
+        tecnico.Activo = false;
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        cambio.TecnicoProveedor = "Intento de cambiar historial";
+        await cambios.ActualizarAsync(cambio, 1);
+        Assert.Equal("asignado", (await cambios.ObtenerPorIdAsync(cambio.Id))!.TecnicoProveedor);
+    }
+
+    [Fact]
+    public async Task CostosPorTipoInicianEnReferenciaYSeGuardanAtomicamente()
+    {
+        var config = new ConfiguracionPresupuestoService(new ConfiguracionPresupuestoRepository(context));
+        await config.CrearAsync(new() { Anio = 2029, CostoUnitarioBateria = 500 });
+        var otro = new TipoBateria { Nombre = "Litio" };
+        context.Add(otro);
+        await context.SaveChangesAsync();
+        var controller = new BateriasController(context);
+        var inicial = Assert.IsType<OkObjectResult>(await controller.Costos(2029));
+        using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(inicial.Value));
+        Assert.Equal(2, json.RootElement.GetArrayLength());
+        Assert.All(json.RootElement.EnumerateArray(), x => {
+            Assert.Equal(500m, x.GetProperty("CostoUnitario").GetDecimal());
+            Assert.True(x.GetProperty("UsaReferencia").GetBoolean());
+        });
+        Assert.IsType<BadRequestObjectResult>(await controller.GuardarCostos(2029, new() { new(1, 750), new(9999, 900) }));
+        Assert.Empty(await context.CostosTipoBateria.ToListAsync());
+        Assert.IsType<OkObjectResult>(await controller.GuardarCostos(2029, new() { new(1, 750), new(otro.Id, null) }));
+        Assert.Equal(750m, (await context.CostosTipoBateria.SingleAsync()).CostoUnitario);
+        Assert.IsType<BadRequestObjectResult>(await controller.GuardarCostos(2029, new() { new(1, 0) }));
+        Assert.IsType<BadRequestObjectResult>(await controller.GuardarCostos(2029, new() { new(1, 12.345m) }));
+        Assert.IsType<BadRequestObjectResult>(await controller.GuardarCostos(2029, new() { new(1, 12), new(1, 20) }));
+        Assert.IsType<OkObjectResult>(await controller.GuardarCostos(2029, new() { new(1, null) }));
+        Assert.Empty(await context.CostosTipoBateria.ToListAsync());
     }
 
     private sealed class SqlDinamicoVisitor(TSql160Parser parser) : TSqlFragmentVisitor

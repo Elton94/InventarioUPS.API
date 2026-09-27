@@ -1,4 +1,4 @@
-﻿using InventarioUPS.API.Authorization;
+using InventarioUPS.API.Authorization;
 using InventarioUPS.API.Data;
 using InventarioUPS.API.DTOs;
 using InventarioUPS.API.Models;
@@ -35,7 +35,6 @@ namespace InventarioUPS.API.Controllers
             _context = context;
         }
 
-        // USUARIOS
         [HttpGet]
         [PermisoAuthorize("GESTIONAR_USUARIOS")]
         public async Task<ActionResult<List<UsuarioDTO>>>
@@ -95,7 +94,6 @@ namespace InventarioUPS.API.Controllers
             });
         }
 
-        // ROLES
         [HttpGet("roles")]
         [PermisoAuthorize("GESTIONAR_USUARIOS", "GESTIONAR_ROLES_PERMISOS")]
         public async Task<ActionResult<List<Rol>>>
@@ -107,13 +105,13 @@ namespace InventarioUPS.API.Controllers
             return Ok(roles);
         }
 
-        // RESPONSABLES DE MANTENIMIENTO
-        // Usuarios activos cuyo rol puede crear o editar mantenimiento.
-        // Control Total también se incluye.
         [HttpGet("responsables-mantenimiento")]
         [PermisoAuthorize("CREAR_MANTENIMIENTO", "EDITAR_MANTENIMIENTO")]
-        public async Task<ActionResult> ObtenerResponsablesMantenimiento()
+        public async Task<ActionResult> ObtenerResponsablesMantenimiento([FromQuery] int? actualId = null)
         {
+            var actorId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+            var actor = await _context.Usuarios.AsNoTracking().Include(x => x.Rol).SingleAsync(x => x.Id == actorId);
+            var administrador = actor.Rol!.Nombre is "Administrador" or "Control Total";
             var rolesConPermiso = await _context.RolPermisos
                 .AsNoTracking()
                 .Where(rp =>
@@ -129,18 +127,18 @@ namespace InventarioUPS.API.Controllers
                 .AsNoTracking()
                 .Include(u => u.Rol)
                 .Where(u =>
-                    u.Activo &&
-                    u.Rol != null &&
-                    u.Rol.Activo &&
-                    (u.Rol.Nombre == RolControlTotal ||
-                     rolesConPermiso.Contains(u.RolId)))
+                    (administrador || u.Id == actorId) &&
+                    ((u.Activo && u.Rol != null && u.Rol.Activo &&
+                    (u.Rol.Nombre == RolControlTotal || u.Rol.Nombre == "Administrador" || rolesConPermiso.Contains(u.RolId))) ||
+                    (administrador && u.Id == actualId)))
                 .OrderBy(u => u.NombreCompleto)
                 .Select(u => new
                 {
                     id = u.Id,
                     nombreUsuario = u.NombreUsuario,
                     nombreCompleto = u.NombreCompleto,
-                    rolNombre = u.Rol!.Nombre
+                    rolNombre = u.Rol!.Nombre,
+                    activo = u.Activo && u.Rol.Activo
                 })
                 .ToListAsync();
 
@@ -271,7 +269,6 @@ namespace InventarioUPS.API.Controllers
                     "El rol seleccionado no existe o está inactivo.");
             }
 
-            // PROTEGER ASIGNACIÓN DE CONTROL TOTAL
             if (EsControlTotal(rol.Nombre) &&
                 !await TienePermisoGestionarRolesAsync())
             {
@@ -427,7 +424,6 @@ namespace InventarioUPS.API.Controllers
             var nuevoEsControlTotal =
                 EsControlTotal(rol.Nombre);
 
-            // PROTEGER ASIGNACIÓN DE CONTROL TOTAL
             if (nuevoEsControlTotal &&
                 !esActualmenteControlTotal &&
                 !await TienePermisoGestionarRolesAsync())
@@ -441,7 +437,6 @@ namespace InventarioUPS.API.Controllers
                     });
             }
 
-            // PROTEGER ÚLTIMO CONTROL TOTAL
             if (esActualmenteControlTotal &&
                 usuario.Activo &&
                 (!request.Activo ||
@@ -710,7 +705,6 @@ namespace InventarioUPS.API.Controllers
                     "El rol Control Total no puede ser renombrado.");
             }
 
-            // NO DESACTIVAR NINGÚN ROL CON USUARIOS ACTIVOS
             if (!request.Activo &&
                 rol.Activo)
             {
@@ -775,7 +769,6 @@ namespace InventarioUPS.API.Controllers
                     "El rol no existe.");
             }
 
-            // NO DESACTIVAR NINGÚN ROL CON USUARIOS ACTIVOS
             if (!activo && rol.Activo)
             {
                 var usuariosActivos =
@@ -812,7 +805,6 @@ namespace InventarioUPS.API.Controllers
             });
         }
 
-        // PERMISOS
         [HttpGet("permisos")]
         [PermisoAuthorize("GESTIONAR_ROLES_PERMISOS")]
         public async Task<ActionResult>
@@ -992,7 +984,6 @@ namespace InventarioUPS.API.Controllers
             });
         }
 
-        // MÉTODOS AUXILIARES
         private static bool EsControlTotal(
             string? nombreRol)
         {

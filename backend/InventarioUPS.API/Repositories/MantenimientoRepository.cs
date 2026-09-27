@@ -24,7 +24,7 @@ namespace InventarioUPS.API.Repositories
                 .Include(m => m.UPS)
                     .ThenInclude(u => u!.Agencia!.Ciudad)
                 .Include(m => m.EstadoMantenimiento)
-                .Include(m => m.ModeloBateria)!.ThenInclude(b => b!.TipoBateria)
+                .Include(m => m.TipoBateria)
                 .OrderByDescending(
                     m => m.FechaMantenimiento)
                 .ThenByDescending(
@@ -42,7 +42,7 @@ namespace InventarioUPS.API.Repositories
                 .Include(m => m.UPS)
                     .ThenInclude(u => u!.Agencia!.Ciudad)
                 .Include(m => m.EstadoMantenimiento)
-                .Include(m => m.ModeloBateria)!.ThenInclude(b => b!.TipoBateria)
+                .Include(m => m.TipoBateria)
                 .FirstOrDefaultAsync(
                     m => m.Id == id);
         }
@@ -58,7 +58,7 @@ namespace InventarioUPS.API.Repositories
                 .Include(m => m.UPS)
                     .ThenInclude(u => u!.Agencia!.Ciudad)
                 .Include(m => m.EstadoMantenimiento)
-                .Include(m => m.ModeloBateria)!.ThenInclude(b => b!.TipoBateria)
+                .Include(m => m.TipoBateria)
                 .Where(m => m.UPSId == upsId)
                 .OrderByDescending(
                     m => m.FechaMantenimiento)
@@ -110,7 +110,6 @@ namespace InventarioUPS.API.Repositories
             existente.Observaciones =
                 mantenimiento.Observaciones;
 
-            // CAMBIO DE BATERÍAS
             existente.IncluyeCambioBaterias =
                 mantenimiento.IncluyeCambioBaterias;
 

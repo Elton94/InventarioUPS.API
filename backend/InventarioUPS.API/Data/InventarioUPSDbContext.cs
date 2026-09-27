@@ -14,12 +14,9 @@ namespace InventarioUPS.API.Data
         public DbSet<MarcaUPS> MarcasUPS => Set<MarcaUPS>();
         public DbSet<ModeloUPS> ModelosUPS => Set<ModeloUPS>();
         public DbSet<AuditoriaCatalogo> AuditoriaCatalogos => Set<AuditoriaCatalogo>();
-        public DbSet<ResponsableServicio> ResponsablesServicio { get; set; }
+        public DbSet<CostoTipoBateria> CostosTipoBateria { get; set; }
         public DbSet<TipoBateria> TiposBateria { get; set; }
-        public DbSet<ModeloBateria> ModelosBateria { get; set; }
-        public DbSet<CostoModeloBateria> CostosModeloBateria { get; set; }
 
-        // TABLAS
         public DbSet<Permiso> Permisos { get; set; }
 
         public DbSet<RolPermiso> RolPermisos { get; set; }
@@ -52,28 +49,26 @@ namespace InventarioUPS.API.Data
             PoliticaReemplazoBaterias
         { get; set; }
 
-        // CONFIGURACIÓN
         protected override void OnModelCreating(
             ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<ResponsableServicio>().Property(x => x.Nombre).HasMaxLength(150).UseCollation("Latin1_General_100_CI_AS").IsRequired();
-            modelBuilder.Entity<ResponsableServicio>().HasIndex(x => x.Nombre).IsUnique();
-            modelBuilder.Entity<Mantenimiento>().HasOne<ResponsableServicio>().WithMany().HasForeignKey(x => x.ResponsableServicioId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<UPS>().HasOne(x => x.TipoBateria).WithMany().HasForeignKey(x => x.TipoBateriaId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<UPS>().HasOne<TipoBateria>().WithMany().HasForeignKey(x => x.TipoBateriaBaseId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<CostoTipoBateria>().Property(x => x.CostoUnitario).HasPrecision(18, 2);
+            modelBuilder.Entity<CostoTipoBateria>().HasIndex(x => new { x.Anio, x.TipoBateriaId }).IsUnique();
+            modelBuilder.Entity<CostoTipoBateria>().HasOne(x => x.TipoBateria).WithMany().HasForeignKey(x => x.TipoBateriaId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Mantenimiento>().HasOne(x => x.TipoBateria).WithMany().HasForeignKey(x => x.TipoBateriaId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Mantenimiento>().HasOne<Usuario>().WithMany().HasForeignKey(x => x.ResponsableUsuarioId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<UPS>().Property(x => x.VoltajeBateria).HasPrecision(9, 3);
+            modelBuilder.Entity<UPS>().Property(x => x.CapacidadBateriaAh).HasPrecision(9, 3);
+            modelBuilder.Entity<UPS>().Property(x => x.VoltajeBateriaBase).HasPrecision(9, 3);
+            modelBuilder.Entity<UPS>().Property(x => x.CapacidadBateriaAhBase).HasPrecision(9, 3);
+            modelBuilder.Entity<Mantenimiento>().Property(x => x.VoltajeBateria).HasPrecision(9, 3);
+            modelBuilder.Entity<Mantenimiento>().Property(x => x.CapacidadBateriaAh).HasPrecision(9, 3);
             modelBuilder.Entity<TipoBateria>().Property(x => x.Nombre).HasMaxLength(80).IsRequired();
             modelBuilder.Entity<TipoBateria>().HasIndex(x => x.Nombre).IsUnique();
-            modelBuilder.Entity<ModeloBateria>().Property(x => x.Nombre).HasMaxLength(150).UseCollation("Latin1_General_100_CI_AS").IsRequired();
-            modelBuilder.Entity<ModeloBateria>().HasIndex(x => new { x.TipoBateriaId, x.Nombre }).IsUnique();
-            modelBuilder.Entity<ModeloBateria>().HasOne(x => x.TipoBateria).WithMany().HasForeignKey(x => x.TipoBateriaId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<UPS>().HasOne(x => x.ModeloBateria).WithMany().HasForeignKey(x => x.ModeloBateriaId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<UPS>().HasOne<ModeloBateria>().WithMany().HasForeignKey(x => x.ModeloBateriaBaseId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<Mantenimiento>().HasOne(x => x.ModeloBateria).WithMany().HasForeignKey(x => x.ModeloBateriaId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<CostoModeloBateria>().Property(x => x.CostoUnitario).HasPrecision(18, 2);
-            modelBuilder.Entity<CostoModeloBateria>().HasIndex(x => new { x.Anio, x.ModeloBateriaId }).IsUnique();
-            modelBuilder.Entity<CostoModeloBateria>().HasOne(x => x.ModeloBateria).WithMany().HasForeignKey(x => x.ModeloBateriaId).OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<MarcaUPS>().Property(x => x.Nombre).HasMaxLength(100).UseCollation("Latin1_General_100_CI_AS").IsRequired();
             modelBuilder.Entity<MarcaUPS>().HasIndex(x => x.Nombre).IsUnique();
@@ -89,7 +84,6 @@ namespace InventarioUPS.API.Data
             modelBuilder.Entity<Ciudad>().Property(x => x.Nombre).UseCollation("Latin1_General_100_CI_AS");
             modelBuilder.Entity<TipoBateria>().Property(x => x.Nombre).UseCollation("Latin1_General_100_CI_AS");
 
-            // DEPARTAMENTOS
             modelBuilder.Entity<Departamento>()
                 .Property(d => d.Nombre)
                 .HasMaxLength(100)
@@ -99,7 +93,6 @@ namespace InventarioUPS.API.Data
                 .HasIndex(d => d.Nombre)
                 .IsUnique();
 
-            // CIUDADES
             modelBuilder.Entity<Ciudad>()
                 .Property(c => c.Nombre)
                 .HasMaxLength(100)
@@ -119,7 +112,6 @@ namespace InventarioUPS.API.Data
                 })
                 .IsUnique();
 
-            // TIPOS DE AGENCIA
             modelBuilder.Entity<TipoAgencia>()
                 .Property(t => t.Nombre)
                 .HasMaxLength(100)
@@ -129,7 +121,6 @@ namespace InventarioUPS.API.Data
                 .HasIndex(t => t.Nombre)
                 .IsUnique();
 
-            // AGENCIAS
             modelBuilder.Entity<Agencia>()
                 .Property(a => a.Codigo)
                 .HasMaxLength(50)
@@ -160,7 +151,6 @@ namespace InventarioUPS.API.Data
                 .HasForeignKey(a => a.TipoAgenciaId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // ESTADOS DE UPS
             modelBuilder.Entity<EstadoUPS>()
                 .Property(e => e.Nombre)
                 .HasMaxLength(50)
@@ -170,7 +160,6 @@ namespace InventarioUPS.API.Data
                 .HasIndex(e => e.Nombre)
                 .IsUnique();
 
-            // UPS
             modelBuilder.Entity<UPS>()
                 .HasKey(u => u.Id);
 
@@ -220,7 +209,6 @@ namespace InventarioUPS.API.Data
                 .HasForeignKey(u => u.EstadoUPSId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // ESTADOS DE MANTENIMIENTO
             modelBuilder.Entity<EstadoMantenimiento>()
                 .Property(e => e.Nombre)
                 .HasMaxLength(50)
@@ -230,7 +218,6 @@ namespace InventarioUPS.API.Data
                 .HasIndex(e => e.Nombre)
                 .IsUnique();
 
-            // MANTENIMIENTOS
             modelBuilder.Entity<Mantenimiento>()
                 .Property(m => m.Descripcion)
                 .HasMaxLength(1000)
@@ -260,7 +247,6 @@ namespace InventarioUPS.API.Data
                 .HasForeignKey(m => m.EstadoMantenimientoId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // ROLES
             modelBuilder.Entity<Rol>()
                 .Property(r => r.Nombre)
                 .HasMaxLength(100)
@@ -274,7 +260,6 @@ namespace InventarioUPS.API.Data
                 .HasIndex(r => r.Nombre)
                 .IsUnique();
 
-            // USUARIOS
             modelBuilder.Entity<Usuario>()
                 .Property(u => u.NombreUsuario)
                 .HasMaxLength(100)
@@ -308,7 +293,6 @@ namespace InventarioUPS.API.Data
                 .HasForeignKey(u => u.RolId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // PERMISOS
             modelBuilder.Entity<Permiso>()
                 .Property(p => p.Nombre)
                 .HasMaxLength(150)
@@ -327,7 +311,6 @@ namespace InventarioUPS.API.Data
                 .HasIndex(p => p.Codigo)
                 .IsUnique();
 
-            // ROL - PERMISO
             modelBuilder.Entity<RolPermiso>()
                 .HasOne(rp => rp.Rol)
                 .WithMany(r => r.RolPermisos)
@@ -348,7 +331,6 @@ namespace InventarioUPS.API.Data
                 })
                 .IsUnique();
 
-            // CONFIGURACIÓN DE PRESUPUESTO
             modelBuilder.Entity<ConfiguracionPresupuestoBaterias>()
                 .ToTable("ConfiguracionPresupuestoBaterias");
 
@@ -384,7 +366,6 @@ namespace InventarioUPS.API.Data
                 .HasIndex(x => x.Anio)
                 .IsUnique();
 
-            // POLÍTICA GLOBAL DE REEMPLAZO DE BATERÍAS
             modelBuilder.Entity<PoliticaReemplazoBaterias>()
                 .ToTable("PoliticaReemplazoBaterias");
 

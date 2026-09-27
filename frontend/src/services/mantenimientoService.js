@@ -4,11 +4,12 @@ const API_URL = "/Mantenimiento";
 
 const prepararDatos = (cambio) => ({
     upsId: Number(cambio.upsId),
-    modeloBateriaId: cambio.modeloBateriaId ? Number(cambio.modeloBateriaId) : null,
+    tipoBateriaId: cambio.tipoBateriaId ? Number(cambio.tipoBateriaId) : null,
+    voltajeBateria: cambio.voltajeBateria === "" || cambio.voltajeBateria == null ? null : Number(cambio.voltajeBateria),
+    capacidadBateriaAh: cambio.capacidadBateriaAh === "" || cambio.capacidadBateriaAh == null ? null : Number(cambio.capacidadBateriaAh),
     estadoMantenimientoId: Number(cambio.estadoMantenimientoId),
     fechaMantenimiento: cambio.fechaMantenimiento,
-    descripcion: cambio.descripcion?.trim() || "",
-    responsableServicioId: cambio.responsableServicioId ? Number(cambio.responsableServicioId) : null,
+    responsableUsuarioId: cambio.responsableUsuarioId ? Number(cambio.responsableUsuarioId) : null,
     observaciones: cambio.observaciones?.trim() || ""
 });
 

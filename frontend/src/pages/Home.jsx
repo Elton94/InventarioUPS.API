@@ -16,7 +16,7 @@ function Lista({ titulo, filas, rojo = false, realizados = false }) {
             <TableBody>{filas.map(f => <TableRow key={f.id || f.upsId} sx={{ bgcolor: rojo ? '#fff5f5' : undefined }}>
                 <TableCell><Typography fontWeight={600}>{f.numeroInventario || f.numeroInventarioUPS}</Typography><Typography variant="caption">{f.agencia || f.agenciaNombre}</Typography></TableCell>
                 <TableCell>{fecha(f.fecha || f.fechaMantenimiento)}</TableCell>
-                <TableCell>{f.modeloBateria || 'Sin identificar'}<Typography variant="caption" display="block">{f.tipoBateria || ''}</Typography></TableCell>
+                <TableCell>{f.voltajeBateria ?? '—'} V · {f.capacidadBateriaAh ?? '—'} Ah<Typography variant="caption" display="block">{f.tipoBateria || ''}</Typography></TableCell>
                 <TableCell>{f.cantidadBaterias || f.cantidadBateriasReemplazadas}</TableCell>
                 <TableCell>{realizados ? <Chip size="small" color="success" label="Completado" /> : <><Chip size="small" color={rojo ? 'error' : 'info'} label={f.motivo || (f.dias === 0 ? 'Vence hoy' : f.dias < 0 ? `${-f.dias} días de atraso` : `En ${f.dias} días`)} />{f.trabajo && <Typography variant="caption" display="block" sx={{ mt: 1 }}>{f.trabajo}</Typography>}</>}</TableCell>
             </TableRow>)}{!filas.length && <TableRow><TableCell colSpan={5}>No hay registros en este período.</TableCell></TableRow>}</TableBody>
@@ -58,7 +58,7 @@ export default function Home() {
                 const indice = proximos.findIndex(u => u.upsId === c.upsId);
                 if (indice >= 0) proximos.splice(indice, 1);
                 vencidos.push({ upsId: c.upsId, numeroInventario: c.numeroInventarioUPS, agencia: c.agenciaNombre,
-                    fecha: c.fechaMantenimiento, cantidadBaterias: c.cantidadBateriasReemplazadas, modeloBateria: c.modeloBateria,
+                    fecha: c.fechaMantenimiento, cantidadBaterias: c.cantidadBateriasReemplazadas, voltajeBateria: c.voltajeBateria, capacidadBateriaAh: c.capacidadBateriaAh,
                     tipoBateria: c.tipoBateria, motivo: 'Trabajo sin completar', trabajo: c.estado });
             }
         } else if (fila) fila.trabajo = `${c.estado}: ${fecha(c.fechaMantenimiento)}`;

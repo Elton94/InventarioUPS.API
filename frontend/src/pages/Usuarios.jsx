@@ -36,7 +36,7 @@ import {
     tienePermiso
 } from "../services/permisos";
 
-export default function Usuarios() {
+export default function Usuarios({ rolPredeterminado = "" }) {
     const [usuarios, setUsuarios] =
         useState([]);
     const [busqueda, setBusqueda] =
@@ -283,7 +283,7 @@ export default function Usuarios() {
             )}
 
             {puedeUsuarios && (
-                <NuevoUsuarioModal
+                <NuevoUsuarioModal rolPredeterminado={rolPredeterminado}
                     open={modalAbierto}
                     usuario={seleccionado}
                     onClose={() => {

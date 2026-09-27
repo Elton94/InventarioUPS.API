@@ -1,4 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
@@ -49,7 +49,6 @@ namespace InventarioUPS.API.Services
                 );
             }
 
-            // OBTENER PERMISOS DEL ROL DESDE SQL SERVER
 
             var permisos = _context.RolPermisos
                 .AsNoTracking()
@@ -61,7 +60,6 @@ namespace InventarioUPS.API.Services
                 .Distinct()
                 .ToList();
 
-            // CLAIMS DEL USUARIO
 
             var claims = new List<Claim>
             {
@@ -86,7 +84,6 @@ namespace InventarioUPS.API.Services
                 )
             };
 
-             // Permisos del JWT
             foreach (var permiso in permisos)
             {
                 claims.Add(

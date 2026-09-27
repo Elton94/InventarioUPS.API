@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import api from '../services/api';
+import Usuarios from './Usuarios';
+import { tienePermiso } from '../services/permisos';
 const catalogos = [
-    { id: 'responsables-servicio', nombre: 'Responsables del servicio', max: 150 },
+    { id: 'usuarios', nombre: 'Usuarios / técnicos', protegido: true },
     { id: 'departamentos', nombre: 'Departamentos', max: 100 },
     { id: 'ciudades', nombre: 'Ciudades', padre: 'departamentos', etiquetaPadre: 'Departamento', max: 100 },
     { id: 'tipos-bateria', nombre: 'Tipos de batería', max: 80 },
-    { id: 'modelos-bateria', nombre: 'Modelos de batería', padre: 'tipos-bateria', etiquetaPadre: 'Tipo de batería', max: 150 },
     { id: 'marcas-ups', nombre: 'Marcas de UPS', max: 100 },
     { id: 'modelos-ups', nombre: 'Modelos de UPS', padre: 'marcas-ups', etiquetaPadre: 'Marca', max: 100 },
     { id: 'tipos-agencia', nombre: 'Tipos de agencia', protegido: true },
@@ -32,7 +33,7 @@ export default function Configuracion() {
         setCargando(true); setError(''); setFilas([]); setPadres([]);
         const cargar = historial
             ? api.get('/configuracion/historial', { params: { pagina } }).then(r => { if (vigente) setAuditoria(r.data); })
-            : Promise.all([leer(catalogo), definicion.padre ? leer(definicion.padre) : Promise.resolve([])]).then(([datos, superiores]) => { if (vigente) { setFilas(datos); setPadres(superiores); } });
+            : Promise.all([catalogo === 'usuarios' ? Promise.resolve([]) : leer(catalogo), definicion.padre ? leer(definicion.padre) : Promise.resolve([])]).then(([datos, superiores]) => { if (vigente) { setFilas(datos); setPadres(superiores); } });
         cargar.catch(e => { if (vigente) setError(e.response?.data?.mensaje || 'No se pudo cargar la configuración.'); })
             .finally(() => { if (vigente) setCargando(false); });
         return () => { vigente = false; };
@@ -63,13 +64,12 @@ export default function Configuracion() {
         {mensaje && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMensaje('')}>{mensaje}</Alert>}
         {!historial && <>
             <Card variant="outlined" sx={{ mb: 2 }}><CardContent><Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                <TextField select label="Catálogo" value={catalogo} sx={{ minWidth: 230 }} onChange={e => { setCatalogo(e.target.value); setBusqueda(''); setEstado('todos'); setMensaje(''); }}>{catalogos.map(c => <MenuItem key={c.id} value={c.id}>{c.nombre}</MenuItem>)}</TextField>
-                <TextField label="Buscar nombre" value={busqueda} onChange={e => setBusqueda(e.target.value)} sx={{ flex: 1, minWidth: 180 }} />
-                <TextField select label="Estado" value={estado} onChange={e => setEstado(e.target.value)} sx={{ minWidth: 150 }}><MenuItem value="todos">Todos</MenuItem><MenuItem value="activos">Activos</MenuItem><MenuItem value="inactivos">Inactivos</MenuItem></TextField>
+                <TextField select label="Catálogo" value={catalogo} sx={{ minWidth: 230 }} onChange={e => { setCatalogo(e.target.value); setBusqueda(''); setEstado('todos'); setMensaje(''); }}>{catalogos.filter(c => c.id !== 'usuarios' || (tienePermiso('GESTIONAR_USUARIOS') && ['administrador', 'control total'].includes((localStorage.getItem('rol') || '').toLowerCase()))).map(c => <MenuItem key={c.id} value={c.id}>{c.nombre}</MenuItem>)}</TextField>
+                {catalogo !== "usuarios" && <><TextField label="Buscar nombre" value={busqueda} onChange={e => setBusqueda(e.target.value)} sx={{ flex: 1, minWidth: 180 }} />
+                <TextField select label="Estado" value={estado} onChange={e => setEstado(e.target.value)} sx={{ minWidth: 150 }}><MenuItem value="todos">Todos</MenuItem><MenuItem value="activos">Activos</MenuItem><MenuItem value="inactivos">Inactivos</MenuItem></TextField></>}
                 {!definicion.protegido && <Button variant="contained" disabled={cargando || Boolean(error)} onClick={() => abrir(null)}>Agregar opción</Button>}
             </Box></CardContent></Card>
-            <Alert severity="info" sx={{ mb: 2 }}>{definicion.protegido ? 'Catálogo protegido: sus valores controlan reglas del sistema y solo se pueden consultar.' : 'Desactive las opciones que ya no se utilizarán. Los registros existentes se conservan; no se eliminan opciones ni se trasladan equipos automáticamente.'}</Alert>
-            {catalogo === 'responsables-servicio' && <Alert severity="info" sx={{ mb: 2 }}>Registre técnicos internos o proveedores externos. No necesitan una cuenta de acceso. El nombre registrado en cada cambio se conserva como evidencia histórica.</Alert>}
+            <Alert severity="info" sx={{ mb: 2 }}>{catalogo === 'usuarios' ? 'Este catálogo utiliza las cuentas de usuario. Agregar una cuenta abre el formulario completo de usuario.' : definicion.protegido ? 'Catálogo protegido: sus valores controlan reglas del sistema y solo se pueden consultar.' : 'Desactive las opciones que ya no se utilizarán. Los registros existentes se conservan; no se eliminan opciones ni se trasladan equipos automáticamente.'}</Alert>
             {catalogo === 'ciudades' && <Alert severity="info" sx={{ mb: 2 }}>La clasificación Local/Foránea está protegida. Corregir el nombre conserva la clasificación. Las ciudades nuevas se registran como Foráneas.</Alert>}
         </>}
         {cargando ? <CircularProgress aria-label="Cargando configuración" /> : !error && (historial ? <>
@@ -78,7 +78,7 @@ export default function Configuracion() {
                 {!auditoria.registros.length && <TableRow><TableCell colSpan={6}>Todavía no hay modificaciones de catálogos registradas.</TableCell></TableRow>}
             </TableBody></Table></TableContainer>
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 2 }}><Button disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>Anterior</Button><Typography>Página {pagina} · {auditoria.total} cambios</Typography><Button disabled={pagina * 25 >= auditoria.total} onClick={() => setPagina(p => p + 1)}>Siguiente</Button></Box>
-        </> : <TableContainer component={Card} variant="outlined"><Table sx={{ minWidth: 620 }}><TableHead><TableRow><TableCell>Nombre</TableCell>{definicion.padre && <TableCell>{definicion.etiquetaPadre}</TableCell>}{catalogo === 'ciudades' && <TableCell>Clasificación</TableCell>}<TableCell>Estado</TableCell><TableCell>Acciones</TableCell></TableRow></TableHead><TableBody>
+        </> : catalogo === 'usuarios' ? <Usuarios rolPredeterminado="Técnico" /> : <TableContainer component={Card} variant="outlined"><Table sx={{ minWidth: 620 }}><TableHead><TableRow><TableCell>Nombre</TableCell>{definicion.padre && <TableCell>{definicion.etiquetaPadre}</TableCell>}{catalogo === 'ciudades' && <TableCell>Clasificación</TableCell>}<TableCell>Estado</TableCell><TableCell>Acciones</TableCell></TableRow></TableHead><TableBody>
             {visibles.map(f => <TableRow key={f.id}><TableCell>{f.nombre}</TableCell>{definicion.padre && <TableCell>{padres.find(p => p.id === f.padreId)?.nombre}{padres.find(p => p.id === f.padreId)?.activo === false && ' (Inactivo)'}</TableCell>}{catalogo === 'ciudades' && <TableCell>{f.esLocal ? 'Local' : 'Foránea'}</TableCell>}<TableCell><Chip size="small" color={f.activo ? 'success' : 'default'} label={f.activo ? 'Activo' : 'Inactivo'} /></TableCell><TableCell>{definicion.protegido ? 'Protegido' : <Button onClick={() => abrir(f)}>Editar / estado</Button>}</TableCell></TableRow>)}
             {!visibles.length && <TableRow><TableCell colSpan={5}>No hay opciones que coincidan con los filtros.</TableCell></TableRow>}
         </TableBody></Table></TableContainer>)}

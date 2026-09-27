@@ -22,8 +22,9 @@ namespace InventarioUPS.API.DTOs.Presupuesto
 
     public class PresupuestoUpsDetalleDto
     {
-        public int? ModeloBateriaId { get; set; }
-        public string ModeloBateria { get; set; } = string.Empty;
+        public int? TipoBateriaId { get; set; }
+        public decimal? VoltajeBateria { get; set; }
+        public decimal? CapacidadBateriaAh { get; set; }
         public string TipoBateria { get; set; } = string.Empty;
         public bool UsaCostoGeneral { get; set; }
         public int UPSId { get; set; }
@@ -72,6 +73,7 @@ namespace InventarioUPS.API.DTOs.Presupuesto
 
     public class PresupuestoResumenDto
     {
+        public string MetodoCosto { get; set; } = "referencia";
         public int Anio { get; set; }
         public decimal CostoUnitarioBateria { get; set; }
         public int TotalUPSInventario { get; set; }

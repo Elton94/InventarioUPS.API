@@ -15,11 +15,9 @@ public class CatalogoAdminService(InventarioUPSDbContext db)
     private record Definicion(Type Entidad, string Estado, string? Padre, int Longitud);
     private static readonly Dictionary<string, Definicion> Editables = new()
     {
-        ["responsables-servicio"] = new(typeof(ResponsableServicio), "Activo", null, 150),
         ["departamentos"] = new(typeof(Departamento), "Activo", null, 100),
         ["ciudades"] = new(typeof(Ciudad), "Activa", "DepartamentoId", 100),
         ["tipos-bateria"] = new(typeof(TipoBateria), "Activo", null, 80),
-        ["modelos-bateria"] = new(typeof(ModeloBateria), "Activo", "TipoBateriaId", 150),
         ["marcas-ups"] = new(typeof(MarcaUPS), "Activo", null, 100),
         ["modelos-ups"] = new(typeof(ModeloUPS), "Activo", "MarcaUPSId", 100)
     };
@@ -27,11 +25,9 @@ public class CatalogoAdminService(InventarioUPSDbContext db)
 
     public async Task<List<CatalogoItem>> ListarAsync(string catalogo) => catalogo switch
     {
-        "responsables-servicio" => await db.ResponsablesServicio.AsNoTracking().OrderBy(x => x.Nombre).Select(x => new CatalogoItem(x.Id, x.Nombre, x.Activo, null, null)).ToListAsync(),
         "departamentos" => await db.Departamentos.AsNoTracking().OrderBy(x => x.Nombre).Select(x => new CatalogoItem(x.Id, x.Nombre, x.Activo, null, null)).ToListAsync(),
         "ciudades" => await db.Ciudades.AsNoTracking().OrderBy(x => x.Nombre).Select(x => new CatalogoItem(x.Id, x.Nombre, x.Activa, x.DepartamentoId, x.EsLocal)).ToListAsync(),
         "tipos-bateria" => await db.TiposBateria.AsNoTracking().OrderBy(x => x.Nombre).Select(x => new CatalogoItem(x.Id, x.Nombre, x.Activo, null, null)).ToListAsync(),
-        "modelos-bateria" => await db.ModelosBateria.AsNoTracking().OrderBy(x => x.Nombre).Select(x => new CatalogoItem(x.Id, x.Nombre, x.Activo, x.TipoBateriaId, null)).ToListAsync(),
         "marcas-ups" => await db.MarcasUPS.AsNoTracking().OrderBy(x => x.Nombre).Select(x => new CatalogoItem(x.Id, x.Nombre, x.Activo, null, null)).ToListAsync(),
         "modelos-ups" => await db.ModelosUPS.AsNoTracking().OrderBy(x => x.Nombre).Select(x => new CatalogoItem(x.Id, x.Nombre, x.Activo, x.MarcaUPSId, null)).ToListAsync(),
         "tipos-agencia" => await db.TiposAgencia.AsNoTracking().Select(x => new CatalogoItem(x.Id, x.Nombre, x.Activo, null, null)).ToListAsync(),
@@ -86,7 +82,6 @@ public class CatalogoAdminService(InventarioUPSDbContext db)
         var mismoPadreInactivo = antes != null && antes.PadreId == solicitud.PadreId && (!solicitud.Activo || antes.Activo);
         var padreValido = catalogo switch {
             "ciudades" => await db.Departamentos.AnyAsync(x => x.Id == solicitud.PadreId && (x.Activo || mismoPadreInactivo)),
-            "modelos-bateria" => await db.TiposBateria.AnyAsync(x => x.Id == solicitud.PadreId && (x.Activo || mismoPadreInactivo)),
             "modelos-ups" => await db.MarcasUPS.AnyAsync(x => x.Id == solicitud.PadreId && (x.Activo || mismoPadreInactivo)),
             _ => true
         };
@@ -95,8 +90,6 @@ public class CatalogoAdminService(InventarioUPSDbContext db)
         {
             var usado = catalogo switch {
                 "ciudades" => await db.Agencias.AnyAsync(x => x.CiudadId == id) || antes.EsLocal == true,
-                "modelos-bateria" => await db.UPSs.AnyAsync(x => x.ModeloBateriaId == id || x.ModeloBateriaBaseId == id) ||
-                    await db.Mantenimientos.AnyAsync(x => x.ModeloBateriaId == id) || await db.CostosModeloBateria.AnyAsync(x => x.ModeloBateriaId == id),
                 "modelos-ups" => await db.UPSs.AnyAsync(x => x.ModeloUPSId == id),
                 _ => false
             };

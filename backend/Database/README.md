@@ -1,3 +1,28 @@
+# Actualización vigente: tipos de batería y usuarios responsables
+
+Con la API detenida y respaldo previo:
+
+1. Descargue `desarrollo`.
+2. Si su base todavía no tiene la actualización anterior, aplique primero sus scripts hasta `20260927_RevisionCampos.sql`.
+3. Ejecute **`20260927_TiposBateriaYUsuarios.sql`**.
+4. Reinicie la API y el frontend; vuelva a iniciar sesión.
+
+No vuelva a ejecutar scripts anteriores una vez aplicada esta actualización: describen estructuras retiradas. No use Add-Migration/Update-Database para sustituir estos scripts manuales.
+
+- Las baterías se registran con Tipo, Voltaje (V) y Capacidad (Ah), por batería individual.
+- Se retiran modelos y el catálogo independiente de responsables del esquema operativo. Sus tablas y referencias anteriores se archivan como `Historico*`.
+- Los tipos conocidos se conservan. V y Ah anteriores quedan pendientes; no se deducen del nombre del modelo. Las altas y cambios de especificación requieren valores positivos con hasta tres decimales. Editar otros datos de un UPS antiguo puede conservar los valores pendientes.
+- El responsable se relaciona con Usuarios. La migración solo vincula nombres/usuarios con coincidencia inequívoca. Los demás mantienen el nombre histórico y requieren asignación por un administrador al editarse.
+- No se convierten proveedores en cuentas de usuario automáticamente. Para crear un técnico se utiliza el formulario de usuario completo.
+- Los precios anteriores por modelo se archivan. Los tipos empiezan usando la referencia del año; los valores personalizados se configuran en Proyección → Costos por tipo.
+- El script es transaccional y se puede volver a ejecutar. Se verificó su sintaxis T-SQL; su ejecución en SQL Server requiere la instalación local.
+
+Consulte [campos y catálogos](CAMPOS_Y_CATALOGOS.md) y [reglas de proyección](REGLAS_PROYECCION.md).
+
+---
+
+# Historial de actualizaciones anteriores (referencia)
+
 # Revisión de campos y catálogos (actualización más reciente)
 
 1. Detenga la API y respalde la base de datos.

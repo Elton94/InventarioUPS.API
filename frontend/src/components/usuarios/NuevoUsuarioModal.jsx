@@ -41,7 +41,8 @@ export default function NuevoUsuarioModal({
     open,
     onClose,
     onGuardado,
-    usuario
+    usuario,
+    rolPredeterminado = ""
 }) {
     const [roles, setRoles] =
         useState([]);
@@ -124,7 +125,8 @@ export default function NuevoUsuarioModal({
                     });
                 } else {
                     setFormulario({
-                        ...inicial
+                        ...inicial,
+                        rolId: disponibles.find(r => r.nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === rolPredeterminado.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase())?.id || ""
                     });
                 }
             } catch (e) {
@@ -141,7 +143,8 @@ export default function NuevoUsuarioModal({
     }, [
         open,
         usuario,
-        puedeRoles
+        puedeRoles,
+        rolPredeterminado
     ]);
 
     const cambiar = (

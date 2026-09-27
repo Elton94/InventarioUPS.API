@@ -484,7 +484,7 @@ export default function GestionarRolesModal({
 
             <DialogContent>
 
-                {/* MENSAJES */}
+                
 
                 {error && (
                     <Alert
@@ -504,7 +504,7 @@ export default function GestionarRolesModal({
                     </Alert>
                 )}
 
-                {/* FORMULARIO */}
+                
 
                 <Paper
                     variant="outlined"
@@ -627,7 +627,7 @@ export default function GestionarRolesModal({
                     )}
                 </Paper>
 
-                {/* PERMISOS */}
+                
 
                 {editando && (
                     <Paper
@@ -810,7 +810,7 @@ export default function GestionarRolesModal({
                     </Paper>
                 )}
 
-                {/* TABLA DE ROLES */}
+                
 
                 <Typography
                     variant="subtitle1"

@@ -11,8 +11,8 @@ namespace InventarioUPS.API.Services
 
         Task<List<MantenimientoDTO>> ObtenerPorUPSAsync(int upsId);
 
-        Task CrearAsync(Mantenimiento mantenimiento);
+        Task CrearAsync(Mantenimiento mantenimiento, int usuarioActualId);
 
-        Task ActualizarAsync(Mantenimiento mantenimiento);
+        Task ActualizarAsync(Mantenimiento mantenimiento, int usuarioActualId);
     }
 }

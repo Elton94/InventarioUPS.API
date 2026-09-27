@@ -15,8 +15,9 @@ export const obtenerUPSPorId =
 
 const mapear = (ups, id = 0) => ({
     id: Number(id || ups.id || 0),
+    voltajeBateria: ups.voltajeBateria === "" || ups.voltajeBateria == null ? null : Number(ups.voltajeBateria),
+    capacidadBateriaAh: ups.capacidadBateriaAh === "" || ups.capacidadBateriaAh == null ? null : Number(ups.capacidadBateriaAh),
     tipoBateriaId: ups.tipoBateriaId ? Number(ups.tipoBateriaId) : null,
-    modeloBateriaId: ups.modeloBateriaId ? Number(ups.modeloBateriaId) : null,
     numeroInventario:
         ups.numeroInventario?.trim(),
     marca: ups.marca?.trim(),

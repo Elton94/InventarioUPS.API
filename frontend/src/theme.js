@@ -1,6 +1,5 @@
 import { createTheme } from '@mui/material/styles'
 
-// Explicit radii keep existing sx spacing and borderRadius values unchanged.
 const theme = createTheme({
   typography: {
     fontFamily: '"Segoe UI", Roboto, Arial, sans-serif',

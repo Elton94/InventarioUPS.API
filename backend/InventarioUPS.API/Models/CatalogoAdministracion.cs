@@ -1,12 +1,5 @@
 namespace InventarioUPS.API.Models;
 
-public class ResponsableServicio
-{
-    public int Id { get; set; }
-    public string Nombre { get; set; } = string.Empty;
-    public bool Activo { get; set; } = true;
-}
-
 public class MarcaUPS
 {
     public int Id { get; set; }

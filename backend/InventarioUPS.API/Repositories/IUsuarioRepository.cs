@@ -1,10 +1,9 @@
-﻿using InventarioUPS.API.Models;
+using InventarioUPS.API.Models;
 
 namespace InventarioUPS.API.Repositories
 {
     public interface IUsuarioRepository
     {
-        // USUARIOS
         Task<Usuario?> ObtenerPorNombreUsuarioAsync(
             string nombreUsuario);
 
@@ -36,7 +35,6 @@ namespace InventarioUPS.API.Repositories
         Task<int> ContarUsuariosActivosPorRolAsync(
             int rolId);
 
-        // ROLES
         Task<List<Rol>> ObtenerRolesAsync();
 
         Task<Rol?> ObtenerRolPorIdAsync(

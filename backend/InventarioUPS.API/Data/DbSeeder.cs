@@ -1,4 +1,4 @@
-﻿using InventarioUPS.API.Models;
+using InventarioUPS.API.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace InventarioUPS.API.Data
@@ -7,7 +7,6 @@ namespace InventarioUPS.API.Data
     {
         public static async Task SeedAsync(InventarioUPSDbContext context)
         {
-            // TIPOS DE AGENCIA
             var tipoLocal = await ObtenerOCrearTipoAgencia(
                 context,
                 "Local");
@@ -16,24 +15,20 @@ namespace InventarioUPS.API.Data
                 context,
                 "Foránea");
 
-            // ESTADOS DE UPS
             await ObtenerOCrearEstadoUPS(context, "Operativo");
             await ObtenerOCrearEstadoUPS(context, "En mantenimiento");
             await ObtenerOCrearEstadoUPS(context, "Fuera de servicio");
             await ObtenerOCrearEstadoUPS(context, "De baja");
             await ObtenerOCrearEstadoUPS(context, "En resguardo");
 
-            // ESTADOS DE MANTENIMIENTO
             await ObtenerOCrearEstadoMantenimiento(context, "Programado");
             await ObtenerOCrearEstadoMantenimiento(context, "En proceso");
             await ObtenerOCrearEstadoMantenimiento(context, "Completado");
             await ObtenerOCrearEstadoMantenimiento(context, "Cancelado");
 
-            // ROLES, PERMISOS Y POLÍTICA DE PRESUPUESTO
             await SembrarRolesPermisosAsync(context);
             await AsegurarPoliticaPresupuestoAsync(context);
 
-            // DEPARTAMENTOS Y CIUDADES
             if (!await context.Departamentos.AnyAsync())
             {
             var departamentos = new Dictionary<string, string[]>
@@ -432,14 +427,12 @@ namespace InventarioUPS.API.Data
 
             }
 
-            // Aplica la clasificación por ciudad también a las agencias existentes.
             await NormalizarTiposAgenciaAsync(
                 context,
                 tipoLocal.Id,
                 tipoForanea.Id);
         }
 
-        // MÉTODOS AUXILIARES
         private static async Task NormalizarTiposAgenciaAsync(
             InventarioUPSDbContext context,
             int tipoLocalId,
@@ -531,7 +524,6 @@ namespace InventarioUPS.API.Data
             return nuevo;
         }
 
-        // ROLES Y PERMISOS BASE
         private static async Task SembrarRolesPermisosAsync(
             InventarioUPSDbContext context)
         {
@@ -586,8 +578,6 @@ namespace InventarioUPS.API.Data
 
             await context.SaveChangesAsync();
 
-            // PERMISOS OBSOLETOS
-            // Desactiva el permiso heredado del módulo Reportes, ya retirado.
             var permisosObsoletos = await context.Permisos
                 .Where(p => p.Codigo == "VER_REPORTES")
                 .ToListAsync();
@@ -772,7 +762,6 @@ namespace InventarioUPS.API.Data
             await context.SaveChangesAsync();
         }
 
-        // POLÍTICA GLOBAL ÚNICA
         private static async Task AsegurarPoliticaPresupuestoAsync(
             InventarioUPSDbContext context)
         {

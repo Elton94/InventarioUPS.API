@@ -57,7 +57,7 @@ export default function UPSTable({
                                 <TableCell>{equipo.modelo}</TableCell>
                                 <TableCell>{equipo.numeroSerie}</TableCell>
                                 <TableCell>{equipo.capacidadVA} VA</TableCell>
-                                <TableCell>{equipo.tipoBateria || "Sin identificar"}<br />{equipo.modeloBateria || "Sin identificar"} · {equipo.cantidadBaterias} unidades</TableCell>
+                                <TableCell>{equipo.tipoBateria || "Sin identificar"}<br />{equipo.voltajeBateria ?? "—"} V · {equipo.capacidadBateriaAh ?? "—"} Ah · {equipo.cantidadBaterias} unidades</TableCell>
                                 <TableCell>{equipo.agenciaNombre || "Sin agencia"}</TableCell>
                                 <TableCell>
                                     {puedeEditar ? (

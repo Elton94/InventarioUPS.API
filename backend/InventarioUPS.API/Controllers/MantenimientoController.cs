@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using InventarioUPS.API.Authorization;
 using InventarioUPS.API.DTOs;
 using InventarioUPS.API.Models;
@@ -59,10 +60,11 @@ namespace InventarioUPS.API.Controllers
             try
             {
                 var mantenimiento = ConvertirEntidad(dto);
-                await _service.CrearAsync(mantenimiento);
+                await _service.CrearAsync(mantenimiento, int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!));
                 var creado = await _service.ObtenerPorIdAsync(mantenimiento.Id);
                 return CreatedAtAction(nameof(ObtenerPorId), new { id = mantenimiento.Id }, creado);
             }
+            catch (UnauthorizedAccessException) { return Forbid(); }
             catch (ArgumentException ex)
             {
                 return BadRequest(new { mensaje = ex.Message });
@@ -84,9 +86,10 @@ namespace InventarioUPS.API.Controllers
             {
                 var mantenimiento = ConvertirEntidad(dto);
                 mantenimiento.Id = id;
-                await _service.ActualizarAsync(mantenimiento);
+                await _service.ActualizarAsync(mantenimiento, int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!));
                 return Ok(await _service.ObtenerPorIdAsync(id));
             }
+            catch (UnauthorizedAccessException) { return Forbid(); }
             catch (ArgumentException ex)
             {
                 return BadRequest(new { mensaje = ex.Message });
@@ -101,11 +104,12 @@ namespace InventarioUPS.API.Controllers
         {
             Id = dto.Id,
             UPSId = dto.UPSId,
-            ModeloBateriaId = dto.ModeloBateriaId,
+            TipoBateriaId = dto.TipoBateriaId,
+            VoltajeBateria = dto.VoltajeBateria,
+            CapacidadBateriaAh = dto.CapacidadBateriaAh,
             EstadoMantenimientoId = dto.EstadoMantenimientoId,
             FechaMantenimiento = dto.FechaMantenimiento,
-            Descripcion = dto.Descripcion?.Trim() ?? string.Empty,
-            ResponsableServicioId = dto.ResponsableServicioId,
+            ResponsableUsuarioId = dto.ResponsableUsuarioId,
             Observaciones = dto.Observaciones?.Trim() ?? string.Empty,
             CantidadBateriasReemplazadas = dto.CantidadBateriasReemplazadas
         };

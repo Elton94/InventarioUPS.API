@@ -12,18 +12,18 @@
 - UPS, cambios y baterías se cuentan por separado: 1 UPS con 4 baterías y 4 cambios requiere 16 baterías.
 - La consulta de años anteriores se rechaza: no hay un historial de presupuestos congelados ni de gastos reales.
 - Se excluyen agencias inactivas y UPS de baja o fuera de servicio. Las fechas o cantidades inválidas se muestran como datos por corregir.
-- Los precios deben ser positivos y tener máximo dos decimales. Se admite configurar 2029 y otros años futuros dentro del rango 2020–2100. La interfaz propone los próximos cinco años y otros años configurados.
+- Los precios deben ser positivos y tener máximo dos decimales. Se admite configurar 2029 y otros años futuros desde el año actual hasta 2100. La interfaz propone los próximos cinco años y otros años configurados.
 - La política es global para todos los años. Modificarla recalcula las estimaciones; no modifica hechos históricos.
 
-## Precisión y compras por modelo
+## Costos por tipo y especificaciones
 
-- Cada modelo pertenece a un tipo; los registros antiguos sin modelo siguen visibles como Sin identificar.
-- El precio por modelo y año reemplaza al costo general del mismo año. Si falta, se utiliza la referencia general y se advierte en pantalla. No se heredan precios de otros años.
-- Se requiere una configuración general activa para generar el presupuesto; garantiza una referencia explícita para equipos sin precio específico.
-- La distribución mensual reconcilia las cantidades e importes del detalle. El banco vencido se asigna al mes actual como atención pendiente, sin cambiar su fecha histórica de vencimiento.
-- El resumen de compras agrupa unidades por modelo y tipo. Los filtros afectan el resumen, los meses y la exportación CSV.
-- Los cambios programados no sustituyen el modelo instalado ni su costo proyectado: el presupuesto parte de la ficha vigente hasta completar el trabajo.
-- No se presume inflación, expansión de inventario ni gastos de transporte o mano de obra. No es una predicción estadística ni un presupuesto aprobado e inmutable.
+- El usuario elige valor de referencia o valores por tipo. El modo referencia ignora los precios detallados; el modo tipo aplica el precio del tipo/año o la referencia del mismo año si no hay uno personalizado.
+- La tabla muestra todos los tipos e inicialmente utiliza el valor de referencia. Los valores sin personalizar siguen vinculados a la referencia; restablecer referencia elimina el precio personalizado.
+- La tabla se guarda en una sola transacción. Se rechazan tipos inexistentes o repetidos, costos no positivos y más de dos decimales.
+- El precio por tipo se aplica a sus diferentes voltajes y capacidades. Es una estimación, no una cotización de un repuesto exacto.
+- El resumen de compras separa tipo, voltaje y capacidad. Los filtros afectan el resumen, la distribución mensual y el CSV, que indica el método de cálculo y origen de cada precio.
+- Un cambio programado no altera las especificaciones instaladas ni su costo proyectado. Solo completarlo actualiza tipo, V y Ah; cancelarlo recupera los datos anteriores.
+
 
 ## Catálogos y clasificación
 

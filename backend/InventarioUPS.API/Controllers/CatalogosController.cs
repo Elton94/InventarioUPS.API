@@ -17,13 +17,6 @@ namespace InventarioUPS.API.Controllers
             _context = context;
         }
 
-        [HttpGet("responsables-servicio")]
-        [InventarioUPS.API.Authorization.PermisoAuthorize("VER_MANTENIMIENTO", "CREAR_MANTENIMIENTO", "EDITAR_MANTENIMIENTO", "GESTIONAR_CATALOGOS")]
-        public async Task<IActionResult> ObtenerResponsablesServicio([FromQuery] int? actualId) =>
-            Ok(await _context.ResponsablesServicio.AsNoTracking()
-                .Where(x => x.Activo || x.Id == actualId).OrderBy(x => x.Nombre)
-                .Select(x => new { x.Id, x.Nombre, x.Activo }).ToListAsync());
-
         [HttpGet("departamentos")]
         public async Task<IActionResult> ObtenerDepartamentos([FromQuery] int? actualId) =>
             Ok(await _context.Departamentos

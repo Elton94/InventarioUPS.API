@@ -41,11 +41,11 @@ namespace InventarioUPS.API.Services
                 .ToList();
         }
 
-        public Task CrearAsync(Mantenimiento mantenimiento) =>
-            EjecutarTransaccionAsync(() => CrearInternoAsync(mantenimiento));
+        public Task CrearAsync(Mantenimiento mantenimiento, int usuarioActualId) =>
+            EjecutarTransaccionAsync(() => CrearInternoAsync(mantenimiento, usuarioActualId));
 
-        public Task ActualizarAsync(Mantenimiento mantenimiento) =>
-            EjecutarTransaccionAsync(() => ActualizarInternoAsync(mantenimiento));
+        public Task ActualizarAsync(Mantenimiento mantenimiento, int usuarioActualId) =>
+            EjecutarTransaccionAsync(() => ActualizarInternoAsync(mantenimiento, usuarioActualId));
 
         private async Task EjecutarTransaccionAsync(Func<Task> operacion)
         {
@@ -62,7 +62,7 @@ namespace InventarioUPS.API.Services
             }
         }
 
-        private async Task CrearInternoAsync(Mantenimiento mantenimiento)
+        private async Task CrearInternoAsync(Mantenimiento mantenimiento, int usuarioActualId)
         {
             ValidarDatosBasicos(mantenimiento);
 
@@ -79,11 +79,10 @@ namespace InventarioUPS.API.Services
             if (mantenimiento.FechaMantenimiento.Date < ups.FechaInstalacion.Date)
                 throw new ArgumentException("El cambio no puede ser anterior a la instalación del UPS.");
             PrepararBaterias(mantenimiento, ups);
-            if (!mantenimiento.ModeloBateriaId.HasValue || !await _context.ModelosBateria.AnyAsync(b => b.Id == mantenimiento.ModeloBateriaId && b.Activo && b.TipoBateria!.Activo))
-                throw new ArgumentException("Seleccione el tipo y modelo de las baterías del cambio.");
+            await ValidarBateriaAsync(mantenimiento);
             LimpiarTextos(mantenimiento);
 
-            await ResolverResponsableAsync(mantenimiento);
+            await ResolverResponsableAsync(mantenimiento, usuarioActualId);
             mantenimiento.AgenciaIdRegistro = ups.AgenciaId;
             mantenimiento.AgenciaNombreRegistro = ups.Agencia?.Nombre ?? string.Empty;
 
@@ -94,7 +93,7 @@ namespace InventarioUPS.API.Services
             await _context.SaveChangesAsync();
         }
 
-        private async Task ActualizarInternoAsync(Mantenimiento mantenimiento)
+        private async Task ActualizarInternoAsync(Mantenimiento mantenimiento, int usuarioActualId)
         {
             ValidarDatosBasicos(mantenimiento);
 
@@ -122,17 +121,13 @@ namespace InventarioUPS.API.Services
             if (mantenimiento.FechaMantenimiento.Date < ups.FechaInstalacion.Date)
                 throw new ArgumentException("El cambio no puede ser anterior a la instalación del UPS.");
             PrepararBaterias(mantenimiento, ups);
-            if (!mantenimiento.ModeloBateriaId.HasValue || !await _context.ModelosBateria.AnyAsync(b => b.Id == mantenimiento.ModeloBateriaId &&
-                    ((b.Activo && b.TipoBateria!.Activo) || (existente.ModeloBateriaId == b.Id &&
-                    (estado.Nombre == "Cancelado" || estado.Nombre == "Programado" ||
-                    (existente.EstadoMantenimiento!.Nombre == "Completado" && estado.Nombre == "Completado"))))))
-                throw new ArgumentException("Seleccione el tipo y modelo de las baterías del cambio.");
+            await ValidarBateriaAsync(mantenimiento, existente, estado.Nombre);
             if (EsEstado(existente.EstadoMantenimiento?.Nombre, "Completado") &&
                 EsEstado(estado.Nombre, "Completado"))
                 mantenimiento.CantidadBateriasReemplazadas = existente.CantidadBateriasReemplazadas;
             LimpiarTextos(mantenimiento);
 
-            await ResolverResponsableAsync(mantenimiento, existente);
+            await ResolverResponsableAsync(mantenimiento, usuarioActualId, existente);
             mantenimiento.AgenciaIdRegistro = existente.AgenciaIdRegistro ?? ups.AgenciaId;
             mantenimiento.AgenciaNombreRegistro =
                 !string.IsNullOrWhiteSpace(existente.AgenciaNombreRegistro)
@@ -143,11 +138,12 @@ namespace InventarioUPS.API.Services
             await SincronizarEstadoUPSAsync(ups, mantenimiento, estado.Nombre, existente.EstadoMantenimiento?.Nombre);
             await RecalcularFechaBateriasAsync(ups, mantenimiento, estado.Nombre);
 
-            existente.ModeloBateriaId = mantenimiento.ModeloBateriaId;
+            existente.TipoBateriaId = mantenimiento.TipoBateriaId;
+            existente.VoltajeBateria = mantenimiento.VoltajeBateria;
+            existente.CapacidadBateriaAh = mantenimiento.CapacidadBateriaAh;
             existente.EstadoMantenimientoId = mantenimiento.EstadoMantenimientoId;
             existente.FechaMantenimiento = mantenimiento.FechaMantenimiento;
-            existente.Descripcion = mantenimiento.Descripcion;
-            existente.ResponsableServicioId = mantenimiento.ResponsableServicioId;
+            existente.ResponsableUsuarioId = mantenimiento.ResponsableUsuarioId;
             existente.TecnicoProveedor = mantenimiento.TecnicoProveedor;
             existente.Observaciones = mantenimiento.Observaciones;
             existente.IncluyeCambioBaterias = mantenimiento.IncluyeCambioBaterias;
@@ -280,17 +276,15 @@ namespace InventarioUPS.API.Services
             var otros = await _context.Mantenimientos.AsNoTracking()
                 .Where(m => m.UPSId == ups.Id && m.Id != actual.Id && m.IncluyeCambioBaterias &&
                     m.EstadoMantenimiento!.Nombre == "Completado")
-                .Select(m => new { m.Id, m.FechaMantenimiento, m.ModeloBateriaId }).ToListAsync();
+                .Select(m => new { m.Id, m.FechaMantenimiento, m.TipoBateriaId, m.VoltajeBateria, m.CapacidadBateriaAh }).ToListAsync();
             if (actualCompletada.HasValue)
-                otros.Add(new { Id = actual.Id == 0 ? int.MaxValue : actual.Id, actual.FechaMantenimiento, actual.ModeloBateriaId });
+                otros.Add(new { Id = actual.Id == 0 ? int.MaxValue : actual.Id, actual.FechaMantenimiento, actual.TipoBateriaId, actual.VoltajeBateria, actual.CapacidadBateriaAh });
             var ultimo = otros.OrderByDescending(m => m.FechaMantenimiento).ThenByDescending(m => m.Id).FirstOrDefault();
-            ups.ModeloBateriaId = ultimo != null && (!ups.FechaUltimoCambioBateriasBase.HasValue ||
-                ultimo.FechaMantenimiento >= ups.FechaUltimoCambioBateriasBase.Value)
-                ? ultimo.ModeloBateriaId ?? ups.ModeloBateriaBaseId : ups.ModeloBateriaBaseId;
-
-            ups.TipoBateriaId = ups.ModeloBateriaId.HasValue
-                ? await _context.ModelosBateria.Where(x => x.Id == ups.ModeloBateriaId).Select(x => (int?)x.TipoBateriaId).SingleAsync()
-                : ups.TipoBateriaBaseId;
+            var usarUltimo = ultimo?.TipoBateriaId != null && (!ups.FechaUltimoCambioBateriasBase.HasValue ||
+                ultimo.FechaMantenimiento >= ups.FechaUltimoCambioBateriasBase.Value);
+            ups.TipoBateriaId = usarUltimo ? ultimo!.TipoBateriaId : ups.TipoBateriaBaseId;
+            ups.VoltajeBateria = usarUltimo ? ultimo!.VoltajeBateria : ups.VoltajeBateriaBase;
+            ups.CapacidadBateriaAh = usarUltimo ? ultimo!.CapacidadBateriaAh : ups.CapacidadBateriaAhBase;
 
             ups.FechaUltimoCambioBaterias =
                 MaxFecha(
@@ -308,18 +302,45 @@ namespace InventarioUPS.API.Services
                 throw new ArgumentException("Debe seleccionar un estado de cambio de baterías.");
             if (m.FechaMantenimiento == default)
                 throw new ArgumentException("La fecha del cambio de baterías es obligatoria.");
-            if ((m.Descripcion?.Length ?? 0) > 1000 || (m.Observaciones?.Length ?? 0) > 1000)
-                throw new ArgumentException("El detalle admite 1000 caracteres y las observaciones 1000.");
+            if ((m.Observaciones?.Length ?? 0) > 1000)
+                throw new ArgumentException("Las observaciones admiten hasta 1000 caracteres.");
         }
 
-        private async Task ResolverResponsableAsync(Mantenimiento cambio, Mantenimiento? anterior = null)
+        private async Task ValidarBateriaAsync(Mantenimiento cambio, Mantenimiento? anterior = null, string? estado = null)
         {
-            var responsable = await _context.ResponsablesServicio.AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == cambio.ResponsableServicioId);
-            if (responsable == null || (!responsable.Activo && responsable.Id != anterior?.ResponsableServicioId))
-                throw new ArgumentException("Seleccione un responsable del servicio activo del catálogo.");
-            cambio.TecnicoProveedor = responsable.Id == anterior?.ResponsableServicioId
-                ? anterior.TecnicoProveedor : responsable.Nombre;
+            var tipoAnterior = anterior?.TipoBateriaId;
+            var conservar = anterior != null && tipoAnterior == cambio.TipoBateriaId &&
+                (estado is "Cancelado" or "Programado" || (estado == "Completado" && anterior.EstadoMantenimiento?.Nombre == "Completado"));
+            if (!cambio.TipoBateriaId.HasValue || !await _context.TiposBateria.AnyAsync(x => x.Id == cambio.TipoBateriaId && (x.Activo || conservar)))
+                throw new ArgumentException("Seleccione un tipo de batería activo y válido.");
+            if (!(conservar && cambio.VoltajeBateria == anterior!.VoltajeBateria && cambio.CapacidadBateriaAh == anterior.CapacidadBateriaAh))
+                DatosBateria.Validar(cambio.VoltajeBateria, cambio.CapacidadBateriaAh);
+        }
+
+        private async Task ResolverResponsableAsync(Mantenimiento cambio, int usuarioActualId, Mantenimiento? anterior = null)
+        {
+            var actor = await _context.Usuarios.AsNoTracking().Include(x => x.Rol).FirstOrDefaultAsync(x => x.Id == usuarioActualId);
+            if (actor?.Activo != true || actor.Rol?.Activo != true)
+                throw new UnauthorizedAccessException();
+            var administrador = actor.Rol.Nombre is "Administrador" or "Control Total";
+            if (!administrador)
+            {
+                if ((anterior != null && anterior.ResponsableUsuarioId != actor.Id) ||
+                    (cambio.ResponsableUsuarioId.HasValue && cambio.ResponsableUsuarioId != actor.Id))
+                    throw new UnauthorizedAccessException("Solo puede registrar y modificar cambios asignados a su usuario.");
+                cambio.ResponsableUsuarioId = actor.Id;
+            }
+            else cambio.ResponsableUsuarioId ??= anterior?.ResponsableUsuarioId ?? actor.Id;
+            var responsable = await _context.Usuarios.AsNoTracking().Include(x => x.Rol)
+                .FirstOrDefaultAsync(x => x.Id == cambio.ResponsableUsuarioId);
+            var conservar = anterior != null && anterior.ResponsableUsuarioId == cambio.ResponsableUsuarioId;
+            var habilitado = responsable?.Activo == true && responsable.Rol?.Activo == true &&
+                (responsable.Rol.Nombre is "Control Total" or "Administrador" || await _context.RolPermisos.AnyAsync(x =>
+                    x.RolId == responsable.RolId && x.Permiso!.Activo &&
+                    (x.Permiso.Codigo == "CREAR_MANTENIMIENTO" || x.Permiso.Codigo == "EDITAR_MANTENIMIENTO")));
+            if (responsable == null || (!conservar && !habilitado))
+                throw new ArgumentException("Seleccione un usuario activo habilitado para realizar cambios de baterías.");
+            cambio.TecnicoProveedor = conservar ? anterior!.TecnicoProveedor : responsable.NombreCompleto;
         }
 
         private static void ValidarFecha(DateTime fecha, string estado)
@@ -360,15 +381,14 @@ namespace InventarioUPS.API.Services
         private static MantenimientoDTO ConvertirDTO(Mantenimiento m) => new()
         {
             Id = m.Id,
-            ModeloBateriaId = m.ModeloBateriaId,
-            ModeloBateria = m.ModeloBateria?.Nombre ?? "Sin identificar",
-            TipoBateriaId = m.ModeloBateria?.TipoBateriaId,
-            TipoBateria = m.ModeloBateria?.TipoBateria?.Nombre ?? "Sin identificar",
+            TipoBateriaId = m.TipoBateriaId,
+            VoltajeBateria = m.VoltajeBateria,
+            CapacidadBateriaAh = m.CapacidadBateriaAh,
+            TipoBateria = m.TipoBateria?.Nombre ?? "Sin identificar",
             UPSId = m.UPSId,
             EstadoMantenimientoId = m.EstadoMantenimientoId,
             FechaMantenimiento = m.FechaMantenimiento,
-            Descripcion = m.Descripcion,
-            ResponsableServicioId = m.ResponsableServicioId,
+            ResponsableUsuarioId = m.ResponsableUsuarioId,
             TecnicoProveedor = m.TecnicoProveedor,
             Observaciones = m.Observaciones,
             CantidadBateriasReemplazadas = m.CantidadBateriasReemplazadas,

@@ -158,8 +158,10 @@ namespace InventarioUPS.API.Controllers
 
         [HttpGet("proyeccion/{anio:int}")]
         [PermisoAuthorize("VER_PRESUPUESTO")]
-        public async Task<ActionResult> ObtenerProyeccion(int anio)
+        public async Task<ActionResult> ObtenerProyeccion(int anio, [FromQuery] string metodoCosto = "referencia")
         {
+            if (metodoCosto is not ("referencia" or "tipo"))
+                return BadRequest(new { mensaje = "Seleccione costo de referencia o costo por tipo." });
             if (anio < DateTime.Today.Year || anio > 2100)
                 return BadRequest(new { mensaje = $"Seleccione un año entre {DateTime.Today.Year} y 2100. La proyección no es un historial de gastos." });
 
@@ -197,7 +199,6 @@ namespace InventarioUPS.API.Controllers
                     .ThenInclude(a => a.TipoAgencia!)
                 .Include(u => u.EstadoUPS)
                 .Include(u => u.TipoBateria)
-                .Include(u => u.ModeloBateria)!.ThenInclude(b => b!.TipoBateria)
                 .Where(u => u.Agencia != null && u.Agencia.Activa)
                 .ToListAsync();
 
@@ -215,12 +216,13 @@ namespace InventarioUPS.API.Controllers
                 })
                 .ToListAsync();
 
-            var costosModelo = await _context.CostosModeloBateria.AsNoTracking()
-                .Where(x => x.Anio == anio).ToDictionaryAsync(x => x.ModeloBateriaId, x => x.CostoUnitario);
+            var costosTipo = await _context.CostosTipoBateria.AsNoTracking()
+                .Where(x => x.Anio == anio).ToDictionaryAsync(x => x.TipoBateriaId, x => x.CostoUnitario);
             var resultado = new PresupuestoResumenDto
             {
                 Anio = anio,
                 CostoUnitarioBateria = configuracion.CostoUnitarioBateria,
+                MetodoCosto = metodoCosto,
                 TotalUPSInventario = inventario.Count
             };
 
@@ -243,8 +245,8 @@ namespace InventarioUPS.API.Controllers
                     continue;
                 }
 
-                var costoEspecifico = equipo.ModeloBateriaId.HasValue && costosModelo.ContainsKey(equipo.ModeloBateriaId.Value);
-                var costoEquipo = costoEspecifico ? costosModelo[equipo.ModeloBateriaId!.Value] : configuracion.CostoUnitarioBateria;
+                var costoEspecifico = metodoCosto == "tipo" && equipo.TipoBateriaId.HasValue && costosTipo.ContainsKey(equipo.TipoBateriaId.Value);
+                var costoEquipo = costoEspecifico ? costosTipo[equipo.TipoBateriaId!.Value] : configuracion.CostoUnitarioBateria;
                 var tipoAgencia = ObtenerTipoAgencia(equipo);
                 var esLocal = tipoAgencia.Equals("Local", StringComparison.OrdinalIgnoreCase);
                 var mesesCiclo =
@@ -393,9 +395,10 @@ namespace InventarioUPS.API.Controllers
             return new PresupuestoUpsDetalleDto
             {
                 UPSId = equipo.Id,
-                ModeloBateriaId = equipo.ModeloBateriaId,
-                ModeloBateria = equipo.ModeloBateria?.Nombre ?? "Sin identificar",
-                TipoBateria = equipo.TipoBateria?.Nombre ?? equipo.ModeloBateria?.TipoBateria?.Nombre ?? "Sin identificar",
+                TipoBateriaId = equipo.TipoBateriaId,
+                VoltajeBateria = equipo.VoltajeBateria,
+                CapacidadBateriaAh = equipo.CapacidadBateriaAh,
+                TipoBateria = equipo.TipoBateria?.Nombre ?? "Sin identificar",
                 NumeroInventario = equipo.NumeroInventario,
                 NumeroSerie = equipo.NumeroSerie,
                 Marca = equipo.Marca,

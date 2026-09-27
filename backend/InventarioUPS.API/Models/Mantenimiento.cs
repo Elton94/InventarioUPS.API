@@ -6,12 +6,14 @@ namespace InventarioUPS.API.Models
         public int EstadoMantenimientoId { get; set; }
         public DateTime FechaMantenimiento { get; set; }
         public string Descripcion { get; set; } = string.Empty;
-        public int? ResponsableServicioId { get; set; }
+        public int? ResponsableUsuarioId { get; set; }
         public string TecnicoProveedor { get; set; } = string.Empty;
         public string Observaciones { get; set; } = string.Empty;
 
-        public int? ModeloBateriaId { get; set; }
-        public ModeloBateria? ModeloBateria { get; set; }
+        public int? TipoBateriaId { get; set; }
+        public decimal? VoltajeBateria { get; set; }
+        public decimal? CapacidadBateriaAh { get; set; }
+        public TipoBateria? TipoBateria { get; set; }
         public bool IncluyeCambioBaterias { get; set; }
         public int CantidadBateriasReemplazadas { get; set; }
 

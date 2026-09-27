@@ -248,7 +248,7 @@ export default function Mantenimientos() {
                             Modelo
                         </MenuItem>
                         <MenuItem value="tecnico">
-                            Técnico / proveedor
+                            Usuario responsable
                         </MenuItem>
                         <MenuItem value="estado">
                             Estado

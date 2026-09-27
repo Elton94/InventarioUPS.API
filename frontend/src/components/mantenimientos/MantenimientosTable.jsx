@@ -71,6 +71,8 @@ export default function MantenimientosTable({
     onEditar,
     puedeEditar = false
 }) {
+    const administrador = ['administrador', 'control total'].includes((localStorage.getItem('rol') || '').trim().toLowerCase());
+    const usuarioId = Number(localStorage.getItem('usuarioId'));
     return (
         <TableContainer component={Paper}>
             <Table>
@@ -80,7 +82,7 @@ export default function MantenimientosTable({
                         <TableCell><strong>Inventario</strong></TableCell>
                         <TableCell><strong>Serie</strong></TableCell>
                         <TableCell><strong>Fecha</strong></TableCell>
-                        <TableCell><strong>Técnico / proveedor</strong></TableCell>
+                        <TableCell><strong>Usuario responsable</strong></TableCell>
                         <TableCell><strong>Baterías</strong></TableCell>
                         <TableCell><strong>Estado</strong></TableCell>
                         <TableCell align="center"><strong>Acciones</strong></TableCell>
@@ -146,7 +148,7 @@ export default function MantenimientosTable({
                                                     variant="caption"
                                                     color="text.secondary"
                                                 >
-                                                    {m.tipoBateria || "Sin identificar"} · {m.modeloBateria || "Sin identificar"}<br />{textoBateria(m)}
+                                                    {m.tipoBateria || "Sin identificar"} · {m.voltajeBateria ?? "—"} V · {m.capacidadBateriaAh ?? "—"} Ah<br />{textoBateria(m)}
                                                 </Typography>
                                             </Box>
                                         )}
@@ -166,7 +168,7 @@ export default function MantenimientosTable({
                                         />
                                     </TableCell>
                                     <TableCell align="center">
-                                        {puedeEditar && (
+                                        {puedeEditar && (administrador || Number(m.responsableUsuarioId) === usuarioId) && (
                                             <Tooltip title="Editar cambio de baterías">
                                                 <IconButton
                                                     color="primary"

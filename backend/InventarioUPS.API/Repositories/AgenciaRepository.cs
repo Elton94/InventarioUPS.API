@@ -1,4 +1,4 @@
-﻿using InventarioUPS.API.Data;
+using InventarioUPS.API.Data;
 using InventarioUPS.API.Models;
 
 using Microsoft.EntityFrameworkCore;
@@ -83,8 +83,6 @@ namespace InventarioUPS.API.Repositories
             await _context.SaveChangesAsync();
         }
 
-        // DESACTIVAR AGENCIA
-        // La baja lógica conserva el historial de la agencia.
         public async Task EliminarAsync(
             Agencia agencia)
         {

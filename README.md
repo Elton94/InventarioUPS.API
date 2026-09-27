@@ -1,6 +1,6 @@
 # Inventario UPS
 
-La última actualización requiere `backend/Database/20260927_RevisionCampos.sql`.
+La última actualización requiere `backend/Database/20260927_TiposBateriaYUsuarios.sql`.
 Consulte [los campos y catálogos](backend/Database/CAMPOS_Y_CATALOGOS.md) y
 [el orden de actualización](backend/Database/README.md) antes de iniciar la API.
 

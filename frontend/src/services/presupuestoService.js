@@ -1,6 +1,5 @@
 import api from "./api";
 
-// CONFIGURACIÓN ANUAL DE PRESUPUESTO
 export const obtenerConfiguracionesPresupuesto =
     async () => {
 
@@ -50,7 +49,6 @@ export const actualizarConfiguracionPresupuesto =
         return response.data;
     };
 
-// POLÍTICA GLOBAL DE REEMPLAZO
 export const obtenerPoliticaReemplazo =
     async () => {
 
@@ -86,13 +84,12 @@ export const actualizarPoliticaReemplazo =
         return response.data;
     };
 
-// PROYECCIÓN
 export const obtenerProyeccionPresupuesto =
-    async (anio) => {
+    async (anio, metodoCosto = "referencia") => {
 
         const response =
             await api.get(
-                `/Presupuesto/proyeccion/${anio}`
+                `/Presupuesto/proyeccion/${anio}`, { params: { metodoCosto } }
             );
 
         return response.data;

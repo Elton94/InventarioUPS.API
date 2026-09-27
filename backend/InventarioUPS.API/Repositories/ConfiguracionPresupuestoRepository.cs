@@ -28,6 +28,9 @@ namespace InventarioUPS.API.Repositories
             _context.ConfiguracionPresupuestoBaterias
                 .FirstOrDefaultAsync(x => x.Anio == anio);
 
+        public Task<PoliticaReemplazoBaterias?> ObtenerPoliticaAsync() =>
+            _context.PoliticaReemplazoBaterias.AsNoTracking().OrderByDescending(x => x.Id).FirstOrDefaultAsync();
+
         public async Task CrearAsync(ConfiguracionPresupuestoBaterias configuracion)
         {
             await _context.ConfiguracionPresupuestoBaterias.AddAsync(configuracion);

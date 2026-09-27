@@ -39,11 +39,12 @@ namespace InventarioUPS.API.Services
                 throw new InvalidOperationException(
                     $"Ya existe una configuración para el año {dto.Anio}.");
 
+            var politica = await ObtenerPoliticaValidaAsync();
             var configuracion = new ConfiguracionPresupuestoBaterias
             {
                 Anio = dto.Anio,
-                MesesReemplazoLocal = 0,
-                MesesReemplazoForanea = 0,
+                MesesReemplazoLocal = politica.MesesReemplazoLocal,
+                MesesReemplazoForanea = politica.MesesReemplazoForanea,
                 CostoUnitarioBateria = dto.CostoUnitarioBateria,
                 Activo = true,
                 FechaCreacion = DateTime.Now
@@ -62,11 +63,22 @@ namespace InventarioUPS.API.Services
                 throw new KeyNotFoundException(
                     "La configuración de presupuesto no existe.");
 
+            var politica = await ObtenerPoliticaValidaAsync();
+            configuracion.MesesReemplazoLocal = politica.MesesReemplazoLocal;
+            configuracion.MesesReemplazoForanea = politica.MesesReemplazoForanea;
             configuracion.CostoUnitarioBateria = dto.CostoUnitarioBateria;
             configuracion.Activo = dto.Activo;
             configuracion.FechaModificacion = DateTime.Now;
 
             await _repository.ActualizarAsync(configuracion);
+        }
+
+        private async Task<PoliticaReemplazoBaterias> ObtenerPoliticaValidaAsync()
+        {
+            var politica = await _repository.ObtenerPoliticaAsync();
+            if (politica == null || politica.MesesReemplazoLocal is < 1 or > 120 || politica.MesesReemplazoForanea is < 1 or > 120)
+                throw new InvalidOperationException("Configure una política de reemplazo válida antes de guardar el costo anual.");
+            return politica;
         }
 
         private static void ValidarAnio(int anio)

@@ -13,7 +13,7 @@ export default function SelectorBateria({ tipo, voltaje, capacidad, onChange, di
     }, []);
     return <Box sx={{ display: 'grid', gap: 2, gridColumn: '1 / -1', gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr 1fr' } }}>
         {error && <Alert sx={{ gridColumn: '1 / -1' }} severity="error">{error}</Alert>}
-        <TextField select required label="Tipo de batería" value={tipo || ''} disabled={disabled || cargando}
+        <TextField select required label="Tipo de batería" value={tipos.some(t => t.id === Number(tipo)) ? tipo : ''} disabled={disabled || cargando}
             onChange={e => onChange('tipoBateriaId', Number(e.target.value))}>
             {tipos.filter(t => t.activo !== false || t.id === Number(tipo)).map(t => <MenuItem key={t.id} value={t.id}>{t.nombre}{t.activo === false ? ' (Inactivo)' : ''}</MenuItem>)}
         </TextField>

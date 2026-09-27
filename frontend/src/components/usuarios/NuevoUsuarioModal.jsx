@@ -402,9 +402,7 @@ export default function NuevoUsuarioModal({
                         Rol
                     </InputLabel>
                     <Select
-                        value={
-                            formulario.rolId
-                        }
+                        value={roles.some(r => Number(r.id) === Number(formulario.rolId)) ? formulario.rolId : ""}
                         label="Rol"
                         disabled={cargando}
                         onChange={(e) =>

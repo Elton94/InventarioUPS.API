@@ -467,11 +467,7 @@ export default function GestionarRolesModal({
             maxWidth="lg"
         >
             <DialogTitle>
-                <Box
-                    display="flex"
-                    alignItems="center"
-                    gap={1}
-                >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <SecurityIcon />
 
                     <Typography
@@ -523,12 +519,7 @@ export default function GestionarRolesModal({
                             : "Crear nuevo rol"}
                     </Typography>
 
-                    <Box
-                        display="flex"
-                        gap={2}
-                        alignItems="center"
-                        flexWrap="wrap"
-                    >
+                    <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
                         <TextField
                             sx={{
                                 flex: 1,
@@ -595,12 +586,7 @@ export default function GestionarRolesModal({
                     </Box>
 
                     {editando && (
-                        <Box
-                            mt={2}
-                            display="flex"
-                            alignItems="center"
-                            gap={1}
-                        >
+                        <Box sx={{ mt: 2, display: "flex", alignItems: "center", gap: 1 }}>
                             <Typography
                                 variant="body2"
                                 color="text.secondary"
@@ -637,14 +623,7 @@ export default function GestionarRolesModal({
                             mb: 3
                         }}
                     >
-                        <Box
-                            display="flex"
-                            justifyContent="space-between"
-                            alignItems="center"
-                            mb={1}
-                            flexWrap="wrap"
-                            gap={1}
-                        >
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1, flexWrap: "wrap", gap: 1 }}>
                             <Typography
                                 variant="subtitle1"
                                 fontWeight="bold"
@@ -653,10 +632,7 @@ export default function GestionarRolesModal({
                             </Typography>
 
                             {!esControlTotal() && (
-                                <Box
-                                    display="flex"
-                                    gap={1}
-                                >
+                                <Box sx={{ display: "flex", gap: 1 }}>
                                     <Button
                                         size="small"
                                         variant="outlined"
@@ -793,7 +769,7 @@ export default function GestionarRolesModal({
                         {editando &&
                             !esControlTotal() &&
                             permisos.length > 0 && (
-                                <Box mt={2}>
+                                <Box sx={{ mt: 2 }}>
                                     <Typography
                                         variant="body2"
                                         color="text.secondary"

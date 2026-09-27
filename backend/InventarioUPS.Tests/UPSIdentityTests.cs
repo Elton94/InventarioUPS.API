@@ -34,6 +34,7 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         };
         var estado = new EstadoUPS { Nombre = "Operativo" };
         context.AddRange(agencia, estado, new TipoBateria { Id = 1, Nombre = "AGM" });
+        context.PoliticaReemplazoBaterias.Add(new PoliticaReemplazoBaterias { MesesReemplazoLocal = 24, MesesReemplazoForanea = 18 });
         context.ModelosUPS.Add(new ModeloUPS { Nombre = "Prueba", MarcaUPS = new MarcaUPS { Nombre = "APC" } });
         context.Usuarios.Add(new Usuario { Id = 1, NombreUsuario = "admin", NombreCompleto = "Administrador de prueba", Correo = "admin@test.test", PasswordHash = "test", Rol = new Rol { Nombre = "Administrador" } });
         await context.SaveChangesAsync();
@@ -865,6 +866,45 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         Assert.IsType<BadRequestObjectResult>(await controller.GuardarCostos(2029, new() { new(1, 12), new(1, 20) }));
         Assert.IsType<OkObjectResult>(await controller.GuardarCostos(2029, new() { new(1, null) }));
         Assert.Empty(await context.CostosTipoBateria.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Costo2029RespetaRestriccionesDeMesesEnInsertarYActualizar()
+    {
+        await context.Database.ExecuteSqlRawAsync(@"CREATE TRIGGER validar_meses_insert BEFORE INSERT ON ConfiguracionPresupuestoBaterias
+            WHEN NEW.MesesReemplazoLocal < 1 OR NEW.MesesReemplazoForanea < 1
+            BEGIN SELECT RAISE(ABORT, 'Los meses deben ser positivos'); END;");
+        await context.Database.ExecuteSqlRawAsync(@"CREATE TRIGGER validar_meses_update BEFORE UPDATE ON ConfiguracionPresupuestoBaterias
+            WHEN NEW.MesesReemplazoLocal < 1 OR NEW.MesesReemplazoForanea < 1
+            BEGIN SELECT RAISE(ABORT, 'Los meses deben ser positivos'); END;");
+        var servicio = new ConfiguracionPresupuestoService(new ConfiguracionPresupuestoRepository(context));
+        var controller = new PresupuestoController(context, servicio);
+        Assert.IsType<OkObjectResult>(await controller.CrearConfiguracion(new() { Anio = 2029, CostoUnitarioBateria = 7000 }));
+        var guardado = await context.ConfiguracionPresupuestoBaterias.SingleAsync();
+        Assert.Equal(24, guardado.MesesReemplazoLocal);
+        Assert.Equal(18, guardado.MesesReemplazoForanea);
+        Assert.Equal(7000m, guardado.CostoUnitarioBateria);
+        var politica = await context.PoliticaReemplazoBaterias.SingleAsync();
+        politica.MesesReemplazoLocal = 12;
+        politica.MesesReemplazoForanea = 6;
+        await context.SaveChangesAsync();
+        Assert.IsType<OkObjectResult>(await controller.ActualizarConfiguracion(guardado.Id, new() { CostoUnitarioBateria = 7500, Activo = true }));
+        context.ChangeTracker.Clear();
+        guardado = await context.ConfiguracionPresupuestoBaterias.SingleAsync();
+        Assert.Equal(12, guardado.MesesReemplazoLocal);
+        Assert.Equal(6, guardado.MesesReemplazoForanea);
+        Assert.Equal(7500m, guardado.CostoUnitarioBateria);
+    }
+
+    [Fact]
+    public async Task CostoSinPoliticaValidaDevuelveConflictoEnLugarDeInsertarCeros()
+    {
+        var servicio = new ConfiguracionPresupuestoService(new ConfiguracionPresupuestoRepository(context));
+        var controller = new PresupuestoController(context, servicio);
+        (await context.PoliticaReemplazoBaterias.SingleAsync()).MesesReemplazoLocal = 0;
+        await context.SaveChangesAsync();
+        Assert.IsType<ConflictObjectResult>(await controller.CrearConfiguracion(new() { Anio = 2029, CostoUnitarioBateria = 7000 }));
+        Assert.Empty(await context.ConfiguracionPresupuestoBaterias.ToListAsync());
     }
 
     private sealed class SqlDinamicoVisitor(TSql160Parser parser) : TSqlFragmentVisitor

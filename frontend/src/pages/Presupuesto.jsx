@@ -117,10 +117,10 @@ export default function Presupuesto() {
     if (cargando) return <Box sx={{ py: 8, textAlign: "center" }}><CircularProgress aria-label="Cargando configuración" /></Box>;
 
     return <Box sx={{ maxWidth: 1500, mx: "auto" }}>
-        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={2} sx={{ mb: 3 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", gap: 2, mb: 3 }}>
             <Box><Typography variant="h4" fontWeight={700}>Proyecciones de baterías</Typography>
                 <Typography color="text.secondary">Planifique los reemplazos y las compras de cada año.</Typography></Box>
-            {politica && <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1}>
+            {politica && <Stack direction="row" sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}>
                 <Chip label={`Local: ${politica.mesesReemplazoLocal} meses`} variant="outlined" />
                 <Chip label={`Foránea: ${politica.mesesReemplazoForanea} meses`} variant="outlined" />
                 {puedeGestionar && <Button startIcon={<SettingsIcon />} onClick={abrirPolitica}>Política</Button>}

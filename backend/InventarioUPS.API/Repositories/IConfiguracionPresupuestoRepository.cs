@@ -10,6 +10,8 @@ namespace InventarioUPS.API.Repositories
 
         Task<ConfiguracionPresupuestoBaterias?> ObtenerPorAnioAsync(int anio);
 
+        Task<PoliticaReemplazoBaterias?> ObtenerPoliticaAsync();
+
         Task CrearAsync(
             ConfiguracionPresupuestoBaterias configuracion);
 

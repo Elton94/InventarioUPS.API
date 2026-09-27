@@ -14,13 +14,16 @@ namespace InventarioUPS.API.Controllers
     [Authorize]
     public class PresupuestoController : ControllerBase
     {
+        private readonly ILogger<PresupuestoController>? _logger;
         private readonly InventarioUPSDbContext _context;
         private readonly IConfiguracionPresupuestoService _configuracionService;
 
         public PresupuestoController(
             InventarioUPSDbContext context,
-            IConfiguracionPresupuestoService configuracionService)
+            IConfiguracionPresupuestoService configuracionService,
+            ILogger<PresupuestoController>? logger = null)
         {
+            _logger = logger;
             _context = context;
             _configuracionService = configuracionService;
         }
@@ -66,6 +69,7 @@ namespace InventarioUPS.API.Controllers
             {
                 return Conflict(new { mensaje = ex.Message });
             }
+            catch (DbUpdateException ex) { return ErrorGuardarCosto(ex); }
         }
 
         [HttpPut("configuracion/{id:int}")]
@@ -87,6 +91,18 @@ namespace InventarioUPS.API.Controllers
             {
                 return NotFound(new { mensaje = ex.Message });
             }
+            catch (InvalidOperationException ex) { return Conflict(new { mensaje = ex.Message }); }
+            catch (DbUpdateException ex) { return ErrorGuardarCosto(ex); }
+        }
+
+        private ActionResult ErrorGuardarCosto(DbUpdateException ex)
+        {
+            var referencia = HttpContext?.TraceIdentifier;
+            _logger?.LogError(ex, "Error de base de datos al guardar el costo anual. Referencia: {Referencia}", referencia);
+            return StatusCode(500, new {
+                mensaje = "La base de datos rechazó el guardado. Revise el registro de la API con esta referencia: " + referencia,
+                referencia
+            });
         }
 
         [HttpGet("politica")]

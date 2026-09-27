@@ -631,9 +631,7 @@ export default function NuevoUPSModal({
                         select
                         required
                         label="Estado"
-                        value={
-                            formulario.estadoUPSId
-                        }
+                        value={estados.some(e => Number(e.id) === Number(formulario.estadoUPSId)) ? formulario.estadoUPSId : ""}
                         disabled={esBaja}
                         onChange={(e) =>
                             cambiar(

@@ -136,7 +136,7 @@ export default function NuevoMantenimientoModal({ open, onClose, onGuardado, man
                         onChange={(_, valor) => { setUpsSeleccionado(valor); setFormulario(f => ({ ...f, tipoBateriaId: valor?.tipoBateriaId || null, voltajeBateria: valor?.voltajeBateria ?? "", capacidadBateriaAh: valor?.capacidadBateriaAh ?? "" })); }}
                         renderInput={params => <TextField {...params} required label="UPS" placeholder="Inventario, serie o agencia" />}
                     />
-                    <TextField select required label="Estado" value={formulario.estadoMantenimientoId}
+                    <TextField select required label="Estado" value={estados.some(e => Number(e.id) === Number(formulario.estadoMantenimientoId)) ? formulario.estadoMantenimientoId : ""}
                         onChange={e => cambiar("estadoMantenimientoId", e.target.value)}>
                         {estados.map(estado => <MenuItem key={estado.id} value={estado.id}>{estado.nombre}</MenuItem>)}
                     </TextField>

@@ -70,6 +70,7 @@ export default function MainLayout() {
                     "VER_PRESUPUESTO"
                 )
         },
+        { ruta: "/configuracion", texto: "Configuración", visible: tienePermiso("GESTIONAR_CATALOGOS") },
         {
             ruta: "/usuarios",
             texto: "Usuarios y Roles",

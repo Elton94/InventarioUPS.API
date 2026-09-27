@@ -29,11 +29,12 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         var agencia = new Agencia
         {
             Codigo = "SPS01", Nombre = "Prueba",
-            Ciudad = new Ciudad { Nombre = "San Pedro Sula", Departamento = new Departamento { Nombre = "Cortés" } },
+            Ciudad = new Ciudad { EsLocal = true, Nombre = "San Pedro Sula", Departamento = new Departamento { Nombre = "Cortés" } },
             TipoAgencia = new TipoAgencia { Nombre = "Local" }
         };
         var estado = new EstadoUPS { Nombre = "Operativo" };
         context.AddRange(agencia, estado, new ModeloBateria { Id = 1, Nombre = "AGM de prueba", TipoBateria = new TipoBateria { Nombre = "AGM" } });
+        context.ModelosUPS.Add(new ModeloUPS { Nombre = "Prueba", MarcaUPS = new MarcaUPS { Nombre = "APC" } });
         await context.SaveChangesAsync();
         agenciaId = agencia.Id;
         estadoId = estado.Id;
@@ -71,6 +72,8 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         var equipo = await service.ObtenerPorIdAsync(nuevo.Id);
         Assert.NotNull(equipo);
         Assert.Equal(inventario, equipo.NumeroInventario);
+        context.ModelosUPS.Add(new ModeloUPS { Nombre = "Modelo editado", MarcaUPSId = (await context.MarcasUPS.SingleAsync()).Id });
+        await context.SaveChangesAsync();
         equipo.Modelo = "Modelo editado";
         await service.ActualizarAsync(equipo);
         context.ChangeTracker.Clear();
@@ -297,6 +300,8 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         await cambios.CrearAsync(cambio);
         context.ChangeTracker.Clear();
         var editarUPS = (await service.ObtenerPorIdAsync(ups.Id))!;
+        context.ModelosUPS.Add(new ModeloUPS { Nombre = "Corregido", MarcaUPSId = (await context.MarcasUPS.SingleAsync()).Id });
+        await context.SaveChangesAsync();
         editarUPS.Modelo = "Corregido";
         await service.ActualizarAsync(editarUPS);
         context.ChangeTracker.Clear();
@@ -398,6 +403,7 @@ public sealed class UPSIdentityTests : IAsyncLifetime
     public async Task Presupuesto2029CuentaLosCiclosPorCiudadYUsaSuCosto(string ciudad, int cambiosEsperados)
     {
         (await context.Ciudades.SingleAsync()).Nombre = ciudad;
+        (await context.Ciudades.SingleAsync()).EsLocal = ciudad != "El Progreso";
         await context.SaveChangesAsync();
         var ups = Equipo("INV-CICLICO");
         ups.CantidadBaterias = 4;
@@ -494,6 +500,7 @@ public sealed class UPSIdentityTests : IAsyncLifetime
     [InlineData("MantenimientosSinCostos.sql")]
     [InlineData("CambiosBaterias.sql")]
     [InlineData("CatalogoBaterias.sql")]
+    [InlineData("AdministracionCatalogos.sql")]
     public void ScriptDeMigracionTieneSintaxisTSQLValida(string archivo)
     {
         var parser = new TSql160Parser(true);
@@ -576,6 +583,158 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         var equipo = Assert.Single(json.GetProperty("equipos").EnumerateArray());
         Assert.True(equipo.GetProperty("dias").GetInt32() < 0);
         Assert.Equal(ups.FechaInstalacion.AddMonths(3), equipo.GetProperty("fecha").GetDateTime());
+    }
+
+    [Fact]
+    public async Task CatalogosEvitanDuplicadosYRegistranAntesYDespues()
+    {
+        var admin = new CatalogoAdminService(context);
+        var creado = await admin.GuardarAsync("tipos-bateria", 0, new("  Tipo   nuevo  ", true, null), 7, "Administrador");
+        Assert.Equal("Tipo nuevo", creado.Nombre);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => admin.GuardarAsync("tipos-bateria", 0, new("TIPO NUEVO", true, null), 7, "Administrador"));
+        var inactivo = await admin.GuardarAsync("tipos-bateria", creado.Id, new("Tipo nuevo", false, null, creado), 7, "Administrador");
+        Assert.False(inactivo.Activo);
+        var registros = await context.AuditoriaCatalogos.OrderBy(x => x.Id).ToListAsync();
+        Assert.Equal(2, registros.Count);
+        Assert.Equal("Desactivar", registros[1].Accion);
+        Assert.Contains("Tipo nuevo", registros[1].Antes);
+        Assert.Equal(7, registros[1].UsuarioId);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => admin.GuardarAsync("tipos-bateria", 0, new(" tipo nuevo ", true, null), 7, "Administrador"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => admin.GuardarAsync("tipos-bateria", creado.Id, new("Otro nombre", true, null, creado), 7, "Administrador"));
+    }
+
+    [Fact]
+    public async Task NoPermiteReclasificarModelosUsadosNiCrearBajoPadresInactivos()
+    {
+        var equipo = Equipo("INV-CATALOGO");
+        await service.CrearAsync(equipo);
+        var admin = new CatalogoAdminService(context);
+        var otroTipo = await admin.GuardarAsync("tipos-bateria", 0, new("Otro tipo", true, null), 7, "Admin");
+        var modelo = (await admin.ListarAsync("modelos-bateria")).Single();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => admin.GuardarAsync("modelos-bateria", modelo.Id, new(modelo.Nombre, true, otroTipo.Id, modelo), 7, "Admin"));
+        var inactivo = await admin.GuardarAsync("tipos-bateria", otroTipo.Id, new(otroTipo.Nombre, false, null, otroTipo), 7, "Admin");
+        await Assert.ThrowsAsync<ArgumentException>(() => admin.GuardarAsync("modelos-bateria", 0, new("Batería nueva", true, inactivo.Id), 7, "Admin"));
+        var retirado = await admin.GuardarAsync("modelos-bateria", modelo.Id, new(modelo.Nombre, false, modelo.PadreId, modelo), 7, "Admin");
+        Assert.False(retirado.Activo);
+        context.ChangeTracker.Clear();
+        Assert.Equal(modelo.Id, (await context.UPSs.SingleAsync()).ModeloBateriaId);
+        context.ChangeTracker.Clear();
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CrearAsync(Equipo("INV-OTRO", "SERIE-OTRA")));
+        await service.ActualizarAsync((await service.ObtenerPorIdAsync(equipo.Id))!);
+    }
+
+    [Fact]
+    public async Task CorregirCiudadNoCambiaSuClasificacionNiSuProyeccion()
+    {
+        var admin = new CatalogoAdminService(context);
+        var ciudad = (await admin.ListarAsync("ciudades")).Single();
+        await admin.GuardarAsync("ciudades", ciudad.Id, new("SPS · nombre corregido", true, ciudad.PadreId, ciudad), 7, "Admin");
+        await service.CrearAsync(Equipo("INV-CIUDAD"));
+        context.Add(new PoliticaReemplazoBaterias { MesesReemplazoLocal = 3, MesesReemplazoForanea = 6 });
+        await context.SaveChangesAsync();
+        var config = new ConfiguracionPresupuestoService(new ConfiguracionPresupuestoRepository(context));
+        await config.CrearAsync(new() { Anio = 2029, CostoUnitarioBateria = 500 });
+        var resultado = Assert.IsType<OkObjectResult>(await new PresupuestoController(context, config).ObtenerProyeccion(2029));
+        var resumen = Assert.IsType<InventarioUPS.API.DTOs.Presupuesto.PresupuestoResumenDto>(resultado.Value);
+        Assert.Equal(3, Assert.Single(Assert.Single(resumen.Agencias).UPS).MesesCicloReemplazo);
+        var nueva = await admin.GuardarAsync("ciudades", 0, new("Nueva ciudad", true, ciudad.PadreId), 7, "Admin");
+        Assert.False(nueva.EsLocal);
+    }
+
+    [Fact]
+    public async Task MarcaRenombradaSeReflejaEnUPSperoNoSePuedeReclasificarModeloUtilizado()
+    {
+        var equipo = Equipo("INV-MARCA");
+        await service.CrearAsync(equipo);
+        var admin = new CatalogoAdminService(context);
+        var marca = (await admin.ListarAsync("marcas-ups")).Single();
+        await admin.GuardarAsync("marcas-ups", marca.Id, new("APC corregido", true, null, marca), 7, "Admin");
+        context.ChangeTracker.Clear();
+        Assert.Equal("APC corregido", (await service.ObtenerPorIdAsync(equipo.Id))!.Marca);
+        var otra = await admin.GuardarAsync("marcas-ups", 0, new("Otra marca", true, null), 7, "Admin");
+        var modelo = (await admin.ListarAsync("modelos-ups")).Single();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => admin.GuardarAsync("modelos-ups", modelo.Id, new(modelo.Nombre, true, otra.Id, modelo), 7, "Admin"));
+    }
+
+    [Theory]
+    [InlineData("estados-ups")]
+    [InlineData("estados-mantenimiento")]
+    [InlineData("tipos-agencia")]
+    [InlineData("permisos")]
+    public async Task CatalogosFuncionalesNoSePuedenModificar(string catalogo)
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => new CatalogoAdminService(context).GuardarAsync(catalogo, 0, new("Valor inventado", true, null), 7, "Admin"));
+        Assert.Empty(await context.AuditoriaCatalogos.ToListAsync());
+    }
+
+    [Fact]
+    public async Task PermisoDeCatalogosSeVerificaEnServidor()
+    {
+        var rol = new Rol { Nombre = "Consulta" };
+        var usuario = new Usuario { NombreUsuario = "prueba", NombreCompleto = "Prueba", Correo = "prueba@example.test", PasswordHash = "prueba", Rol = rol };
+        var permiso = new Permiso { Codigo = "GESTIONAR_CATALOGOS", Nombre = "Catálogos" };
+        context.AddRange(usuario, permiso);
+        await context.SaveChangesAsync();
+        var http = new Microsoft.AspNetCore.Http.DefaultHttpContext();
+        http.User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(new[] {
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, usuario.Id.ToString()) }, "Prueba"));
+        var servicios = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton(servicios, context);
+        http.RequestServices = Microsoft.Extensions.DependencyInjection.ServiceCollectionContainerBuilderExtensions.BuildServiceProvider(servicios);
+        var action = new Microsoft.AspNetCore.Mvc.ActionContext(http, new Microsoft.AspNetCore.Routing.RouteData(), new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
+        var filtro = new InventarioUPS.API.Authorization.PermisoAuthorizeAttribute("GESTIONAR_CATALOGOS");
+        var primero = new Microsoft.AspNetCore.Mvc.Filters.AuthorizationFilterContext(action, new List<Microsoft.AspNetCore.Mvc.Filters.IFilterMetadata>());
+        await filtro.OnAuthorizationAsync(primero);
+        Assert.IsType<ForbidResult>(primero.Result);
+        context.RolPermisos.Add(new RolPermiso { RolId = rol.Id, PermisoId = permiso.Id });
+        await context.SaveChangesAsync();
+        var segundo = new Microsoft.AspNetCore.Mvc.Filters.AuthorizationFilterContext(action, new List<Microsoft.AspNetCore.Mvc.Filters.IFilterMetadata>());
+        await filtro.OnAuthorizationAsync(segundo);
+        Assert.Null(segundo.Result);
+    }
+
+    [Fact]
+    public async Task CamposAnidadosNoPermitenCrearCatalogosDesdeUPS()
+    {
+        var equipo = Equipo("INV-RELACIONES");
+        equipo.ModeloUPS = new ModeloUPS { Nombre = "Modelo no autorizado", MarcaUPS = new MarcaUPS { Nombre = "Marca no autorizada" } };
+        equipo.ModeloBateria = new ModeloBateria { Nombre = "Batería no autorizada", TipoBateria = new TipoBateria { Nombre = "Tipo no autorizado" } };
+        await service.CrearAsync(equipo);
+        Assert.Single(await context.ModelosUPS.ToListAsync());
+        Assert.Single(await context.MarcasUPS.ToListAsync());
+        Assert.Single(await context.ModelosBateria.ToListAsync());
+        var otro = Equipo("INV-LIBRE", "SERIE-LIBRE");
+        otro.Modelo = "Modelo escrito libremente";
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CrearAsync(otro));
+    }
+
+    [Fact]
+    public async Task CiudadInactivaSeConservaEnAgenciaExistentePeroNoSeAsignaANueva()
+    {
+        var ciudad = await context.Ciudades.SingleAsync();
+        ciudad.Activa = false;
+        (await context.Agencias.SingleAsync()).Direccion = "Dirección existente";
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        var agencias = new AgenciaService(new AgenciaRepository(context), context);
+        var agencia = (await agencias.ObtenerPorIdAsync(agenciaId))!;
+        agencia.Nombre = "Nombre corregido";
+        await agencias.ActualizarAsync(agencia);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => agencias.CrearAsync(new Agencia {
+            Codigo = "NUEVA", Nombre = "Nueva", Direccion = "Dirección", CiudadId = ciudad.Id }));
+    }
+
+    [Fact]
+    public async Task ReinicioNoRecreaCiudadesRenombradasNiReactivaDepartamentos()
+    {
+        var ciudad = await context.Ciudades.SingleAsync();
+        ciudad.Nombre = "SPS corregida";
+        (await context.Departamentos.SingleAsync()).Activo = false;
+        await context.SaveChangesAsync();
+        await DbSeeder.SeedAsync(context);
+        Assert.Equal("SPS corregida", (await context.Ciudades.SingleAsync()).Nombre);
+        Assert.False((await context.Departamentos.SingleAsync()).Activo);
+        Assert.True((await context.Ciudades.SingleAsync()).EsLocal);
     }
 
     private sealed class SqlDinamicoVisitor(TSql160Parser parser) : TSqlFragmentVisitor

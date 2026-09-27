@@ -11,6 +11,9 @@ namespace InventarioUPS.API.Data
         {
         }
 
+        public DbSet<MarcaUPS> MarcasUPS => Set<MarcaUPS>();
+        public DbSet<ModeloUPS> ModelosUPS => Set<ModeloUPS>();
+        public DbSet<AuditoriaCatalogo> AuditoriaCatalogos => Set<AuditoriaCatalogo>();
         public DbSet<TipoBateria> TiposBateria { get; set; }
         public DbSet<ModeloBateria> ModelosBateria { get; set; }
         public DbSet<CostoModeloBateria> CostosModeloBateria { get; set; }
@@ -65,6 +68,20 @@ namespace InventarioUPS.API.Data
             modelBuilder.Entity<CostoModeloBateria>().Property(x => x.CostoUnitario).HasPrecision(18, 2);
             modelBuilder.Entity<CostoModeloBateria>().HasIndex(x => new { x.Anio, x.ModeloBateriaId }).IsUnique();
             modelBuilder.Entity<CostoModeloBateria>().HasOne(x => x.ModeloBateria).WithMany().HasForeignKey(x => x.ModeloBateriaId).OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MarcaUPS>().Property(x => x.Nombre).HasMaxLength(100).UseCollation("Latin1_General_100_CI_AS").IsRequired();
+            modelBuilder.Entity<MarcaUPS>().HasIndex(x => x.Nombre).IsUnique();
+            modelBuilder.Entity<ModeloUPS>().Property(x => x.Nombre).HasMaxLength(100).UseCollation("Latin1_General_100_CI_AS").IsRequired();
+            modelBuilder.Entity<ModeloUPS>().HasIndex(x => new { x.MarcaUPSId, x.Nombre }).IsUnique();
+            modelBuilder.Entity<ModeloUPS>().HasOne(x => x.MarcaUPS).WithMany().HasForeignKey(x => x.MarcaUPSId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<UPS>().HasOne(x => x.ModeloUPS).WithMany().HasForeignKey(x => x.ModeloUPSId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AuditoriaCatalogo>().Property(x => x.Usuario).HasMaxLength(200);
+            modelBuilder.Entity<AuditoriaCatalogo>().Property(x => x.Catalogo).HasMaxLength(50);
+            modelBuilder.Entity<AuditoriaCatalogo>().Property(x => x.Accion).HasMaxLength(30);
+            modelBuilder.Entity<AuditoriaCatalogo>().HasIndex(x => x.Fecha);
+            modelBuilder.Entity<Departamento>().Property(x => x.Nombre).UseCollation("Latin1_General_100_CI_AS");
+            modelBuilder.Entity<Ciudad>().Property(x => x.Nombre).UseCollation("Latin1_General_100_CI_AS");
+            modelBuilder.Entity<TipoBateria>().Property(x => x.Nombre).UseCollation("Latin1_General_100_CI_AS");
 
             // DEPARTAMENTOS
             modelBuilder.Entity<Departamento>()

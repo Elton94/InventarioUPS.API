@@ -150,5 +150,6 @@ export const obtenerRutaInicial = () => {
         return "/usuarios";
     }
 
+    if (tienePermiso("GESTIONAR_CATALOGOS")) return "/configuracion";
     return "/sin-permisos";
 };

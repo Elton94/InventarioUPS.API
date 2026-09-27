@@ -4,6 +4,8 @@ namespace InventarioUPS.API.Models
     {
         public string NumeroInventario { get; set; } = string.Empty;
         public string Marca { get; set; } = string.Empty;
+        public int? ModeloUPSId { get; set; }
+        public ModeloUPS? ModeloUPS { get; set; }
         public string Modelo { get; set; } = string.Empty;
         public string NumeroSerie { get; set; } = string.Empty;
         public int CapacidadVA { get; set; }

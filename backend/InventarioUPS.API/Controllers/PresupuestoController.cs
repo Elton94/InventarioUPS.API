@@ -414,24 +414,7 @@ namespace InventarioUPS.API.Controllers
 
         private static string ObtenerTipoAgencia(UPS equipo)
         {
-            var ciudad =
-                equipo.Agencia?.Ciudad?.Nombre?.Trim()
-                ?? string.Empty;
-
-            if (ciudad.Equals(
-                    "San Pedro Sula",
-                    StringComparison.OrdinalIgnoreCase) ||
-                ciudad.Equals(
-                    "La Ceiba",
-                    StringComparison.OrdinalIgnoreCase) ||
-                ciudad.Equals(
-                    "Distrito Central",
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                return "Local";
-            }
-
-            return "Foránea";
+            return equipo.Agencia?.Ciudad?.EsLocal == true ? "Local" : "Foránea";
         }
 
         private static bool EsEstado(string? valor, string esperado) =>

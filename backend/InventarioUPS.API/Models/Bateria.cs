@@ -2,12 +2,14 @@ namespace InventarioUPS.API.Models;
 
 public class TipoBateria
 {
+    public bool Activo { get; set; } = true;
     public int Id { get; set; }
     public string Nombre { get; set; } = string.Empty;
 }
 
 public class ModeloBateria
 {
+    public bool Activo { get; set; } = true;
     public int Id { get; set; }
     public int TipoBateriaId { get; set; }
     public string Nombre { get; set; } = string.Empty;

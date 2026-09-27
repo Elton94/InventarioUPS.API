@@ -34,6 +34,8 @@ namespace InventarioUPS.API.Data
             await AsegurarPoliticaPresupuestoAsync(context);
 
             // DEPARTAMENTOS Y CIUDADES
+            if (!await context.Departamentos.AnyAsync())
+            {
             var departamentos = new Dictionary<string, string[]>
             {
                 ["Atlántida"] = new[]
@@ -419,6 +421,7 @@ namespace InventarioUPS.API.Data
                         context.Ciudades.Add(new Ciudad
                         {
                             Nombre = ciudadNombre,
+                            EsLocal = new[] { "San Pedro Sula", "La Ceiba", "Distrito Central" }.Contains(ciudadNombre),
                             DepartamentoId = departamento.Id
                         });
                     }
@@ -427,36 +430,7 @@ namespace InventarioUPS.API.Data
                 await context.SaveChangesAsync();
             }
 
-            // ELIMINAR "SIN ESPECIFICAR" SI QUEDÓ COMO DATO INICIAL
-            var departamentosSinEspecificar =
-                await context.Departamentos
-                    .Where(d => d.Nombre == "Sin especificar")
-                    .ToListAsync();
-
-            foreach (var departamento in departamentosSinEspecificar)
-            {
-                var tieneCiudades = await context.Ciudades
-                    .AnyAsync(c => c.DepartamentoId == departamento.Id);
-
-                if (!tieneCiudades)
-                    context.Departamentos.Remove(departamento);
             }
-
-            var tiposAgenciaSinEspecificar =
-                await context.TiposAgencia
-                    .Where(t => t.Nombre == "Sin especificar")
-                    .ToListAsync();
-
-            foreach (var tipo in tiposAgenciaSinEspecificar)
-            {
-                var utilizado = await context.Agencias
-                    .AnyAsync(a => a.TipoAgenciaId == tipo.Id);
-
-                if (!utilizado)
-                    context.TiposAgencia.Remove(tipo);
-            }
-
-            await context.SaveChangesAsync();
 
             // Aplica la clasificación por ciudad también a las agencias existentes.
             await NormalizarTiposAgenciaAsync(
@@ -477,20 +451,7 @@ namespace InventarioUPS.API.Data
 
             foreach (var agencia in agencias)
             {
-                var ciudad =
-                    agencia.Ciudad?.Nombre?.Trim()
-                    ?? string.Empty;
-
-                var esLocal =
-                    ciudad.Equals(
-                        "San Pedro Sula",
-                        StringComparison.OrdinalIgnoreCase) ||
-                    ciudad.Equals(
-                        "La Ceiba",
-                        StringComparison.OrdinalIgnoreCase) ||
-                    ciudad.Equals(
-                        "Distrito Central",
-                        StringComparison.OrdinalIgnoreCase);
+                var esLocal = agencia.Ciudad?.EsLocal == true;
 
                 var tipoCorrecto =
                     esLocal
@@ -587,6 +548,7 @@ namespace InventarioUPS.API.Data
                 new { Codigo = "CREAR_MANTENIMIENTO", Nombre = "Crear cambio de baterías", Descripcion = "Registro de cambios de baterías." },
                 new { Codigo = "EDITAR_MANTENIMIENTO", Nombre = "Editar cambio de baterías", Descripcion = "Actualización de cambios de baterías." },
                 new { Codigo = "VER_PRESUPUESTO", Nombre = "Ver presupuesto", Descripcion = "Consulta de proyecciones de baterías." },
+                new { Codigo = "GESTIONAR_CATALOGOS", Nombre = "Gestionar catálogos", Descripcion = "Administrar catálogos y consultar su historial de cambios." },
                 new { Codigo = "GESTIONAR_PRESUPUESTO", Nombre = "Gestionar presupuesto", Descripcion = "Configuración de costos y política de reemplazo." },
                 new { Codigo = "GESTIONAR_USUARIOS", Nombre = "Gestionar usuarios", Descripcion = "Administración de usuarios." },
                 new { Codigo = "GESTIONAR_ROLES_PERMISOS", Nombre = "Gestionar roles y permisos", Descripcion = "Administración de roles y permisos." }
@@ -710,6 +672,7 @@ namespace InventarioUPS.API.Data
                             permisos["CREAR_MANTENIMIENTO"].Id,
                             permisos["EDITAR_MANTENIMIENTO"].Id,
                             permisos["VER_PRESUPUESTO"].Id,
+                            permisos["GESTIONAR_CATALOGOS"].Id,
                             permisos["GESTIONAR_PRESUPUESTO"].Id,
                             permisos["GESTIONAR_USUARIOS"].Id
                         });

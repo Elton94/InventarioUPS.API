@@ -4,22 +4,22 @@ export const obtenerCatalogos = async () =>
     (await api.get("/Catalogos/todos"))
         .data;
 
-export const obtenerDepartamentos = async () =>
+export const obtenerDepartamentos = async (actualId) =>
     (
         await api.get(
-            "/Catalogos/departamentos"
+            "/Catalogos/departamentos", { params: { actualId } }
         )
     ).data;
 
 export const obtenerCiudades = async (
-    departamentoId
+    departamentoId, actualId
 ) =>
     (
         await api.get(
             "/Catalogos/ciudades",
             {
                 params: {
-                    departamentoId
+                    departamentoId, actualId
                 }
             }
         )

@@ -69,7 +69,7 @@ export default function NuevaAgenciaModal({
             }
 
             const datos =
-                await obtenerCiudades(id);
+                await obtenerCiudades(id, agencia?.ciudadId);
 
             setCiudades(
                 Array.isArray(datos)
@@ -88,7 +88,7 @@ export default function NuevaAgenciaModal({
 
                 const [deps, tiposData] =
                     await Promise.all([
-                        obtenerDepartamentos(),
+                        obtenerDepartamentos(agencia?.departamentoId),
                         obtenerTiposAgencia()
                     ]);
 
@@ -174,16 +174,7 @@ export default function NuevaAgenciaModal({
 
         if (!ciudad) return;
 
-        const nombre =
-            String(ciudad.nombre || "")
-                .trim()
-                .toLowerCase();
-
-        const local = [
-            "san pedro sula",
-            "la ceiba",
-            "distrito central"
-        ].includes(nombre);
+        const local = ciudad.esLocal === true;
 
         const tipo =
             tipos.find((t) => {
@@ -417,7 +408,7 @@ export default function NuevaAgenciaModal({
                                         key={d.id}
                                         value={d.id}
                                     >
-                                        {d.nombre}
+                                        {d.nombre}{d.activo === false ? " (Inactivo)" : ""}
                                     </MenuItem>
                                 )
                             )}
@@ -455,7 +446,7 @@ export default function NuevaAgenciaModal({
                                         key={c.id}
                                         value={c.id}
                                     >
-                                        {c.nombre}
+                                        {c.nombre}{c.activa === false ? " (Inactiva)" : ""}
                                     </MenuItem>
                                 )
                             )}

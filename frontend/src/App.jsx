@@ -16,6 +16,7 @@ import Mantenimientos
     from "./pages/Mantenimientos";
 import Presupuesto
     from "./pages/Presupuesto";
+import Configuracion from "./pages/Configuracion";
 import Usuarios from "./pages/Usuarios";
 
 import ProtectedRoute
@@ -156,6 +157,8 @@ export default function App() {
                                 element={<Usuarios />}
                             />
                         </Route>
+
+                        <Route element={<ProtectedRoute permiso="GESTIONAR_CATALOGOS" />}><Route path="/configuracion" element={<Configuracion />} /></Route>
 
                         <Route
                             path="/sin-permisos"

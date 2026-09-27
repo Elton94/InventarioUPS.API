@@ -24,7 +24,7 @@ public class ReemplazosController(InventarioUPSDbContext db) : ControllerBase
         var incompletos = 0;
         foreach (var u in equipos)
         {
-            var local = new[] { "San Pedro Sula", "La Ceiba", "Distrito Central" }.Contains(u.Agencia!.Ciudad?.Nombre, StringComparer.OrdinalIgnoreCase);
+            var local = u.Agencia!.Ciudad?.EsLocal == true;
             var meses = local ? politica.MesesReemplazoLocal : politica.MesesReemplazoForanea;
             var baseFecha = u.FechaUltimoCambioBaterias ?? u.FechaInstalacion;
             if (baseFecha == default || baseFecha.Date > hoy || baseFecha.Date < u.FechaInstalacion.Date || meses is < 1 or > 120 || u.CantidadBaterias <= 0) { incompletos++; continue; }

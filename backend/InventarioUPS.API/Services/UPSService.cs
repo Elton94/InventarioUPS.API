@@ -40,6 +40,10 @@ namespace InventarioUPS.API.Services
             await ValidarModeloBateriaAsync(ups.ModeloBateriaId);
             ups.ModeloBateriaBaseId = ups.ModeloBateriaId;
             ups.ModeloBateria = null;
+            await ResolverModeloUPSAsync(ups);
+            ups.Agencia = null;
+            ups.EstadoUPS = null;
+            ups.Mantenimientos = new List<Mantenimiento>();
             ups.Id = 0;
             await _repository.CrearAsync(ups);
         }
@@ -119,12 +123,13 @@ namespace InventarioUPS.API.Services
                     MaxFecha(ups.FechaUltimoCambioBateriasBase, ultima);
             }
 
-            await ValidarModeloBateriaAsync(ups.ModeloBateriaId);
+            await ValidarModeloBateriaAsync(ups.ModeloBateriaId, existente.ModeloBateriaId);
             var tieneModeloHistorico = await _context.Mantenimientos.AnyAsync(m => m.UPSId == ups.Id &&
                 m.IncluyeCambioBaterias && m.ModeloBateriaId != null && m.EstadoMantenimiento!.Nombre == "Completado");
             if (tieneModeloHistorico && ups.ModeloBateriaId != existente.ModeloBateriaId)
                 throw new InvalidOperationException("Registre el nuevo modelo desde Cambios de baterías para conservar el historial.");
             ups.ModeloBateriaBaseId = tieneModeloHistorico ? existente.ModeloBateriaBaseId : ups.ModeloBateriaId;
+            await ResolverModeloUPSAsync(ups, existente);
             await _repository.ActualizarAsync(ups);
         }
 
@@ -163,9 +168,21 @@ namespace InventarioUPS.API.Services
             await _repository.CambiarEstadoAsync(id, destino.Nombre);
         }
 
-        private async Task ValidarModeloBateriaAsync(int? id)
+        private async Task ResolverModeloUPSAsync(UPS ups, UPS? anterior = null)
         {
-            if (!id.HasValue || !await _context.ModelosBateria.AnyAsync(x => x.Id == id))
+            var modelo = await _context.ModelosUPS.Include(x => x.MarcaUPS).FirstOrDefaultAsync(x =>
+                x.Nombre == ups.Modelo && x.MarcaUPS!.Nombre == ups.Marca);
+            if (modelo == null || ((!modelo.Activo || modelo.MarcaUPS?.Activo != true) && modelo.Id != anterior?.ModeloUPSId))
+                throw new ArgumentException("Seleccione una marca y modelo de UPS activos del catálogo. Solicite las nuevas opciones al administrador.");
+            ups.ModeloUPSId = modelo.Id;
+            ups.ModeloUPS = null;
+            ups.Marca = modelo.MarcaUPS!.Nombre;
+            ups.Modelo = modelo.Nombre;
+        }
+
+        private async Task ValidarModeloBateriaAsync(int? id, int? anterior = null)
+        {
+            if (!id.HasValue || !await _context.ModelosBateria.AnyAsync(x => x.Id == id && (id == anterior || (x.Activo && x.TipoBateria!.Activo))))
                 throw new ArgumentException("Seleccione un tipo y modelo de batería válidos.");
         }
 

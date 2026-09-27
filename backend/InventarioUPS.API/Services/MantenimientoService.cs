@@ -79,7 +79,7 @@ namespace InventarioUPS.API.Services
             if (mantenimiento.FechaMantenimiento.Date < ups.FechaInstalacion.Date)
                 throw new ArgumentException("El cambio no puede ser anterior a la instalación del UPS.");
             PrepararBaterias(mantenimiento, ups);
-            if (!mantenimiento.ModeloBateriaId.HasValue || !await _context.ModelosBateria.AnyAsync(b => b.Id == mantenimiento.ModeloBateriaId))
+            if (!mantenimiento.ModeloBateriaId.HasValue || !await _context.ModelosBateria.AnyAsync(b => b.Id == mantenimiento.ModeloBateriaId && b.Activo && b.TipoBateria!.Activo))
                 throw new ArgumentException("Seleccione el tipo y modelo de las baterías del cambio.");
             LimpiarTextos(mantenimiento);
 
@@ -121,7 +121,10 @@ namespace InventarioUPS.API.Services
             if (mantenimiento.FechaMantenimiento.Date < ups.FechaInstalacion.Date)
                 throw new ArgumentException("El cambio no puede ser anterior a la instalación del UPS.");
             PrepararBaterias(mantenimiento, ups);
-            if (!mantenimiento.ModeloBateriaId.HasValue || !await _context.ModelosBateria.AnyAsync(b => b.Id == mantenimiento.ModeloBateriaId))
+            if (!mantenimiento.ModeloBateriaId.HasValue || !await _context.ModelosBateria.AnyAsync(b => b.Id == mantenimiento.ModeloBateriaId &&
+                    ((b.Activo && b.TipoBateria!.Activo) || (existente.ModeloBateriaId == b.Id &&
+                    (estado.Nombre == "Cancelado" || estado.Nombre == "Programado" ||
+                    (existente.EstadoMantenimiento!.Nombre == "Completado" && estado.Nombre == "Completado"))))))
                 throw new ArgumentException("Seleccione el tipo y modelo de las baterías del cambio.");
             if (EsEstado(existente.EstadoMantenimiento?.Nombre, "Completado") &&
                 EsEstado(estado.Nombre, "Completado"))

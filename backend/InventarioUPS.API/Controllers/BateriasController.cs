@@ -1,6 +1,8 @@
 using InventarioUPS.API.Authorization;
 using InventarioUPS.API.Data;
 using InventarioUPS.API.Models;
+using InventarioUPS.API.Services;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,30 +14,29 @@ namespace InventarioUPS.API.Controllers;
 public class BateriasController(InventarioUPSDbContext db) : ControllerBase
 {
     [HttpGet]
-    [PermisoAuthorize("VER_UPS", "CREAR_UPS", "EDITAR_UPS", "VER_MANTENIMIENTO", "CREAR_MANTENIMIENTO", "EDITAR_MANTENIMIENTO", "VER_PRESUPUESTO")]
+    [PermisoAuthorize("VER_UPS", "CREAR_UPS", "EDITAR_UPS", "VER_MANTENIMIENTO", "CREAR_MANTENIMIENTO", "EDITAR_MANTENIMIENTO", "VER_PRESUPUESTO", "GESTIONAR_CATALOGOS")]
     public async Task<IActionResult> Catalogo() => Ok(new {
         tipos = await db.TiposBateria.AsNoTracking().OrderBy(x => x.Nombre).ToListAsync(),
         modelos = await db.ModelosBateria.AsNoTracking().OrderBy(x => x.Nombre)
-            .Select(x => new { x.Id, x.Nombre, x.TipoBateriaId, Tipo = x.TipoBateria!.Nombre }).ToListAsync()
+            .Select(x => new { x.Id, x.Nombre, x.TipoBateriaId, Tipo = x.TipoBateria!.Nombre, Activo = x.Activo && x.TipoBateria.Activo }).ToListAsync()
     });
 
     [HttpPost("modelos")]
-    [PermisoAuthorize("CREAR_UPS", "EDITAR_UPS", "CREAR_MANTENIMIENTO", "EDITAR_MANTENIMIENTO")]
+    [PermisoAuthorize("GESTIONAR_CATALOGOS")]
     public async Task<IActionResult> CrearModelo(ModeloRequest request)
     {
-        var nombre = request.Nombre?.Trim() ?? "";
-        if (nombre.Length is < 1 or > 150 || !await db.TiposBateria.AnyAsync(x => x.Id == request.TipoBateriaId))
-            return BadRequest(new { mensaje = "Seleccione un tipo y escriba un modelo de 1 a 150 caracteres." });
-        var existente = await db.ModelosBateria.FirstOrDefaultAsync(x => x.TipoBateriaId == request.TipoBateriaId && x.Nombre == nombre);
-        if (existente != null) return Ok(new { existente.Id, existente.Nombre, existente.TipoBateriaId });
-        var modelo = new ModeloBateria { Nombre = nombre, TipoBateriaId = request.TipoBateriaId };
-        db.ModelosBateria.Add(modelo);
-        try { await db.SaveChangesAsync(); }
-        catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2601 or 2627 })
-        {
-            return Conflict(new { mensaje = "El modelo ya fue registrado. Actualice el catálogo y selecciónelo." });
+        try {
+            var id = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var modelo = await new CatalogoAdminService(db).GuardarAsync("modelos-bateria", 0,
+                new GuardarCatalogo(request.Nombre, true, request.TipoBateriaId), id, User.Identity?.Name ?? $"Usuario {id}");
+            return Ok(new { modelo.Id, modelo.Nombre, TipoBateriaId = modelo.PadreId, Activo = true });
         }
-        return Ok(new { modelo.Id, modelo.Nombre, modelo.TipoBateriaId });
+        catch (ArgumentException ex) { return BadRequest(new { mensaje = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { mensaje = ex.Message }); }
+        catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2601 or 2627 or 1205 })
+        { return Conflict(new { mensaje = "El catálogo cambió. Actualícelo e intente nuevamente." }); }
+        catch (SqlException ex) when (ex.Number == 1205)
+        { return Conflict(new { mensaje = "El catálogo se está actualizando en otra sesión. Recargue e intente nuevamente." }); }
     }
 
     [HttpGet("costos/{anio:int}")]

@@ -36,6 +36,9 @@ namespace InventarioUPS.API.Services
                 .AnyAsync(a => a.Codigo.ToUpper() == codigo))
                 throw new InvalidOperationException("Ya existe una agencia con ese código.");
 
+            agencia.Ciudad = null;
+            agencia.TipoAgencia = null;
+            agencia.UPSs = new List<UPS>();
             agencia.Activa = true;
             await _repository.CrearAsync(agencia);
         }
@@ -53,7 +56,7 @@ namespace InventarioUPS.API.Services
             if (existente == null)
                 throw new InvalidOperationException("La agencia no existe.");
 
-            var ciudad = await ObtenerCiudadActivaAsync(agencia.CiudadId);
+            var ciudad = await ObtenerCiudadActivaAsync(agencia.CiudadId, existente.Activa || !agencia.Activa ? existente.CiudadId : null);
             agencia.TipoAgenciaId = await ObtenerTipoAgenciaSegunCiudadAsync(ciudad);
 
             var codigo = agencia.Codigo.ToUpper();
@@ -84,6 +87,7 @@ namespace InventarioUPS.API.Services
                 throw new InvalidOperationException(
                     activa ? "La agencia ya está activa." : "La agencia ya está desactivada.");
 
+            if (activa) await ObtenerCiudadActivaAsync(agencia.CiudadId);
             if (!activa)
                 await PrepararDesactivacionAgenciaAsync(id);
 
@@ -92,15 +96,15 @@ namespace InventarioUPS.API.Services
             await _context.SaveChangesAsync();
         }
 
-        private async Task<Ciudad> ObtenerCiudadActivaAsync(int ciudadId)
+        private async Task<Ciudad> ObtenerCiudadActivaAsync(int ciudadId, int? anterior = null)
         {
             var ciudad = await _context.Ciudades.AsNoTracking()
-                .FirstOrDefaultAsync(c => c.Id == ciudadId);
+                .Include(c => c.Departamento).FirstOrDefaultAsync(c => c.Id == ciudadId);
 
             if (ciudad == null)
                 throw new ArgumentException("La ciudad seleccionada no existe.");
 
-            if (!ciudad.Activa)
+            if (ciudadId != anterior && (!ciudad.Activa || ciudad.Departamento?.Activo != true))
                 throw new InvalidOperationException("La ciudad seleccionada está inactiva.");
 
             return ciudad;
@@ -108,11 +112,7 @@ namespace InventarioUPS.API.Services
 
         private async Task<int> ObtenerTipoAgenciaSegunCiudadAsync(Ciudad ciudad)
         {
-            var nombre = ciudad.Nombre.Trim();
-            var esLocal =
-                nombre.Equals("San Pedro Sula", StringComparison.OrdinalIgnoreCase) ||
-                nombre.Equals("La Ceiba", StringComparison.OrdinalIgnoreCase) ||
-                nombre.Equals("Distrito Central", StringComparison.OrdinalIgnoreCase);
+            var esLocal = ciudad.EsLocal;
 
             var tipos = await _context.TiposAgencia.AsNoTracking()
                 .Where(t => t.Activo)

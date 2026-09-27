@@ -60,6 +60,7 @@ namespace InventarioUPS.API.Repositories
             existente.NumeroInventario = ups.NumeroInventario;
             existente.Marca = ups.Marca;
             existente.Modelo = ups.Modelo;
+            existente.ModeloUPSId = ups.ModeloUPSId;
             existente.NumeroSerie = ups.NumeroSerie;
             existente.CapacidadVA = ups.CapacidadVA;
             existente.AgenciaId = ups.AgenciaId;

@@ -17,5 +17,6 @@
     <None Include="../Database/20260923_CambiosBaterias.sql" Link="CambiosBaterias.sql" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../Database/20260922_UPSIdInterno.sql" Link="MigracionUPS.sql" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../Database/20260927_CatalogoBaterias.sql" Link="CatalogoBaterias.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../Database/20260927_AdministracionCatalogos.sql" Link="AdministracionCatalogos.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

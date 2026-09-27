@@ -25,6 +25,13 @@
 - Los cambios programados no sustituyen el modelo instalado ni su costo proyectado: el presupuesto parte de la ficha vigente hasta completar el trabajo.
 - No se presume inflación, expansión de inventario ni gastos de transporte o mano de obra. No es una predicción estadística ni un presupuesto aprobado e inmutable.
 
+## Catálogos y clasificación
+
+La condición Local/Foránea se obtiene de la clasificación persistente de la ciudad.
+Editar su nombre no cambia el calendario. Las opciones inactivas se conservan en los
+registros existentes y en las proyecciones; su desactivación impide nuevas selecciones,
+pero no retira equipos del inventario ni elimina necesidades de reemplazo.
+
 ## Operación
 
 - Solo Completado modifica la fecha del último cambio. Cancelar o reprogramar un completado restaura la fecha resultante de los otros cambios y la fecha base.
@@ -36,7 +43,7 @@
 ## Aplicación local
 
 Esta revisión incorpora el catálogo de baterías. Aplique primero
-`20260927_CatalogoBaterias.sql`, siguiendo el README de esta carpeta, y reinicie
+`20260927_CatalogoBaterias.sql` y `20260927_AdministracionCatalogos.sql`, siguiendo el README de esta carpeta, y reinicie
 la API y el frontend. Las pruebas usan SQLite y no sustituyen la verificación
 con SQL Server local. Crear y editar cambios utiliza una transacción serializable
 para que la validación y el guardado sean atómicos. Un conflicto de bloqueo de SQL

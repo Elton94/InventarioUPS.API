@@ -18,17 +18,17 @@ namespace InventarioUPS.API.Controllers
         }
 
         [HttpGet("departamentos")]
-        public async Task<IActionResult> ObtenerDepartamentos() =>
+        public async Task<IActionResult> ObtenerDepartamentos([FromQuery] int? actualId) =>
             Ok(await _context.Departamentos
-                .Where(d => d.Activo)
+                .Where(d => d.Activo || d.Id == actualId)
                 .OrderBy(d => d.Nombre)
-                .Select(d => new { id = d.Id, nombre = d.Nombre })
+                .Select(d => new { id = d.Id, nombre = d.Nombre, activo = d.Activo })
                 .ToListAsync());
 
         [HttpGet("ciudades")]
-        public async Task<IActionResult> ObtenerCiudades([FromQuery] int? departamentoId)
+        public async Task<IActionResult> ObtenerCiudades([FromQuery] int? departamentoId, [FromQuery] int? actualId)
         {
-            var consulta = _context.Ciudades.Where(c => c.Activa);
+            var consulta = _context.Ciudades.Where(c => (c.Activa && c.Departamento!.Activo) || c.Id == actualId);
 
             if (departamentoId.HasValue && departamentoId.Value > 0)
                 consulta = consulta.Where(c => c.DepartamentoId == departamentoId.Value);
@@ -39,7 +39,7 @@ namespace InventarioUPS.API.Controllers
                 {
                     id = c.Id,
                     nombre = c.Nombre,
-                    departamentoId = c.DepartamentoId
+                    activa = c.Activa && c.Departamento!.Activo, esLocal = c.EsLocal, departamentoId = c.DepartamentoId
                 })
                 .ToListAsync());
         }
@@ -68,40 +68,16 @@ namespace InventarioUPS.API.Controllers
                 .Select(e => new { id = e.Id, nombre = e.Nombre })
                 .ToListAsync());
 
-        // El catálogo se obtiene de las marcas y modelos de los UPS registrados.
         [HttpGet("marcas-ups")]
-        public async Task<IActionResult> ObtenerMarcasUPS()
-        {
-            var marcas = await _context.UPSs
-                .AsNoTracking()
-                .Where(u => u.Marca != "")
-                .Select(u => u.Marca)
-                .Distinct()
-                .OrderBy(x => x)
-                .ToListAsync();
-
-            return Ok(marcas);
-        }
+        public async Task<IActionResult> ObtenerMarcasUPS() => Ok(await _context.MarcasUPS.AsNoTracking()
+            .Where(x => x.Activo).OrderBy(x => x.Nombre).Select(x => x.Nombre).ToListAsync());
 
         [HttpGet("modelos-ups")]
         public async Task<IActionResult> ObtenerModelosUPS([FromQuery] string? marca)
         {
-            var consulta = _context.UPSs.AsNoTracking().AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(marca))
-            {
-                var valor = marca.Trim().ToUpper();
-                consulta = consulta.Where(u => u.Marca.ToUpper() == valor);
-            }
-
-            var modelos = await consulta
-                .Where(u => u.Modelo != "")
-                .Select(u => u.Modelo)
-                .Distinct()
-                .OrderBy(x => x)
-                .ToListAsync();
-
-            return Ok(modelos);
+            var consulta = _context.ModelosUPS.AsNoTracking().Where(x => x.Activo && x.MarcaUPS!.Activo);
+            if (!string.IsNullOrWhiteSpace(marca)) consulta = consulta.Where(x => x.MarcaUPS!.Nombre == marca.Trim());
+            return Ok(await consulta.OrderBy(x => x.Nombre).Select(x => x.Nombre).ToListAsync());
         }
 
         [HttpGet("todos")]
@@ -110,13 +86,13 @@ namespace InventarioUPS.API.Controllers
             var departamentos = await _context.Departamentos
                 .Where(d => d.Activo)
                 .OrderBy(d => d.Nombre)
-                .Select(d => new { id = d.Id, nombre = d.Nombre })
+                .Select(d => new { id = d.Id, nombre = d.Nombre, activo = d.Activo })
                 .ToListAsync();
 
             var ciudades = await _context.Ciudades
-                .Where(c => c.Activa)
+                .Where(c => c.Activa && c.Departamento!.Activo)
                 .OrderBy(c => c.Nombre)
-                .Select(c => new { id = c.Id, nombre = c.Nombre, departamentoId = c.DepartamentoId })
+                .Select(c => new { id = c.Id, nombre = c.Nombre, activa = c.Activa && c.Departamento!.Activo, esLocal = c.EsLocal, departamentoId = c.DepartamentoId })
                 .ToListAsync();
 
             var tiposAgencia = await _context.TiposAgencia

@@ -1,3 +1,45 @@
+# Administración de catálogos
+
+Esta actualización agrega **Configuración**, con acceso mediante `GESTIONAR_CATALOGOS`.
+
+## Aplicar sobre la versión con catálogo de baterías
+
+1. Detenga la API y respalde la base de datos.
+2. Descargue la rama `desarrollo`.
+3. Ejecute en SSMS `backend/Database/20260927_AdministracionCatalogos.sql`.
+   Requiere haber ejecutado `20260927_CatalogoBaterias.sql`. No use migraciones EF para esta actualización.
+4. Reinicie API y frontend y cierre/inicie sesión para renovar los permisos.
+5. Entre a **Configuración**. El permiso se asigna inicialmente a los roles
+   Administrador y Control Total. Otros roles pueden recibirlo desde Usuarios y Roles.
+
+## Reglas
+
+- Se administran departamentos, ciudades, tipos/modelos de batería y marcas/modelos de UPS.
+- Se agregan, corrigen, desactivan y reactivan opciones. No hay eliminación física.
+- Los nombres son únicos por catálogo o por su clasificación superior, incluyendo opciones inactivas.
+- Desactivar una opción superior impide nuevas selecciones de sus dependientes, sin borrar registros ni desactivar agencias/equipos.
+- Los registros existentes pueden conservar opciones inactivas al editar otros campos.
+- Un modelo de batería utilizado no puede cambiar de tipo; un modelo de UPS utilizado no puede cambiar de marca. Tampoco se traslada a otro departamento una ciudad utilizada o clasificada como local.
+- Corregir nombres actualiza su presentación en los registros relacionados; para cambiar el significado se crea otra opción.
+- Las tres ciudades locales se identifican mediante una clasificación persistente, no por su texto. La migración inicializa esa clasificación una sola vez. Renombrarlas no cambia las políticas; nuevas ciudades son foráneas.
+- Estados operativos y tipos de agencia son de solo lectura; sus nombres funcionales permanecen protegidos.
+- Roles/permisos y políticas/costos mantienen sus módulos y permisos específicos; gestionar catálogos no concede acceso adicional a esos módulos.
+- Solo quienes tengan GESTIONAR_CATALOGOS pueden agregar modelos de batería desde formularios. Las marcas y modelos de UPS se seleccionan desde el catálogo.
+- El historial registra usuario, fecha UTC, acción y valores anteriores/nuevos, dentro de la misma transacción. Las ediciones sobre una versión desactualizada se rechazan.
+- Al reiniciar no se recrean ciudades renombradas ni se reactivan catálogos desactivados.
+
+El script conserva equipos y cambios, incorpora las marcas/modelos de UPS existentes,
+y agrega referencias y auditoría. Si encuentra nombres preexistentes duplicados al
+crear índices, revierte la operación para que se corrijan; no fusiona datos.
+La clasificación inicial depende de los nombres de las tres ciudades antes de la
+actualización. No modifica clasificaciones existentes al ejecutar el script de nuevo.
+
+Pruebas: compilación C# y frontend, servicios y permisos con SQLite, validaciones de
+catálogos e historial, y análisis sintáctico T-SQL. La ejecución del script en SQL
+Server y la revisión visual requieren la instalación local.
+
+---
+
 # Actualización del 27 de septiembre: catálogo de baterías e Inicio
 
 Si la aplicación ya tiene los cambios anteriores de `desarrollo`:

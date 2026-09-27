@@ -446,16 +446,15 @@ export default function NuevoUPSModal({
                     />
 
                     <Autocomplete
-                        freeSolo
-                        options={marcas}
+                        options={[...new Set([...marcas, ...(ups?.marca ? [ups.marca] : [])])]}
                         value={formulario.marca}
-                        onInputChange={(
+                        onChange={(
                             _,
                             valor
                         ) => {
                             cambiar(
                                 "marca",
-                                valor
+                                valor || ""
                             );
                             cambiar(
                                 "modelo",
@@ -470,22 +469,21 @@ export default function NuevoUPSModal({
                                 {...params}
                                 required
                                 label="Marca"
-                                helperText="Seleccione o escriba una marca."
+                                helperText="Seleccione una marca. Las opciones nuevas se agregan desde Configuración."
                             />
                         )}
                     />
 
                     <Autocomplete
-                        freeSolo
-                        options={modelos}
+                        options={[...new Set([...modelos, ...(ups?.modelo && formulario.marca === ups.marca ? [ups.modelo] : [])])]}
                         value={formulario.modelo}
-                        onInputChange={(
+                        onChange={(
                             _,
                             valor
                         ) =>
                             cambiar(
                                 "modelo",
-                                valor
+                                valor || ""
                             )
                         }
                         renderInput={(params) => (
@@ -493,7 +491,7 @@ export default function NuevoUPSModal({
                                 {...params}
                                 required
                                 label="Modelo"
-                                helperText="Seleccione o escriba un modelo."
+                                helperText="Seleccione un modelo de la marca elegida."
                             />
                         )}
                     />

@@ -17,6 +17,7 @@ IF OBJECT_ID('dbo.CostosModeloBateria', 'U') IS NULL
         Anio int NOT NULL CHECK(Anio BETWEEN 2020 AND 2100),
         CostoUnitario decimal(18,2) NOT NULL CHECK(CostoUnitario > 0),
         CONSTRAINT UQ_CostosModeloBateria_Anio_Modelo UNIQUE(Anio, ModeloBateriaId));
+IF NOT EXISTS (SELECT 1 FROM dbo.TiposBateria)
 INSERT INTO dbo.TiposBateria(Nombre)
 SELECT v.Nombre FROM (VALUES (N'Plomo-ácido VRLA AGM'), (N'Plomo-ácido gel'),
     (N'Plomo-ácido inundada'), (N'Ion de litio'), (N'Litio ferrofosfato (LiFePO4)'),

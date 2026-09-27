@@ -129,7 +129,7 @@ namespace InventarioUPS.API.Services
             var tieneBateriaHistorica = await _context.Mantenimientos.AnyAsync(m => m.UPSId == ups.Id &&
                 m.IncluyeCambioBaterias && m.TipoBateriaId != null && m.EstadoMantenimiento!.Nombre == "Completado");
             if (tieneBateriaHistorica && ((ups.VoltajeBateria != existente.VoltajeBateria || ups.CapacidadBateriaAh != existente.CapacidadBateriaAh) || ups.TipoBateriaId != existente.TipoBateriaId))
-                throw new InvalidOperationException("Registre la nueva batería desde Cambios de baterías para conservar el historial.");
+                throw new InvalidOperationException("Este UPS tiene un cambio de baterías completado. Para conservar el historial, el tipo, el voltaje y la capacidad (Ah) no se pueden modificar desde Editar UPS. El tipo seleccionado puede ser válido; esta restricción no fija su voltaje ni su capacidad. Si instaló otras baterías, registre un nuevo cambio en Cambios de batería. Si necesita corregir datos del cambio anterior, edite ese registro con los permisos correspondientes.");
             ups.TipoBateriaBaseId = tieneBateriaHistorica ? existente.TipoBateriaBaseId : ups.TipoBateriaId;
             ups.VoltajeBateriaBase = tieneBateriaHistorica ? existente.VoltajeBateriaBase : ups.VoltajeBateria;
             ups.CapacidadBateriaAhBase = tieneBateriaHistorica ? existente.CapacidadBateriaAhBase : ups.CapacidadBateriaAh;

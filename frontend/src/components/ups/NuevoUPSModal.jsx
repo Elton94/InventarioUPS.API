@@ -30,6 +30,7 @@ import {
 } from "../../services/catalogosService";
 
 import SelectorBateria from "../baterias/SelectorBateria";
+import AccesoCatalogo from "../catalogos/AccesoCatalogo";
 
 const inicial = {
     tipoBateriaId: null,
@@ -189,6 +190,27 @@ export default function NuevoUPSModal({
                 [campo]: valor
             })
         );
+    };
+
+    const actualizarCatalogos = async () => {
+        setCargando(true);
+        try {
+            const [agenciasData, marcasData, modelosData] = await Promise.all([
+                obtenerAgencias(), obtenerMarcasUPS(), obtenerModelosUPS(formulario.marca)
+            ]);
+            const activas = (agenciasData || []).filter(a => a.activa);
+            setAgencias(activas);
+            setMarcas(marcasData || []);
+            setModelos(modelosData || []);
+            setFormulario(actual => ({
+                ...actual,
+                agenciaId: activas.some(a => Number(a.id) === Number(actual.agenciaId)) ? actual.agenciaId : '',
+                marca: (marcasData || []).includes(actual.marca) ? actual.marca : '',
+                modelo: (marcasData || []).includes(actual.marca) && (modelosData || []).includes(actual.modelo) ? actual.modelo : ''
+            }));
+        } catch {
+            setError('No fue posible actualizar las listas. Abra nuevamente el catálogo y regrese para reintentar.');
+        } finally { setCargando(false); }
     };
 
     const guardar = async () => {
@@ -451,6 +473,7 @@ export default function NuevoUPSModal({
 
                     <Autocomplete
                         options={[...new Set([...marcas, ...(ups?.marca ? [ups.marca] : [])])]}
+                        disabled={cargando || guardando}
                         value={formulario.marca}
                         onChange={(
                             _,
@@ -473,13 +496,16 @@ export default function NuevoUPSModal({
                                 {...params}
                                 required
                                 label="Marca"
-                                helperText="Seleccione una marca. Las opciones nuevas se agregan desde Configuración."
+                                helperText="Seleccione una marca."
                             />
                         )}
                     />
 
+                    <AccesoCatalogo href="/configuracion?catalogo=marcas-ups" disabled={!open || cargando || guardando} onRegresar={actualizarCatalogos}>Crear o editar marcas</AccesoCatalogo>
+
                     <Autocomplete
                         options={[...new Set([...modelos, ...(ups?.modelo && formulario.marca === ups.marca ? [ups.modelo] : [])])]}
+                        disabled={cargando || guardando}
                         value={formulario.modelo}
                         onChange={(
                             _,
@@ -500,6 +526,8 @@ export default function NuevoUPSModal({
                         )}
                     />
 
+                    <AccesoCatalogo href="/configuracion?catalogo=modelos-ups" disabled={!open || cargando || guardando} onRegresar={actualizarCatalogos}>Crear o editar modelos</AccesoCatalogo>
+
                     <TextField
                         required
                         type="number"
@@ -517,6 +545,7 @@ export default function NuevoUPSModal({
 
                     <Autocomplete
                         options={agencias}
+                        disabled={cargando || guardando}
                         value={
                             agenciaSeleccionada
                         }
@@ -556,6 +585,8 @@ export default function NuevoUPSModal({
                             />
                         )}
                     />
+
+                    <AccesoCatalogo href="/agencias" permisos={['VER_AGENCIAS']} alguno={['CREAR_AGENCIAS', 'EDITAR_AGENCIAS']} disabled={!open || cargando || guardando} onRegresar={actualizarCatalogos}>Crear o editar agencias</AccesoCatalogo>
 
                     <TextField
                         required
@@ -651,6 +682,7 @@ export default function NuevoUPSModal({
                             )
                         )}
                     </TextField>
+                    <AccesoCatalogo href="/configuracion?catalogo=estados-ups" disabled={!open || cargando || guardando}>Consultar estados protegidos</AccesoCatalogo>
                 </Box>
             </DialogContent>
 

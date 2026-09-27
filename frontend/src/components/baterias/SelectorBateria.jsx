@@ -1,9 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Alert, Box, MenuItem, TextField } from '@mui/material';
 import { obtenerBaterias } from '../../services/bateriasService';
+import AccesoCatalogo from '../catalogos/AccesoCatalogo';
 
 export default function SelectorBateria({ tipo, voltaje, capacidad, onChange, disabled = false }) {
     const [tipos, setTipos] = useState([]), [error, setError] = useState(''), [cargando, setCargando] = useState(true);
+    const actualizarTipos = async () => {
+        setCargando(true);
+        try {
+            const data = await obtenerBaterias();
+            setTipos(data.tipos);
+            setError('');
+            if (tipo && !data.tipos.some(t => t.id === Number(tipo) && t.activo !== false)) onChange('tipoBateriaId', null);
+        } catch {
+            setError('No se pudo actualizar la lista de tipos. Vuelva a abrir el catálogo e intente regresar.');
+        } finally { setCargando(false); }
+    };
     useEffect(() => {
         let vigente = true;
         obtenerBaterias().then(data => { if (vigente) setTipos(data.tipos); })
@@ -13,10 +25,13 @@ export default function SelectorBateria({ tipo, voltaje, capacidad, onChange, di
     }, []);
     return <Box sx={{ display: 'grid', gap: 2, gridColumn: '1 / -1', gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr 1fr' } }}>
         {error && <Alert sx={{ gridColumn: '1 / -1' }} severity="error">{error}</Alert>}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 0 }}>
         <TextField select required label="Tipo de batería" value={tipos.some(t => t.id === Number(tipo)) ? tipo : ''} disabled={disabled || cargando}
             onChange={e => onChange('tipoBateriaId', Number(e.target.value))}>
             {tipos.filter(t => t.activo !== false || t.id === Number(tipo)).map(t => <MenuItem key={t.id} value={t.id}>{t.nombre}{t.activo === false ? ' (Inactivo)' : ''}</MenuItem>)}
         </TextField>
+        <AccesoCatalogo href="/configuracion?catalogo=tipos-bateria" disabled={disabled || cargando} onRegresar={actualizarTipos}>Crear o editar tipos</AccesoCatalogo>
+        </Box>
         <TextField required type="number" label="Voltaje (V)" value={voltaje ?? ''} disabled={disabled}
             helperText="Por batería" onChange={e => onChange('voltajeBateria', e.target.value)} slotProps={{ htmlInput: { min: 0.001, max: 999999.999, step: 0.001 } }} />
         <TextField required type="number" label="Capacidad (Ah)" value={capacidad ?? ''} disabled={disabled}

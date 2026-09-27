@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import api from '../services/api';
 import Usuarios from './Usuarios';
@@ -21,7 +22,12 @@ function detalleHistorial(valor) {
     catch { return valor; }
 }
 export default function Configuracion() {
-    const [catalogo, setCatalogo] = useState('departamentos'), [filas, setFilas] = useState([]), [padres, setPadres] = useState([]);
+    const [parametros, setParametros] = useSearchParams();
+    const puedeUsuarios = tienePermiso('GESTIONAR_USUARIOS') && ['administrador', 'control total'].includes((localStorage.getItem('rol') || '').trim().toLowerCase());
+    const solicitado = parametros.get('catalogo');
+    const catalogo = catalogos.some(c => c.id === solicitado && (c.id !== 'usuarios' || puedeUsuarios)) ? solicitado : 'departamentos';
+    const setCatalogo = valor => setParametros({ catalogo: valor });
+    const [filas, setFilas] = useState([]), [padres, setPadres] = useState([]);
     const [busqueda, setBusqueda] = useState(''), [estado, setEstado] = useState('todos'), [cargando, setCargando] = useState(true);
     const [error, setError] = useState(''), [mensaje, setMensaje] = useState(''), [version, setVersion] = useState(0);
     const [edicion, setEdicion] = useState(null), [form, setForm] = useState({ nombre: '', activo: true, padreId: '' });

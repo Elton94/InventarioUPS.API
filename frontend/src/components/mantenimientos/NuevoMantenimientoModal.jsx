@@ -11,6 +11,7 @@ import NuevoUsuarioModal from "../usuarios/NuevoUsuarioModal";
 import { obtenerEstadosMantenimiento } from "../../services/catalogosService";
 
 import SelectorBateria from "../baterias/SelectorBateria";
+import AccesoCatalogo from "../catalogos/AccesoCatalogo";
 
 const inicial = {
     tipoBateriaId: null,
@@ -82,6 +83,35 @@ export default function NuevoMantenimientoModal({ open, onClose, onGuardado, man
     }, [open, mantenimientoEditar]);
 
     const cambiar = (campo, valor) => setFormulario(actual => ({ ...actual, [campo]: valor }));
+    const actualizarEquipos = async () => {
+        setCargando(true);
+        try {
+            const datos = (await obtenerUPS() || []).filter(u => String(u.estado || '').toLowerCase() !== 'de baja');
+            setEquipos(datos);
+            if (upsSeleccionado) {
+                const actualizado = datos.find(u => Number(u.id) === Number(upsSeleccionado.id)) || null;
+                setUpsSeleccionado(actualizado);
+                if (actualizado) setFormulario(actual => {
+                    const cambios = {};
+                    for (const campo of ['tipoBateriaId', 'voltajeBateria', 'capacidadBateriaAh']) {
+                        if (String(actual[campo] ?? '') === String(upsSeleccionado[campo] ?? '')) cambios[campo] = actualizado[campo] ?? (campo === 'tipoBateriaId' ? null : '');
+                    }
+                    return { ...actual, ...cambios };
+                });
+                if (!actualizado) setError('El UPS seleccionado ya no está disponible. Seleccione otro equipo.');
+            }
+        } catch { setError('No se pudo actualizar la lista de UPS. Abra nuevamente el listado y regrese para reintentar.'); }
+        finally { setCargando(false); }
+    };
+    const actualizarResponsables = async () => {
+        setCargando(true);
+        try {
+            const datos = await cargarResponsables();
+            setResponsables(datos);
+            if (!datos.some(r => Number(r.id) === Number(formulario.responsableUsuarioId) && r.activo !== false)) cambiar('responsableUsuarioId', null);
+        } catch { setError('No se pudo actualizar la lista de responsables. Abra nuevamente Usuarios y regrese para reintentar.'); }
+        finally { setCargando(false); }
+    };
     const estadoNombre = estados.find(e => Number(e.id) === Number(formulario.estadoMantenimientoId))?.nombre || "";
     const esProgramado = estadoNombre.toLowerCase() === "programado";
     const conservaCantidad = mantenimientoEditar?.estado?.toLowerCase() === "completado" && estadoNombre.toLowerCase() === "completado";
@@ -136,10 +166,16 @@ export default function NuevoMantenimientoModal({ open, onClose, onGuardado, man
                         onChange={(_, valor) => { setUpsSeleccionado(valor); setFormulario(f => ({ ...f, tipoBateriaId: valor?.tipoBateriaId || null, voltajeBateria: valor?.voltajeBateria ?? "", capacidadBateriaAh: valor?.capacidadBateriaAh ?? "" })); }}
                         renderInput={params => <TextField {...params} required label="UPS" placeholder="Inventario, serie o agencia" />}
                     />
-                    <TextField select required label="Estado" value={estados.some(e => Number(e.id) === Number(formulario.estadoMantenimientoId)) ? formulario.estadoMantenimientoId : ""}
+                    {!mantenimientoEditar && <Box sx={{ gridColumn: '1 / -1', mt: -1 }}>
+                        <AccesoCatalogo href="/ups" permisos={['VER_UPS']} alguno={['CREAR_UPS', 'EDITAR_UPS']} disabled={!open || cargando || guardando} onRegresar={actualizarEquipos}>Crear o editar UPS</AccesoCatalogo>
+                    </Box>}
+                    <Box>
+                    <TextField fullWidth select required label="Estado" value={estados.some(e => Number(e.id) === Number(formulario.estadoMantenimientoId)) ? formulario.estadoMantenimientoId : ""}
                         onChange={e => cambiar("estadoMantenimientoId", e.target.value)}>
                         {estados.map(estado => <MenuItem key={estado.id} value={estado.id}>{estado.nombre}</MenuItem>)}
                     </TextField>
+                    <AccesoCatalogo href="/configuracion?catalogo=estados-mantenimiento" disabled={!open || cargando || guardando}>Consultar estados protegidos</AccesoCatalogo>
+                    </Box>
                     <TextField required type="date" label="Fecha del cambio" value={formulario.fechaMantenimiento}
                         onChange={e => cambiar("fechaMantenimiento", e.target.value)}
                         slotProps={{ inputLabel: { shrink: true }, htmlInput: esProgramado ? {} : { max: fechaActual() } }} />
@@ -151,7 +187,8 @@ export default function NuevoMantenimientoModal({ open, onClose, onGuardado, man
                             isOptionEqualToValue={(a, b) => a.id === b.id}
                             onChange={(_, valor) => cambiar("responsableUsuarioId", valor?.id || null)}
                             renderInput={params => <TextField {...params} required label="Usuario responsable" />} />
-                        {tienePermiso('GESTIONAR_USUARIOS') && <Button disabled={guardando} onClick={() => setNuevoUsuario(true)}>Crear técnico</Button>}
+                        {tienePermiso('GESTIONAR_USUARIOS') && <Button disabled={cargando || guardando} onClick={() => setNuevoUsuario(true)}>Crear técnico</Button>}
+                        <AccesoCatalogo href="/usuarios" permisos={['GESTIONAR_USUARIOS']} disabled={!open || cargando || guardando} onRegresar={actualizarResponsables}>Editar usuarios / técnicos</AccesoCatalogo>
                     </Box> : <TextField label="Usuario responsable" value={localStorage.getItem('nombreCompleto') || localStorage.getItem('nombreUsuario') || ''} disabled helperText="Se registra automáticamente con su usuario." />}
                     <TextField label="Cantidad de baterías" value={cantidadBaterias || ""} disabled
                         helperText={conservaCantidad ? "Cantidad registrada al completar el cambio." : "Se reemplaza el banco completo."} />

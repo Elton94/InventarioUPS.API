@@ -196,6 +196,7 @@ namespace InventarioUPS.API.Controllers
                 .Include(u => u.Agencia!)
                     .ThenInclude(a => a.TipoAgencia!)
                 .Include(u => u.EstadoUPS)
+                .Include(u => u.ModeloBateria)!.ThenInclude(b => b!.TipoBateria)
                 .Where(u => u.Agencia != null && u.Agencia.Activa)
                 .ToListAsync();
 
@@ -213,6 +214,8 @@ namespace InventarioUPS.API.Controllers
                 })
                 .ToListAsync();
 
+            var costosModelo = await _context.CostosModeloBateria.AsNoTracking()
+                .Where(x => x.Anio == anio).ToDictionaryAsync(x => x.ModeloBateriaId, x => x.CostoUnitario);
             var resultado = new PresupuestoResumenDto
             {
                 Anio = anio,
@@ -239,6 +242,8 @@ namespace InventarioUPS.API.Controllers
                     continue;
                 }
 
+                var costoEspecifico = equipo.ModeloBateriaId.HasValue && costosModelo.ContainsKey(equipo.ModeloBateriaId.Value);
+                var costoEquipo = costoEspecifico ? costosModelo[equipo.ModeloBateriaId!.Value] : configuracion.CostoUnitarioBateria;
                 var tipoAgencia = ObtenerTipoAgencia(equipo);
                 var esLocal = tipoAgencia.Equals("Local", StringComparison.OrdinalIgnoreCase);
                 var mesesCiclo =
@@ -258,7 +263,7 @@ namespace InventarioUPS.API.Controllers
                         agencia,
                         tipoAgencia,
                         mesesCiclo,
-                        configuracion.CostoUnitarioBateria);
+                        costoEquipo);
 
                     insuficiente.InformacionSuficiente = false;
                     insuficiente.Observacion =
@@ -297,17 +302,18 @@ namespace InventarioUPS.API.Controllers
                     agencia,
                     tipoAgencia,
                     mesesCiclo,
-                    configuracion.CostoUnitarioBateria);
+                    costoEquipo);
 
+                detalle.UsaCostoGeneral = !costoEspecifico;
                 detalle.FechasReemplazo = calendario.Fechas;
                 detalle.FechaVencimientoPendiente = calendario.VencimientoPendiente;
                 detalle.FechaProyectadaReemplazo = incluirPendiente
                     ? calendario.VencimientoPendiente : calendario.Fechas.First();
                 detalle.CantidadCambios = cantidadCambios;
                 detalle.BateriasProyectadas = (long)equipo.CantidadBaterias * cantidadCambios;
-                detalle.CostoEstimado = detalle.BateriasProyectadas * configuracion.CostoUnitarioBateria;
+                detalle.CostoEstimado = detalle.BateriasProyectadas * costoEquipo;
                 detalle.CostoPendiente = incluirPendiente
-                    ? equipo.CantidadBaterias * configuracion.CostoUnitarioBateria : 0;
+                    ? equipo.CantidadBaterias * costoEquipo : 0;
                 detalle.InformacionSuficiente = true;
                 detalle.EstaVencido = incluirPendiente;
                 detalle.ReemplazoAnteriorPendiente = calendario.VencimientoPendiente.HasValue;
@@ -386,6 +392,9 @@ namespace InventarioUPS.API.Controllers
             return new PresupuestoUpsDetalleDto
             {
                 UPSId = equipo.Id,
+                ModeloBateriaId = equipo.ModeloBateriaId,
+                ModeloBateria = equipo.ModeloBateria?.Nombre ?? "Sin identificar",
+                TipoBateria = equipo.ModeloBateria?.TipoBateria?.Nombre ?? "Sin identificar",
                 NumeroInventario = equipo.NumeroInventario,
                 NumeroSerie = equipo.NumeroSerie,
                 Marca = equipo.Marca,

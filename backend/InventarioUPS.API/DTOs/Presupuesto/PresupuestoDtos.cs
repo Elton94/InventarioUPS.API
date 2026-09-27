@@ -22,6 +22,10 @@ namespace InventarioUPS.API.DTOs.Presupuesto
 
     public class PresupuestoUpsDetalleDto
     {
+        public int? ModeloBateriaId { get; set; }
+        public string ModeloBateria { get; set; } = string.Empty;
+        public string TipoBateria { get; set; } = string.Empty;
+        public bool UsaCostoGeneral { get; set; }
         public int UPSId { get; set; }
         public string NumeroInventario { get; set; } = string.Empty;
         public string NumeroSerie { get; set; } = string.Empty;

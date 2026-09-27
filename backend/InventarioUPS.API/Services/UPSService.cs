@@ -37,6 +37,9 @@ namespace InventarioUPS.API.Services
 
             await ValidarEstadoOperativoAsync(0, ups.EstadoUPSId, ups.AgenciaId);
             ups.FechaUltimoCambioBateriasBase = ups.FechaUltimoCambioBaterias;
+            await ValidarModeloBateriaAsync(ups.ModeloBateriaId);
+            ups.ModeloBateriaBaseId = ups.ModeloBateriaId;
+            ups.ModeloBateria = null;
             ups.Id = 0;
             await _repository.CrearAsync(ups);
         }
@@ -81,7 +84,7 @@ namespace InventarioUPS.API.Services
 
             await ValidarEstadoOperativoAsync(ups.Id, ups.EstadoUPSId, ups.AgenciaId);
             var enProceso = await TieneCambioEnProcesoAsync(ups.Id);
-            if (enProceso && (ups.AgenciaId != existente.AgenciaId || ups.CantidadBaterias != existente.CantidadBaterias))
+            if (enProceso && (ups.AgenciaId != existente.AgenciaId || ups.CantidadBaterias != existente.CantidadBaterias || ups.ModeloBateriaId != existente.ModeloBateriaId))
                 throw new InvalidOperationException("Finalice o cancele el cambio en proceso antes de trasladar el UPS o modificar su banco de baterías.");
             if (await _context.Mantenimientos.AnyAsync(m => m.UPSId == ups.Id && m.IncluyeCambioBaterias &&
                 m.FechaMantenimiento < ups.FechaInstalacion))
@@ -116,6 +119,12 @@ namespace InventarioUPS.API.Services
                     MaxFecha(ups.FechaUltimoCambioBateriasBase, ultima);
             }
 
+            await ValidarModeloBateriaAsync(ups.ModeloBateriaId);
+            var tieneModeloHistorico = await _context.Mantenimientos.AnyAsync(m => m.UPSId == ups.Id &&
+                m.IncluyeCambioBaterias && m.ModeloBateriaId != null && m.EstadoMantenimiento!.Nombre == "Completado");
+            if (tieneModeloHistorico && ups.ModeloBateriaId != existente.ModeloBateriaId)
+                throw new InvalidOperationException("Registre el nuevo modelo desde Cambios de baterías para conservar el historial.");
+            ups.ModeloBateriaBaseId = tieneModeloHistorico ? existente.ModeloBateriaBaseId : ups.ModeloBateriaId;
             await _repository.ActualizarAsync(ups);
         }
 
@@ -152,6 +161,12 @@ namespace InventarioUPS.API.Services
 
             await ValidarEstadoOperativoAsync(id, destino.Id, ups.AgenciaId);
             await _repository.CambiarEstadoAsync(id, destino.Nombre);
+        }
+
+        private async Task ValidarModeloBateriaAsync(int? id)
+        {
+            if (!id.HasValue || !await _context.ModelosBateria.AnyAsync(x => x.Id == id))
+                throw new ArgumentException("Seleccione un tipo y modelo de batería válidos.");
         }
 
         private Task<bool> TieneCambioEnProcesoAsync(int upsId) =>

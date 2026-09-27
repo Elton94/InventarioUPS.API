@@ -11,6 +11,10 @@ namespace InventarioUPS.API.Data
         {
         }
 
+        public DbSet<TipoBateria> TiposBateria { get; set; }
+        public DbSet<ModeloBateria> ModelosBateria { get; set; }
+        public DbSet<CostoModeloBateria> CostosModeloBateria { get; set; }
+
         // TABLAS
         public DbSet<Permiso> Permisos { get; set; }
 
@@ -49,6 +53,18 @@ namespace InventarioUPS.API.Data
             ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<TipoBateria>().Property(x => x.Nombre).HasMaxLength(80).IsRequired();
+            modelBuilder.Entity<TipoBateria>().HasIndex(x => x.Nombre).IsUnique();
+            modelBuilder.Entity<ModeloBateria>().Property(x => x.Nombre).HasMaxLength(150).UseCollation("Latin1_General_100_CI_AS").IsRequired();
+            modelBuilder.Entity<ModeloBateria>().HasIndex(x => new { x.TipoBateriaId, x.Nombre }).IsUnique();
+            modelBuilder.Entity<ModeloBateria>().HasOne(x => x.TipoBateria).WithMany().HasForeignKey(x => x.TipoBateriaId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<UPS>().HasOne(x => x.ModeloBateria).WithMany().HasForeignKey(x => x.ModeloBateriaId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<UPS>().HasOne<ModeloBateria>().WithMany().HasForeignKey(x => x.ModeloBateriaBaseId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Mantenimiento>().HasOne(x => x.ModeloBateria).WithMany().HasForeignKey(x => x.ModeloBateriaId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<CostoModeloBateria>().Property(x => x.CostoUnitario).HasPrecision(18, 2);
+            modelBuilder.Entity<CostoModeloBateria>().HasIndex(x => new { x.Anio, x.ModeloBateriaId }).IsUnique();
+            modelBuilder.Entity<CostoModeloBateria>().HasOne(x => x.ModeloBateria).WithMany().HasForeignKey(x => x.ModeloBateriaId).OnDelete(DeleteBehavior.Restrict);
 
             // DEPARTAMENTOS
             modelBuilder.Entity<Departamento>()

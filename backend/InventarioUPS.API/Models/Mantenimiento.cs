@@ -9,6 +9,8 @@ namespace InventarioUPS.API.Models
         public string TecnicoProveedor { get; set; } = string.Empty;
         public string Observaciones { get; set; } = string.Empty;
 
+        public int? ModeloBateriaId { get; set; }
+        public ModeloBateria? ModeloBateria { get; set; }
         public bool IncluyeCambioBaterias { get; set; }
         public int CantidadBateriasReemplazadas { get; set; }
 

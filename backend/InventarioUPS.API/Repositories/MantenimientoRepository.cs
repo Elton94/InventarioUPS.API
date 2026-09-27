@@ -24,6 +24,7 @@ namespace InventarioUPS.API.Repositories
                 .Include(m => m.UPS)
                     .ThenInclude(u => u!.Agencia!.Ciudad)
                 .Include(m => m.EstadoMantenimiento)
+                .Include(m => m.ModeloBateria)!.ThenInclude(b => b!.TipoBateria)
                 .OrderByDescending(
                     m => m.FechaMantenimiento)
                 .ThenByDescending(
@@ -41,6 +42,7 @@ namespace InventarioUPS.API.Repositories
                 .Include(m => m.UPS)
                     .ThenInclude(u => u!.Agencia!.Ciudad)
                 .Include(m => m.EstadoMantenimiento)
+                .Include(m => m.ModeloBateria)!.ThenInclude(b => b!.TipoBateria)
                 .FirstOrDefaultAsync(
                     m => m.Id == id);
         }
@@ -56,6 +58,7 @@ namespace InventarioUPS.API.Repositories
                 .Include(m => m.UPS)
                     .ThenInclude(u => u!.Agencia!.Ciudad)
                 .Include(m => m.EstadoMantenimiento)
+                .Include(m => m.ModeloBateria)!.ThenInclude(b => b!.TipoBateria)
                 .Where(m => m.UPSId == upsId)
                 .OrderByDescending(
                     m => m.FechaMantenimiento)

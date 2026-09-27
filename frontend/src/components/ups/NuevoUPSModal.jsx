@@ -29,7 +29,10 @@ import {
     obtenerModelosUPS
 } from "../../services/catalogosService";
 
+import SelectorBateria from "../baterias/SelectorBateria";
+
 const inicial = {
+    modeloBateriaId: null,
     numeroInventario: "",
     marca: "",
     modelo: "",
@@ -122,6 +125,7 @@ export default function NuevoUPSModal({
 
                 if (ups) {
                     setFormulario({
+                        modeloBateriaId: ups.modeloBateriaId || null,
                         numeroInventario:
                             ups.numeroInventario || "",
                         marca:
@@ -185,6 +189,8 @@ export default function NuevoUPSModal({
 
     const guardar = async () => {
         setError("");
+
+        if (!formulario.modeloBateriaId) return setError("Seleccione el tipo y modelo de batería.");
 
         if (!formulario.numeroInventario.trim()) {
             setError(
@@ -588,6 +594,8 @@ export default function NuevoUPSModal({
                             )
                         }
                     />
+
+                    <SelectorBateria value={formulario.modeloBateriaId} onChange={id => cambiar("modeloBateriaId", id)} disabled={guardando || cargando} />
 
                     <TextField
                         type="date"

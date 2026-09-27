@@ -5,6 +5,8 @@ import {
     DialogContent, DialogTitle, MenuItem, Stack, Table, TableBody,
     TableCell, TableContainer, TableHead, TableRow, TextField, Typography
 } from "@mui/material";
+import CostosModelo from "../components/baterias/CostosModelo";
+import PlanCompras from "../components/baterias/PlanCompras";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {
@@ -126,16 +128,17 @@ export default function Presupuesto() {
         {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>{error}</Alert>}
         {mensaje && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMensaje("")}>{mensaje}</Alert>}
         <Card variant="outlined" sx={{ mb: 3, borderRadius: 3 }}><CardContent>
-            <Stack direction={{ xs: "column", md: "row" }} alignItems={{ md: "center" }} gap={3}>
+            <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, flexWrap: "wrap", alignItems: { md: "center" }, gap: 2 }}>
                 <TextField select label="Año a proyectar" value={anio} sx={{ minWidth: 180 }} onChange={e => {
                     setAnio(Number(e.target.value)); invalidar(); setError(""); setMensaje("");
                 }}>{anios.map(a => <MenuItem key={a} value={a}>{a}</MenuItem>)}</TextField>
-                <Box sx={{ flex: 1 }}><Typography variant="body2" color="text.secondary">Costo estimado por batería · {anio}</Typography>
+                <Box sx={{ flex: 1 }}><Typography variant="body2" color="text.secondary">Costo general de referencia · {anio}</Typography>
                     <Typography variant="h5" fontWeight={700}>{configuracion?.activo ? moneda(configuracion.costoUnitarioBateria) : "Sin configurar"}</Typography></Box>
+                {puedeGestionar && <CostosModelo anio={anio} onGuardado={() => { invalidar(); setMensaje("Costo por modelo guardado. Genere nuevamente la proyección."); }} />}
                 {puedeGestionar && <Button variant="outlined" onClick={abrirCosto}>{configuracion ? "Editar costo" : "Configurar costo"}</Button>}
                 <Button variant="contained" size="large" disabled={generando || !configuracion?.activo || !politica} onClick={generar}>
                     {generando ? "Calculando…" : "Generar proyección"}</Button>
-            </Stack>
+            </Box>
         </CardContent></Card>
         {!configuracion?.activo && <Alert severity="info" sx={{ mb: 3 }}>Falta el costo de {anio}. {puedeGestionar ? "Use Configurar costo para continuar." : "Solicite la configuración al administrador."}</Alert>}
         {!proyeccion && !generando && configuracion?.activo && <Box sx={{ py: 5, textAlign: "center", border: "1px dashed #cbd5e1", borderRadius: 3 }}>
@@ -165,6 +168,7 @@ export default function Presupuesto() {
             {Boolean(proyeccion.totalUPSExcluidos) && <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {proyeccion.totalUPSExcluidos} UPS fuera de servicio o de baja excluidos. Solo se incluyen agencias activas.
             </Typography>}
+            <PlanCompras equipos={equipos} anio={anio} />
             {agencias.map(a => <Accordion key={a.agenciaId} defaultExpanded disableGutters sx={{ mb: 2, border: "1px solid #e2e8f0", boxShadow: "none", borderRadius: "12px !important", "&:before": { display: "none" } }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, alignItems: { sm: "center" }, gap: 2, justifyContent: "space-between", width: "100%", minWidth: 0, pr: 2 }}>
@@ -178,7 +182,7 @@ export default function Presupuesto() {
                             <colgroup>{[20, 8, 25, 8, 11, 11, 17].map((ancho, i) => <col key={i} style={{ width: `${ancho}%` }} />)}</colgroup>
                             <TableHead><TableRow>{["UPS / inventario", "Ciclo", "Fechas previstas", "Cambios", "Baterías / cambio", "Baterías totales", "Estimado"].map((c, i) => <TableCell key={c} align={i >= 3 ? "right" : "left"} sx={{ fontWeight: 700, bgcolor: "#f8fafc" }}>{c}</TableCell>)}</TableRow></TableHead>
                             <TableBody>{a.ups.map(u => <TableRow key={u.upsId} hover>
-                                <TableCell><Typography fontWeight={600}>{u.numeroInventario}</Typography><Typography variant="caption" color="text.secondary">{u.marca} {u.modelo} · {u.numeroSerie}</Typography></TableCell>
+                                <TableCell><Typography fontWeight={600}>{u.numeroInventario}</Typography><Typography variant="caption" color="text.secondary">{u.marca} {u.modelo} · {u.numeroSerie}</Typography><Typography variant="caption" display="block">Batería: {u.modeloBateria} · {u.tipoBateria}</Typography></TableCell>
                                 <TableCell>{u.mesesCicloReemplazo} {u.mesesCicloReemplazo === 1 ? "mes" : "meses"}</TableCell>
                                 <TableCell>
                                     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, minWidth: 0, "& .MuiChip-root": { maxWidth: "100%" } }}>
@@ -191,7 +195,7 @@ export default function Presupuesto() {
                                 <TableCell align="right">{u.cantidadCambios}</TableCell>
                                 <TableCell align="right">{u.cantidadBaterias}</TableCell>
                                 <TableCell align="right">{u.bateriasProyectadas}</TableCell>
-                                <TableCell align="right" sx={{ fontVariantNumeric: "tabular-nums" }}>{moneda(u.costoEstimado)}</TableCell>
+                                <TableCell align="right" sx={{ fontVariantNumeric: "tabular-nums" }}>{moneda(u.costoEstimado)}<Typography variant="caption" display="block">{moneda(u.costoUnitarioBateria)} / batería<br />{u.usaCostoGeneral ? "Referencia general" : "Costo por modelo"}</Typography></TableCell>
                             </TableRow>)}</TableBody>
                         </Table>
                     </TableContainer>

@@ -101,6 +101,7 @@ namespace InventarioUPS.API.Controllers
         {
             Id = dto.Id,
             UPSId = dto.UPSId,
+            ModeloBateriaId = dto.ModeloBateriaId,
             EstadoMantenimientoId = dto.EstadoMantenimientoId,
             FechaMantenimiento = dto.FechaMantenimiento,
             Descripcion = dto.Descripcion?.Trim() ?? string.Empty,

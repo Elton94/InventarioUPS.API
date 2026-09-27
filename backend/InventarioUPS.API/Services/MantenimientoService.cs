@@ -79,6 +79,8 @@ namespace InventarioUPS.API.Services
             if (mantenimiento.FechaMantenimiento.Date < ups.FechaInstalacion.Date)
                 throw new ArgumentException("El cambio no puede ser anterior a la instalación del UPS.");
             PrepararBaterias(mantenimiento, ups);
+            if (!mantenimiento.ModeloBateriaId.HasValue || !await _context.ModelosBateria.AnyAsync(b => b.Id == mantenimiento.ModeloBateriaId))
+                throw new ArgumentException("Seleccione el tipo y modelo de las baterías del cambio.");
             LimpiarTextos(mantenimiento);
 
             mantenimiento.AgenciaIdRegistro = ups.AgenciaId;
@@ -119,6 +121,8 @@ namespace InventarioUPS.API.Services
             if (mantenimiento.FechaMantenimiento.Date < ups.FechaInstalacion.Date)
                 throw new ArgumentException("El cambio no puede ser anterior a la instalación del UPS.");
             PrepararBaterias(mantenimiento, ups);
+            if (!mantenimiento.ModeloBateriaId.HasValue || !await _context.ModelosBateria.AnyAsync(b => b.Id == mantenimiento.ModeloBateriaId))
+                throw new ArgumentException("Seleccione el tipo y modelo de las baterías del cambio.");
             if (EsEstado(existente.EstadoMantenimiento?.Nombre, "Completado") &&
                 EsEstado(estado.Nombre, "Completado"))
                 mantenimiento.CantidadBateriasReemplazadas = existente.CantidadBateriasReemplazadas;
@@ -134,6 +138,7 @@ namespace InventarioUPS.API.Services
             await SincronizarEstadoUPSAsync(ups, mantenimiento, estado.Nombre, existente.EstadoMantenimiento?.Nombre);
             await RecalcularFechaBateriasAsync(ups, mantenimiento, estado.Nombre);
 
+            existente.ModeloBateriaId = mantenimiento.ModeloBateriaId;
             existente.EstadoMantenimientoId = mantenimiento.EstadoMantenimientoId;
             existente.FechaMantenimiento = mantenimiento.FechaMantenimiento;
             existente.Descripcion = mantenimiento.Descripcion;
@@ -266,6 +271,17 @@ namespace InventarioUPS.API.Services
                     ? actual.FechaMantenimiento
                     : null;
 
+            var otros = await _context.Mantenimientos.AsNoTracking()
+                .Where(m => m.UPSId == ups.Id && m.Id != actual.Id && m.IncluyeCambioBaterias &&
+                    m.EstadoMantenimiento!.Nombre == "Completado")
+                .Select(m => new { m.Id, m.FechaMantenimiento, m.ModeloBateriaId }).ToListAsync();
+            if (actualCompletada.HasValue)
+                otros.Add(new { Id = actual.Id == 0 ? int.MaxValue : actual.Id, actual.FechaMantenimiento, actual.ModeloBateriaId });
+            var ultimo = otros.OrderByDescending(m => m.FechaMantenimiento).ThenByDescending(m => m.Id).FirstOrDefault();
+            ups.ModeloBateriaId = ultimo != null && (!ups.FechaUltimoCambioBateriasBase.HasValue ||
+                ultimo.FechaMantenimiento >= ups.FechaUltimoCambioBateriasBase.Value)
+                ? ultimo.ModeloBateriaId ?? ups.ModeloBateriaBaseId : ups.ModeloBateriaBaseId;
+
             ups.FechaUltimoCambioBaterias =
                 MaxFecha(
                     ups.FechaUltimoCambioBateriasBase,
@@ -326,6 +342,10 @@ namespace InventarioUPS.API.Services
         private static MantenimientoDTO ConvertirDTO(Mantenimiento m) => new()
         {
             Id = m.Id,
+            ModeloBateriaId = m.ModeloBateriaId,
+            ModeloBateria = m.ModeloBateria?.Nombre ?? "Sin identificar",
+            TipoBateriaId = m.ModeloBateria?.TipoBateriaId,
+            TipoBateria = m.ModeloBateria?.TipoBateria?.Nombre ?? "Sin identificar",
             UPSId = m.UPSId,
             EstadoMantenimientoId = m.EstadoMantenimientoId,
             FechaMantenimiento = m.FechaMantenimiento,

@@ -1,3 +1,41 @@
+# Actualización del 27 de septiembre: catálogo de baterías e Inicio
+
+Si la aplicación ya tiene los cambios anteriores de `desarrollo`:
+
+1. Detenga la API y respalde su base de datos.
+2. Descargue `desarrollo` con `git pull --ff-only origin desarrollo`.
+3. En SSMS, seleccione la base de Inventario UPS y ejecute completo
+   `backend/Database/20260927_CatalogoBaterias.sql`.
+4. Reinicie la API y el frontend. No use `Update-Database` para esta actualización.
+5. Edite los UPS existentes y seleccione su tipo y modelo de batería. Puede agregar
+   la referencia del fabricante desde el mismo formulario; no hay página de baterías.
+6. En Proyecciones, configure el costo general del año y, cuando disponga de precios
+   concretos, use **Costos por modelo**. Genere nuevamente la proyección.
+
+El script es reejecutable y no borra registros. Crea `TiposBateria`, `ModelosBateria`
+y `CostosModeloBateria`, con claves foráneas desde UPS y cambios. Los datos antiguos
+quedan sin modelo identificado; no se supone que todos usen la misma tecnología.
+Los nuevos registros y las ediciones requieren un modelo válido. El modelo determina
+el tipo y evita combinaciones inconsistentes. Los tipos clasifican baterías; el
+sistema no certifica su compatibilidad eléctrica con un UPS.
+
+Al completar un cambio se actualiza el modelo instalado. Cancelarlo o reprogramarlo
+restaura el modelo correspondiente al historial válido y a la ficha base. Cuando ya
+hay cambios completados con modelo, las sustituciones se registran desde ese módulo;
+no se sobrescribe el modelo desde la ficha del UPS.
+
+Inicio consulta vencimientos sin necesitar costos. Solo muestra cambios completados
+en los recientes (30 días). Mantiene alertas para vencimientos y trabajos programados
+o en proceso que quedaron con fechas pasadas. Las órdenes pendientes no se cierran
+automáticamente al completar otro registro; deben conciliarse desde Cambios de baterías.
+
+Verificación realizada: compilación C# y frontend, pruebas de servicios con SQLite,
+pruebas de distribución mensual/exportación y análisis sintáctico del script T-SQL.
+La ejecución del script contra su SQL Server local y la revisión visual en su navegador
+requieren la instalación local.
+
+---
+
 # Base de datos: Id interno, inventario y serie únicos
 
 ## Diseño vigente

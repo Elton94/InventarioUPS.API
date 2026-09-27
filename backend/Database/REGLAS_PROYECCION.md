@@ -15,6 +15,16 @@
 - Los precios deben ser positivos y tener máximo dos decimales. Se admite configurar 2029 y otros años futuros dentro del rango 2020–2100. La interfaz propone los próximos cinco años y otros años configurados.
 - La política es global para todos los años. Modificarla recalcula las estimaciones; no modifica hechos históricos.
 
+## Precisión y compras por modelo
+
+- Cada modelo pertenece a un tipo; los registros antiguos sin modelo siguen visibles como Sin identificar.
+- El precio por modelo y año reemplaza al costo general del mismo año. Si falta, se utiliza la referencia general y se advierte en pantalla. No se heredan precios de otros años.
+- Se requiere una configuración general activa para generar el presupuesto; garantiza una referencia explícita para equipos sin precio específico.
+- La distribución mensual reconcilia las cantidades e importes del detalle. El banco vencido se asigna al mes actual como atención pendiente, sin cambiar su fecha histórica de vencimiento.
+- El resumen de compras agrupa unidades por modelo y tipo. Los filtros afectan el resumen, los meses y la exportación CSV.
+- Los cambios programados no sustituyen el modelo instalado ni su costo proyectado: el presupuesto parte de la ficha vigente hasta completar el trabajo.
+- No se presume inflación, expansión de inventario ni gastos de transporte o mano de obra. No es una predicción estadística ni un presupuesto aprobado e inmutable.
+
 ## Operación
 
 - Solo Completado modifica la fecha del último cambio. Cancelar o reprogramar un completado restaura la fecha resultante de los otros cambios y la fecha base.
@@ -25,9 +35,9 @@
 
 ## Aplicación local
 
-Esta revisión no cambia columnas ni tablas. Si ya se aplicaron los scripts de las
-versiones anteriores, basta descargar `desarrollo`, recompilar/reiniciar la API y
-reiniciar el frontend. Las pruebas usan SQLite y no sustituyen la verificación
+Esta revisión incorpora el catálogo de baterías. Aplique primero
+`20260927_CatalogoBaterias.sql`, siguiendo el README de esta carpeta, y reinicie
+la API y el frontend. Las pruebas usan SQLite y no sustituyen la verificación
 con SQL Server local. Crear y editar cambios utiliza una transacción serializable
 para que la validación y el guardado sean atómicos. Un conflicto de bloqueo de SQL
 Server devuelve un mensaje para recargar y reintentar. No se ha realizado una

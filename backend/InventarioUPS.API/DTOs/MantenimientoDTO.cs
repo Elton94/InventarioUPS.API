@@ -2,6 +2,10 @@ namespace InventarioUPS.API.DTOs
 {
     public class MantenimientoDTO
     {
+        public int? ModeloBateriaId { get; set; }
+        public string ModeloBateria { get; set; } = string.Empty;
+        public string TipoBateria { get; set; } = string.Empty;
+        public int? TipoBateriaId { get; set; }
         public int Id { get; set; }
         public int UPSId { get; set; }
         public int EstadoMantenimientoId { get; set; }

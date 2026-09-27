@@ -26,10 +26,11 @@ function lastRequest() { return requests.at(-1); }
 test('editar usa Id interno y permite corregir inventario sin perder ceros ni caracteres', async () => {
   await ups.obtenerUPSPorId(7);
   assert.equal(lastRequest().url, '/UPS/7');
-  await ups.actualizarUPS(7, { numeroInventario: inventario, numeroSerie: 'SERIE-1' });
+  await ups.actualizarUPS(7, { numeroInventario: inventario, numeroSerie: 'SERIE-1', modeloBateriaId: '5' });
   assert.equal(lastRequest().url, '/UPS/7');
   const data = JSON.parse(lastRequest().data);
   assert.equal(data.id, 7);
+  assert.equal(data.modeloBateriaId, 5);
   assert.equal(data.numeroInventario, inventario);
   assert.equal('codigo' in data, false);
   await ups.cambiarEstadoUPS(7, 'En resguardo');
@@ -39,9 +40,10 @@ test('editar usa Id interno y permite corregir inventario sin perder ceros ni ca
 });
 
 test('cambios de baterías usan UPSId y omiten costos, tipo e indicador opcional', async () => {
-  const datos = { upsId: 7, costo: 500, costoBaterias: 1200, incluyeCambioBaterias: false, tipoMantenimientoId: 3, cantidadBateriasReemplazadas: 999 };
+  const datos = { modeloBateriaId: "5", upsId: 7, costo: 500, costoBaterias: 1200, incluyeCambioBaterias: false, tipoMantenimientoId: 3, cantidadBateriasReemplazadas: 999 };
   await mantenimientos.crearMantenimiento(datos);
   assert.equal(JSON.parse(lastRequest().data).upsId, 7);
+  assert.equal(JSON.parse(lastRequest().data).modeloBateriaId, 5);
   assert.equal('costo' in JSON.parse(lastRequest().data), false);
   assert.equal('costoBaterias' in JSON.parse(lastRequest().data), false);
   for (const campo of ['cantidadBateriasReemplazadas', 'incluyeCambioBaterias', 'tipoMantenimientoId'])
@@ -49,6 +51,7 @@ test('cambios de baterías usan UPSId y omiten costos, tipo e indicador opcional
   assert.equal('numeroInventarioUPS' in JSON.parse(lastRequest().data), false);
   await mantenimientos.actualizarMantenimiento(12, datos);
   assert.equal(JSON.parse(lastRequest().data).upsId, 7);
+  assert.equal(JSON.parse(lastRequest().data).modeloBateriaId, 5);
   assert.equal('costo' in JSON.parse(lastRequest().data), false);
   assert.equal('costoBaterias' in JSON.parse(lastRequest().data), false);
   for (const campo of ['cantidadBateriasReemplazadas', 'incluyeCambioBaterias', 'tipoMantenimientoId'])

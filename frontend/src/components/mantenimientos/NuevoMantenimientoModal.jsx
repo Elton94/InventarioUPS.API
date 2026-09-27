@@ -8,7 +8,10 @@ import { crearMantenimiento, actualizarMantenimiento } from "../../services/mant
 import { obtenerResponsablesMantenimiento } from "../../services/usuarioService";
 import { obtenerEstadosMantenimiento } from "../../services/catalogosService";
 
+import SelectorBateria from "../baterias/SelectorBateria";
+
 const inicial = {
+    modeloBateriaId: null,
     fechaMantenimiento: "",
     descripcion: "",
     tecnicoProveedor: "",
@@ -48,6 +51,7 @@ export default function NuevoMantenimientoModal({ open, onClose, onGuardado, man
                 if (mantenimientoEditar) {
                     setUpsSeleccionado((ups || []).find(u => Number(u.id) === Number(mantenimientoEditar.upsId)) || null);
                     setFormulario({
+                        modeloBateriaId: mantenimientoEditar.modeloBateriaId || null,
                         fechaMantenimiento: mantenimientoEditar.fechaMantenimiento?.substring(0, 10) || "",
                         descripcion: mantenimientoEditar.descripcion || "",
                         tecnicoProveedor: mantenimientoEditar.tecnicoProveedor || "",
@@ -81,6 +85,7 @@ export default function NuevoMantenimientoModal({ open, onClose, onGuardado, man
 
     const guardar = async () => {
         setError("");
+        if (!formulario.modeloBateriaId) return setError("Seleccione el tipo y modelo de las baterías del cambio.");
         if (!upsSeleccionado) return setError("Debe seleccionar un UPS.");
         if (!formulario.estadoMantenimientoId) return setError("Seleccione el estado del cambio.");
         if (!formulario.fechaMantenimiento) return setError("Seleccione la fecha del cambio.");
@@ -122,7 +127,7 @@ export default function NuevoMantenimientoModal({ open, onClose, onGuardado, man
                         disabled={cargando || guardando || Boolean(mantenimientoEditar)}
                         getOptionLabel={u => [u.numeroInventario, u.numeroSerie, u.marca, u.modelo, u.agenciaCodigo, u.agenciaNombre, u.estado].filter(Boolean).join(" - ")}
                         isOptionEqualToValue={(a, b) => Number(a.id) === Number(b.id)}
-                        onChange={(_, valor) => setUpsSeleccionado(valor)}
+                        onChange={(_, valor) => { setUpsSeleccionado(valor); cambiar("modeloBateriaId", valor?.modeloBateriaId || null); }}
                         renderInput={params => <TextField {...params} required label="UPS" placeholder="Inventario, serie o agencia" />}
                     />
                     <TextField select required label="Estado" value={formulario.estadoMantenimientoId}
@@ -138,6 +143,7 @@ export default function NuevoMantenimientoModal({ open, onClose, onGuardado, man
                         renderInput={params => <TextField {...params} required label="Técnico / proveedor" />} />
                     <TextField label="Cantidad de baterías" value={cantidadBaterias || ""} disabled
                         helperText={conservaCantidad ? "Cantidad registrada al completar el cambio." : "Se reemplaza el banco completo."} />
+                    <SelectorBateria key={upsSeleccionado?.id || "nuevo"} value={formulario.modeloBateriaId} onChange={id => cambiar("modeloBateriaId", id)} disabled={cargando || guardando} />
                     <TextField sx={{ gridColumn: "1 / -1" }} required multiline rows={3} label="Descripción"
                         value={formulario.descripcion} onChange={e => cambiar("descripcion", e.target.value)} />
                     <TextField sx={{ gridColumn: "1 / -1" }} multiline rows={2} label="Observaciones"

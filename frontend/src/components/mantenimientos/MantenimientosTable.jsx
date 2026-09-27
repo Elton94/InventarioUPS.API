@@ -146,7 +146,7 @@ export default function MantenimientosTable({
                                                     variant="caption"
                                                     color="text.secondary"
                                                 >
-                                                    {textoBateria(m)}
+                                                    {m.tipoBateria || "Sin identificar"} · {m.modeloBateria || "Sin identificar"}<br />{textoBateria(m)}
                                                 </Typography>
                                             </Box>
                                         )}

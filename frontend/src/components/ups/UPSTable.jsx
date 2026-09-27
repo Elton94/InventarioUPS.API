@@ -33,6 +33,7 @@ export default function UPSTable({
                         <TableCell><strong>Modelo</strong></TableCell>
                         <TableCell><strong>Número de serie</strong></TableCell>
                         <TableCell><strong>Capacidad VA</strong></TableCell>
+                        <TableCell><strong>Baterías: tipo / modelo</strong></TableCell>
                         <TableCell><strong>Agencia</strong></TableCell>
                         <TableCell><strong>Estado</strong></TableCell>
                         <TableCell align="center"><strong>Acciones</strong></TableCell>
@@ -56,6 +57,7 @@ export default function UPSTable({
                                 <TableCell>{equipo.modelo}</TableCell>
                                 <TableCell>{equipo.numeroSerie}</TableCell>
                                 <TableCell>{equipo.capacidadVA} VA</TableCell>
+                                <TableCell>{equipo.tipoBateria || "Sin identificar"}<br />{equipo.modeloBateria || "Sin identificar"} · {equipo.cantidadBaterias} unidades</TableCell>
                                 <TableCell>{equipo.agenciaNombre || "Sin agencia"}</TableCell>
                                 <TableCell>
                                     {puedeEditar ? (
@@ -108,7 +110,7 @@ export default function UPSTable({
                     {ups.length === 0 && (
                         <TableRow>
                             <TableCell
-                                colSpan={8}
+                                colSpan={9}
                                 align="center"
                             >
                                 No hay UPS registrados.

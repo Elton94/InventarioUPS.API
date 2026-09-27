@@ -4,6 +4,7 @@ const API_URL = "/Mantenimiento";
 
 const prepararDatos = (cambio) => ({
     upsId: Number(cambio.upsId),
+    modeloBateriaId: cambio.modeloBateriaId ? Number(cambio.modeloBateriaId) : null,
     estadoMantenimientoId: Number(cambio.estadoMantenimientoId),
     fechaMantenimiento: cambio.fechaMantenimiento,
     descripcion: cambio.descripcion?.trim() || "",

@@ -105,6 +105,10 @@ namespace InventarioUPS.API.Controllers
         private static UPSDTO MapearDTO(UPS equipo) => new()
         {
             Id = equipo.Id,
+            ModeloBateriaId = equipo.ModeloBateriaId,
+            ModeloBateria = equipo.ModeloBateria?.Nombre ?? "Sin identificar",
+            TipoBateriaId = equipo.ModeloBateria?.TipoBateriaId,
+            TipoBateria = equipo.ModeloBateria?.TipoBateria?.Nombre ?? "Sin identificar",
             NumeroInventario = equipo.NumeroInventario,
             Marca = equipo.Marca,
             Modelo = equipo.Modelo,

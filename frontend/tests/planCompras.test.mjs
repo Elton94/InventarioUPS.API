@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { resumirCompras, csvProyeccion } from '../src/utils/planCompras.js';
 const equipo = { agencia: 'Centro', numeroInventario: '001', tipoBateriaId: 1, voltajeBateria: 12, capacidadBateriaAh: 9, tipoBateria: 'Plomo',
     cantidadBaterias: 4, costoUnitarioBateria: 750, cantidadCambios: 3, bateriasProyectadas: 12, costoEstimado: 9000,
-    fechasReemplazo: ['2026-10-10T00:00:00', '2026-12-10T00:00:00'], estaVencido: true, fechaVencimientoPendiente: '2026-08-10', usaCostoGeneral: false };
-test('La distribución mensual incluye una vez el vencido y reconcilia compras y total', () => {
+    fechasReemplazo: ['2026-09-25T00:00:00', '2026-10-10T00:00:00', '2026-12-10T00:00:00'], estaVencido: true, fechaVencimientoPendiente: '2026-08-10', usaCostoGeneral: false };
+test('La atención programada se cuenta una vez sin sumar otro evento por vencimiento', () => {
     const r = resumirCompras([equipo], 2026, 9);
     assert.equal(r.meses[8].cambios, 1);
     assert.equal(r.meses.reduce((n,m) => n + m.cambios, 0), 3);
@@ -42,4 +42,15 @@ test('Un mismo tipo con voltaje o capacidad diferentes no mezcla sus compras', (
   assert.ok(csv.includes('"Voltaje (V)"'));
   assert.ok(csv.includes('"Capacidad (Ah)"'));
   assert.ok(csv.includes('"tipo"'));
+});
+
+
+test('Pendiente sin fecha no se asigna al mes actual ni al presupuesto anual', () => {
+    const pendiente = {...equipo, fechasReemplazo: [], cantidadCambios: 0, bateriasProyectadas: 0, costoEstimado: 0, costoPendiente: 3000};
+    const r = resumirCompras([pendiente], 2027, 1);
+    assert.equal(r.meses.reduce((n, m) => n + m.costo, 0), 0);
+    const csv = csvProyeccion([], 2027, 'tipo', [pendiente]);
+    assert.ok(csv.includes('Pendiente sin fecha; valorado con precios de 2027'));
+    assert.ok(csv.includes('"3000"'));
+    assert.ok(csv.includes('Costo pendiente sin fecha (excluido del total anual)'));
 });

@@ -47,6 +47,7 @@ namespace InventarioUPS.API.DTOs.Presupuesto
         public long BateriasProyectadas { get; set; }
         public decimal CostoPendiente { get; set; }
         public DateTime? FechaVencimientoPendiente { get; set; }
+        public DateTime? FechaAtencionPendiente { get; set; }
         public List<DateTime> FechasReemplazo { get; set; } = new();
         public bool InformacionSuficiente { get; set; }
         public string? Observacion { get; set; }
@@ -81,6 +82,8 @@ namespace InventarioUPS.API.DTOs.Presupuesto
         public long TotalBaterias { get; set; }
         public int TotalCambios { get; set; }
         public decimal TotalPendiente { get; set; }
+        public decimal TotalPendienteSinFecha { get; set; }
+        public List<PresupuestoUpsDetalleDto> PendientesSinFecha { get; set; } = new();
         public int TotalUPSExcluidos { get; set; }
         public int TotalUPSPendientesPrevios { get; set; }
         public decimal TotalPresupuesto { get; set; }

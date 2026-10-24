@@ -243,7 +243,7 @@ namespace InventarioUPS.API.Controllers
             };
 
             var hoy = DateTime.Today;
-            var anioActual = hoy.Year;
+
 
             foreach (var equipo in inventario)
             {
@@ -302,19 +302,32 @@ namespace InventarioUPS.API.Controllers
                     equipo.FechaUltimoCambioBaterias ??
                     equipo.FechaInstalacion;
 
-                var calendario = CalculadoraReemplazos.Calcular(fechaBase, mesesCiclo, anio, hoy);
-                var incluirPendiente = anio == anioActual && calendario.VencimientoPendiente.HasValue;
-                var cantidadCambios = calendario.Fechas.Count + (incluirPendiente ? 1 : 0);
-                if (calendario.VencimientoPendiente.HasValue)
-                    resultado.TotalUPSPendientesPrevios++;
-                if (cantidadCambios == 0) continue;
-
                 var mantenimientoProgramado = programados
-                    .Where(m =>
-                        m.UPSId == equipo.Id &&
-                        m.FechaMantenimiento.Year == anio)
+                    .Where(m => m.UPSId == equipo.Id && m.FechaMantenimiento.Date >= hoy)
                     .OrderBy(m => m.FechaMantenimiento)
                     .FirstOrDefault();
+                var calendario = CalculadoraReemplazos.Calcular(fechaBase, mesesCiclo, anio, hoy,
+                    mantenimientoProgramado?.FechaMantenimiento);
+                if (calendario.VencimientoPendiente.HasValue)
+                    resultado.TotalUPSPendientesPrevios++;
+                if (calendario.VencimientoPendiente.HasValue && !calendario.FechaAtencionPendiente.HasValue)
+                {
+                    var pendiente = CrearDetalle(equipo, agencia, tipoAgencia, mesesCiclo, costoEquipo);
+                    pendiente.UsaCostoGeneral = !costoEspecifico;
+                    pendiente.FechaVencimientoPendiente = calendario.VencimientoPendiente;
+                    pendiente.EstaVencido = true;
+                    pendiente.ReemplazoAnteriorPendiente = true;
+                    pendiente.InformacionSuficiente = true;
+                    pendiente.CostoPendiente = equipo.CantidadBaterias * costoEquipo;
+                    pendiente.Observacion = "Pendiente vencido, sin fecha de atención. Programe el cambio para calcular los ciclos posteriores.";
+                    resultado.PendientesSinFecha.Add(pendiente);
+                    resultado.TotalUPSVencidos++;
+                    resultado.TotalPendienteSinFecha += pendiente.CostoPendiente;
+                    continue;
+                }
+                var incluirPendiente = calendario.FechaAtencionPendiente?.Year == anio;
+                var cantidadCambios = calendario.Fechas.Count;
+                if (cantidadCambios == 0) continue;
 
                 var detalle = CrearDetalle(
                     equipo,
@@ -326,8 +339,8 @@ namespace InventarioUPS.API.Controllers
                 detalle.UsaCostoGeneral = !costoEspecifico;
                 detalle.FechasReemplazo = calendario.Fechas;
                 detalle.FechaVencimientoPendiente = calendario.VencimientoPendiente;
-                detalle.FechaProyectadaReemplazo = incluirPendiente
-                    ? calendario.VencimientoPendiente : calendario.Fechas.First();
+                detalle.FechaProyectadaReemplazo = calendario.Fechas.First();
+                detalle.FechaAtencionPendiente = calendario.FechaAtencionPendiente;
                 detalle.CantidadCambios = cantidadCambios;
                 detalle.BateriasProyectadas = (long)equipo.CantidadBaterias * cantidadCambios;
                 detalle.CostoEstimado = detalle.BateriasProyectadas * costoEquipo;

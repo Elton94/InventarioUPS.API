@@ -1,20 +1,20 @@
 import { Alert, Box, Button, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material';
 import { resumirCompras, csvProyeccion } from '../../utils/planCompras';
 const moneda = n => new Intl.NumberFormat('es-HN', { style: 'currency', currency: 'HNL' }).format(n);
-export default function PlanCompras({ equipos, anio, metodoCosto }) {
-    const resumen = resumirCompras(equipos, anio, new Date().getMonth() + 1);
+export default function PlanCompras({ equipos, anio, metodoCosto, pendientesSinFecha = [] }) {
+    const resumen = resumirCompras(equipos, anio);
     const referencia = equipos.filter(u => u.usaCostoGeneral).length;
     const exportar = () => {
-        const url = URL.createObjectURL(new Blob([csvProyeccion(equipos, anio, metodoCosto)], { type: 'text/csv;charset=utf-8;' }));
+        const url = URL.createObjectURL(new Blob([csvProyeccion(equipos, anio, metodoCosto, pendientesSinFecha)], { type: 'text/csv;charset=utf-8;' }));
         const a = document.createElement('a'); a.href = url; a.download = `Presupuesto-baterias-${anio}.csv`; a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
     return <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 1, mb: 2 }}><Typography variant="h6" fontWeight={700}>Plan de compras · {anio}</Typography><Button variant="outlined" onClick={exportar} disabled={!equipos.length}>Exportar detalle CSV</Button></Box>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 1, mb: 2 }}><Typography variant="h6" fontWeight={700}>Plan de compras · {anio}</Typography><Button variant="outlined" onClick={exportar} disabled={!equipos.length && !pendientesSinFecha.length}>Exportar detalle CSV</Button></Box>
         {!!referencia && <Alert severity={metodoCosto === "referencia" ? "info" : "warning"} sx={{ mb: 2 }}>{referencia} UPS utilizan el costo general de referencia. Puede definir valores por tipo y seleccionar ese método de cálculo. Verifique voltaje, capacidad y compatibilidad antes de comprar.</Alert>}
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 2 }}>
             <Card variant="outlined"><CardContent><Typography fontWeight={700}>Distribución mensual</Typography>
-                <Typography variant="caption" color="text.secondary">Los vencidos del año actual se asignan al mes actual para planificar su atención.</Typography>
+                <Typography variant="caption" color="text.secondary">Los pendientes con fecha se incluyen en el mes programado. Los pendientes sin fecha se muestran por separado.</Typography>
                 <TableContainer><Table size="small"><TableHead><TableRow><TableCell>Mes</TableCell><TableCell align="right">Cambios</TableCell><TableCell align="right">Baterías</TableCell><TableCell align="right">Estimado</TableCell></TableRow></TableHead><TableBody>
                     {resumen.meses.map(m => <TableRow key={m.mes}><TableCell>{new Date(anio,m.mes-1,1).toLocaleDateString('es-HN',{month:'long'})}</TableCell><TableCell align="right">{m.cambios}</TableCell><TableCell align="right">{m.baterias}</TableCell><TableCell align="right">{moneda(m.costo)}</TableCell></TableRow>)}
                 </TableBody></Table></TableContainer>

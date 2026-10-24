@@ -412,6 +412,12 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         ups.FechaInstalacion = new DateTime(2025, 12, 15);
         await service.CrearAsync(ups);
         context.Add(new PoliticaReemplazoBaterias { MesesReemplazoLocal = 3, MesesReemplazoForanea = 6 });
+        context.Mantenimientos.Add(new Mantenimiento
+        {
+            UPSId = ups.Id, IncluyeCambioBaterias = true,
+            FechaMantenimiento = new DateTime(2028, 12, 15),
+            EstadoMantenimiento = new EstadoMantenimiento { Nombre = "Programado" }
+        });
         await context.SaveChangesAsync();
         var config = new ConfiguracionPresupuestoService(new ConfiguracionPresupuestoRepository(context));
         await config.CrearAsync(new() { Anio = 2029, CostoUnitarioBateria = 500 });
@@ -488,13 +494,16 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         context.ChangeTracker.Clear();
         var result = await new PresupuestoController(context, config).ObtenerProyeccion(DateTime.Today.Year);
         var resumen = Assert.IsType<InventarioUPS.API.DTOs.Presupuesto.PresupuestoResumenDto>(Assert.IsType<OkObjectResult>(result).Value);
-        var detalle = Assert.Single(Assert.Single(resumen.Agencias).UPS);
-        Assert.Equal(1, resumen.TotalUPSConReemplazo);
+        var detalle = Assert.Single(resumen.PendientesSinFecha);
+        Assert.Empty(resumen.Agencias);
+        Assert.Equal(0, resumen.TotalUPSConReemplazo);
         Assert.Equal(1, resumen.TotalUPSExcluidos);
-        Assert.Equal(1000m, resumen.TotalPendiente);
-        Assert.Equal(detalle.FechasReemplazo.Count + 1, detalle.CantidadCambios);
-        Assert.Equal(detalle.CantidadCambios * 1000m, resumen.TotalPresupuesto);
-        Assert.All(detalle.FechasReemplazo, f => Assert.True(f > DateTime.Today));
+        Assert.Equal(0m, resumen.TotalPendiente);
+        Assert.Equal(1000m, resumen.TotalPendienteSinFecha);
+        Assert.Equal(1000m, detalle.CostoPendiente);
+        Assert.Equal(0, detalle.CantidadCambios);
+        Assert.Equal(0m, resumen.TotalPresupuesto);
+        Assert.Empty(detalle.FechasReemplazo);
     }
 
     [Theory]
@@ -614,6 +623,12 @@ public sealed class UPSIdentityTests : IAsyncLifetime
         await admin.GuardarAsync("ciudades", ciudad.Id, new("SPS · nombre corregido", true, ciudad.PadreId, ciudad), 7, "Admin");
         await service.CrearAsync(Equipo("INV-CIUDAD"));
         context.Add(new PoliticaReemplazoBaterias { MesesReemplazoLocal = 3, MesesReemplazoForanea = 6 });
+        context.Mantenimientos.Add(new Mantenimiento
+        {
+            UPSId = ups.Id, IncluyeCambioBaterias = true,
+            FechaMantenimiento = new DateTime(2028, 12, 15),
+            EstadoMantenimiento = new EstadoMantenimiento { Nombre = "Programado" }
+        });
         await context.SaveChangesAsync();
         var config = new ConfiguracionPresupuestoService(new ConfiguracionPresupuestoRepository(context));
         await config.CrearAsync(new() { Anio = 2029, CostoUnitarioBateria = 500 });

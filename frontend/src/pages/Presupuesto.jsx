@@ -109,6 +109,10 @@ export default function Presupuesto() {
             normalizar([a.agencia, u.numeroInventario, u.numeroSerie].join(" ")).includes(normalizar(busqueda)))
     })).filter(a => a.ups.length), [proyeccion, busqueda, tipoAgencia]);
     const equipos = agencias.flatMap(a => a.ups);
+    const pendientesSinFecha = (proyeccion?.pendientesSinFecha || []).filter(u =>
+        (tipoAgencia === "Todas" || u.tipoAgencia === tipoAgencia) &&
+        normalizar([u.agencia, u.numeroInventario, u.numeroSerie].join(" ")).includes(normalizar(busqueda)));
+    const costoSinFecha = pendientesSinFecha.reduce((total, u) => total + u.costoPendiente, 0);
     const filtrado = Boolean(busqueda.trim()) || tipoAgencia !== "Todas";
     const resumen = equipos.reduce((r, u) => ({ cambios: r.cambios + u.cantidadCambios,
         baterias: r.baterias + u.bateriasProyectadas, total: r.total + u.costoEstimado,
@@ -166,13 +170,24 @@ export default function Presupuesto() {
                 {anio === actual ? "Estimación pendiente desde hoy hasta diciembre; no incluye gastos ya realizados." : "Estimación de enero a diciembre con el inventario y la política actuales."}
             </Typography>
             {proyeccion.totalUPSPendientesPrevios > 0 && <Alert severity="warning" sx={{ mb: 2 }}>
-                {anio === actual ? `Los vencidos se incluyen una sola vez. Importe pendiente${filtrado ? " filtrado" : ""}: ${moneda(resumen.pendiente)}.` : "Hay reemplazos vencidos. Los ciclos futuros suponen que se atienden los pendientes; confirme las fechas al realizar los cambios."}
-                {" "}Las fechas futuras son estimadas y no crean órdenes de trabajo.
+                El pendiente se incluye una sola vez en el año programado. Los ciclos posteriores parten de esa fecha estimada y se recalculan al registrar el cambio real.
+                {" "}Sin fecha de atención válida no se generan ciclos ni se suma su costo al presupuesto anual.
             </Alert>}
             {Boolean(proyeccion.totalUPSExcluidos) && <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {proyeccion.totalUPSExcluidos} UPS fuera de servicio o de baja excluidos. Solo se incluyen agencias activas.
             </Typography>}
-            <PlanCompras metodoCosto={proyeccion.metodoCosto} equipos={equipos} anio={anio} />
+            {pendientesSinFecha.length > 0 && <Card variant="outlined" sx={{ mb: 3, borderColor: "warning.main" }}><CardContent>
+                <Typography variant="h6">Pendientes vencidos sin fecha de atención</Typography>
+                <Typography sx={{ mb: 1 }}>{pendientesSinFecha.length} UPS · {moneda(costoSinFecha)} fuera del presupuesto anual.</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Valorados con los precios de {anio}, sin asignarlos a ese año. En Cambios de baterías, registre o reprograme el cambio como Programado con una fecha de hoy o posterior y genere nuevamente la proyección.</Typography>
+                <TableContainer><Table size="small"><TableHead><TableRow>
+                    <TableCell>Inventario / agencia</TableCell><TableCell>Vencido desde</TableCell><TableCell align="right">Baterías</TableCell><TableCell align="right">Costo del pendiente</TableCell>
+                </TableRow></TableHead><TableBody>{pendientesSinFecha.map(u => <TableRow key={u.upsId}>
+                    <TableCell>{u.numeroInventario}<Typography variant="caption" display="block">{u.agencia}</Typography></TableCell>
+                    <TableCell>{fecha(u.fechaVencimientoPendiente)}</TableCell><TableCell align="right">{u.cantidadBaterias}</TableCell><TableCell align="right">{moneda(u.costoPendiente)}</TableCell>
+                </TableRow>)}</TableBody></Table></TableContainer>
+            </CardContent></Card>}
+            <PlanCompras metodoCosto={proyeccion.metodoCosto} equipos={equipos} anio={anio} pendientesSinFecha={pendientesSinFecha} />
             {agencias.map(a => <Accordion key={a.agenciaId} defaultExpanded disableGutters sx={{ mb: 2, border: "1px solid #e2e8f0", boxShadow: "none", borderRadius: "12px !important", "&:before": { display: "none" } }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, alignItems: { sm: "center" }, gap: 2, justifyContent: "space-between", width: "100%", minWidth: 0, pr: 2 }}>
@@ -194,7 +209,7 @@ export default function Presupuesto() {
                                         {u.fechasReemplazo.slice(0, 2).map(f => <Chip key={f} size="small" variant="outlined" label={fecha(f)} />)}
                                     </Box>
                                     {u.fechasReemplazo.length > 2 && <Button size="small" onClick={() => setCalendario({ ...u, agencia: a.agencia })} aria-label={`Ver las ${u.fechasReemplazo.length} fechas de ${u.numeroInventario}`} sx={{ mt: 0.5 }}>Ver las {u.fechasReemplazo.length} fechas</Button>}
-                                    {u.tieneMantenimientoProgramado && <Typography display="block" variant="caption" color="info.main" sx={{ mt: 0.5 }}>Trabajo programado: {fecha(u.fechaMantenimientoProgramado)}</Typography>}
+                                    {u.tieneMantenimientoProgramado && <Typography display="block" variant="caption" color="info.main" sx={{ mt: 0.5 }}>Trabajo programado: {fecha(u.fechaMantenimientoProgramado)}{u.fechaAtencionPendiente ? " · Base estimada de los siguientes ciclos" : ""}</Typography>}
                                 </TableCell>
                                 <TableCell align="right">{u.cantidadCambios}</TableCell>
                                 <TableCell align="right">{u.cantidadBaterias}</TableCell>

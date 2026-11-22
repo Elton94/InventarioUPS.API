@@ -1,4 +1,36 @@
-# Inventario UPS
+# Sistema web de inventario y control de cambios de baterías de UPS para BAC Honduras, 2026
+
+## Autor
+
+Elton Eduardo Martinez Fuentes
+
+## Ruta
+
+Práctica profesional — Proyecto de Graduación Fase 2.
+
+## Token de propiedad
+
+LEARN-CAP-8596457D
+
+## Informe de práctica
+
+[Consultar el informe actualizado](UPSAssetManegement%20Informe.docx)
+
+Ruta del documento para la verificación en Olisbel:
+
+```text
+UPSAssetManegement Informe.docx
+```
+
+## Ramas
+
+- `desarrollo`: trabajo diario de la aplicación y el informe.
+- `master`: versión integrada para las entregas. Conserva el enlace utilizado en Olisbel.
+
+La aplicación registra cambios de baterías de UPS; no gestiona mantenimientos generales.
+Al preparar una entrega, integrar `desarrollo` en `master` y comprobar el documento publicado.
+
+## Aplicación
 
 La última actualización requiere `backend/Database/20260927_TiposBateriaYUsuarios.sql`.
 Consulte [los campos y catálogos](backend/Database/CAMPOS_Y_CATALOGOS.md) y
